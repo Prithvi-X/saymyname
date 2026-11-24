@@ -152,6 +152,11 @@ function ChatsContent() {
     setTimeout(() => setSafetyFeedback(null), 3000);
   };
 
+  const formatTime = (timeStr: string) => {
+    const d = new Date(timeStr);
+    return isNaN(d.getTime()) ? timeStr : d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  };
+
   const handleStartCall = () => {
     setCallStatus('Connecting via LiveKit WebRTC...');
     setTimeout(() => {
@@ -175,7 +180,7 @@ function ChatsContent() {
   }
 
   return (
-    <div className="mobile-app-layout" style={{ maxWidth: '980px', margin: '0 auto', padding: '16px', height: 'calc(100vh - 84px)', display: 'flex', flexDirection: 'column' }}>
+    <div className="mobile-app-layout" style={{ maxWidth: '980px', margin: '0 auto', padding: '16px', height: 'calc(100vh - 110px)', minHeight: '580px', display: 'flex', flexDirection: 'column' }}>
       {safetyFeedback && (
         <div
           style={{
@@ -493,7 +498,7 @@ function ChatsContent() {
                     </div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '4px', marginTop: '3px', fontSize: '10px', color: 'var(--color-text-secondary)' }}>
                       <span>
-                        {new Date(m.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                        {formatTime(m.createdAt)}
                       </span>
                       {m.isOwn && (
                         <span>
