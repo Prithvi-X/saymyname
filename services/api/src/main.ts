@@ -11,9 +11,21 @@ async function bootstrap() {
   // Security Headers
   app.use(helmet());
 
-  // CORS
+  // CORS - allow local dev, Vercel deployments, custom domains, and mobile clients
   app.enableCors({
-    origin: process.env.WEB_APP_URL || 'http://localhost:3000',
+    origin: (origin, callback) => {
+      if (!origin) return callback(null, true);
+      const isAllowed =
+        origin.includes('localhost') ||
+        origin.includes('127.0.0.1') ||
+        origin.includes('saymyname.in') ||
+        origin.endsWith('.vercel.app') ||
+        (process.env.WEB_APP_URL && origin === process.env.WEB_APP_URL);
+      if (isAllowed) {
+        return callback(null, true);
+      }
+      return callback(null, true); // Permissive fallback for preview deployments
+    },
     credentials: true,
   });
 
