@@ -1,0 +1,97 @@
+/**
+ * SayMyName Design Tokens - CSS Variables
+ * Conforms to Document 03 Warm Editorial Minimalism
+ */
+
+:root {
+  /* Colors - Light Theme */
+  --color-canvas: #F7F4EF;
+  --color-surface: #FFFEFC;
+  --color-surface-subtle: #EFE9E1;
+  --color-text-primary: #25211F;
+  --color-text-secondary: #6B625D;
+  --color-border-default: #D6CEC6;
+  --color-brand-primary: #7A3045;
+  --color-brand-primary-hover: #65263A;
+  --color-brand-primary-subtle: #F3E6EA;
+  --color-accent-warm: #A6533D;
+  --color-status-success: #286B55;
+  --color-status-warning: #81561C;
+  --color-status-danger: #A52F41;
+  --color-status-info: #315E82;
+  --color-focus-ring: #315E82;
+
+  /* Typography */
+  --font-display: 'Newsreader', Georgia, serif;
+  --font-body: 'DM Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;
+
+  /* Spacing Scale */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-10: 40px;
+  --space-12: 48px;
+  --space-16: 64px;
+  --space-20: 80px;
+
+  /* Corner Radii */
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-xl: 20px;
+  --radius-2xl: 24px;
+  --radius-pill: 999px;
+
+  /* Elevation Shadows */
+  --elevation-1: 0 1px 3px rgba(37, 33, 31, 0.05), 0 1px 2px rgba(37, 33, 31, 0.04);
+  --elevation-2: 0 4px 6px -1px rgba(37, 33, 31, 0.08), 0 2px 4px -2px rgba(37, 33, 31, 0.05);
+  --elevation-3: 0 10px 15px -3px rgba(37, 33, 31, 0.1), 0 4px 6px -4px rgba(37, 33, 31, 0.05);
+
+  /* Motion */
+  --duration-fast: 150ms;
+  --duration-normal: 250ms;
+  --duration-slow: 400ms;
+  --ease-out: cubic-bezier(0, 0, 0.2, 1);
+  --ease-in-out: cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+[data-theme="dark"],
+.dark {
+  /* Colors - Dark Theme */
+  --color-canvas: #171413;
+  --color-surface: #211D1C;
+  --color-surface-raised: #2C2624;
+  --color-surface-subtle: #302927;
+  --color-text-primary: #F4EEEA;
+  --color-text-secondary: #C2B7B0;
+  --color-border-default: #4A403D;
+  --color-brand-primary: #E7A0B2;
+  --color-brand-primary-hover: #F0BCC8;
+  --color-brand-primary-subtle: #3B232B;
+  --color-accent-warm: #E1A08B;
+  --color-status-success: #7FCCAA;
+  --color-status-warning: #F0C17A;
+  --color-status-danger: #F19BA7;
+  --color-status-info: #98C6EC;
+  --color-focus-ring: #98C6EC;
+
+  --elevation-1: 0 1px 3px rgba(0, 0, 0, 0.3);
+  --elevation-2: 0 4px 6px -1px rgba(0, 0, 0, 0.4);
+  --elevation-3: 0 10px 15px -3px rgba(0, 0, 0, 0.5);
+}
+
+/* Reduced motion preference */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

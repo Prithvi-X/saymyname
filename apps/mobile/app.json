@@ -1,0 +1,26 @@
+{
+  "expo": {
+    "name": "SayMyName",
+    "slug": "saymyname",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "automatic",
+    "splash": {
+      "image": "./assets/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#F7F4EF"
+    },
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "in.saymyname.mobile"
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#F7F4EF"
+      },
+      "package": "in.saymyname.mobile"
+    }
+  }
+}
