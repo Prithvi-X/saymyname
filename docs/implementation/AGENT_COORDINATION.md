@@ -25,8 +25,8 @@ This document serves as the shared coordination and synchronization registry for
 | `services/api/*` | Agent A | NestJS modular monolith skeleton with /health & Swagger | 2026-11-24 14:03 IST | **COMPLETED (Agent A)** |
 | `packages/design-tokens/*` | Agent B | Tokens per Doc 03 (Newsreader, DM Sans, warm editorial palette) | 2026-11-24 14:03 IST | **COMPLETED (Agent B)** |
 | `packages/validation/*` | Agent B | Shared validation schemas | 2026-11-24 14:03 IST | **COMPLETED (Agent B)** |
-| `services/api/src/modules/{profiles,dating,messaging,safety}/*` | Agent A | Phase 3 P0 Dating Loop backend APIs & WebSockets | 2026-11-24 14:34 IST | **LOCKED (In Progress - Agent A)** |
-| `apps/web/app/*` (Discover, Matches, Chats, Profile) | Agent B | Phase 3 UI views, live swipe/candidate deck, chat & safety controls | 2026-11-24 14:34 IST | **LOCKED (In Progress - Agent B)** |
+| `services/api/src/modules/{together,realtime}/*` | Agent A | Phase 4 Real-time calling (LiveKit), games & socket gateway | 2026-11-24 14:53 IST | **LOCKED (Phase 4 - Agent A)** |
+| `apps/web/app/(app)/chats/*` (WebRTC Call & Game Modals) | Agent B | Phase 4 audio/video WebRTC calling UI & game components | 2026-11-24 14:53 IST | **LOCKED (Phase 4 - Agent B)** |
 | `apps/mobile/*` | Agent B | React Native / Expo mobile views matching Document 02 & 03 | 2026-11-24 14:03 IST | **STANDBY (Agent B)** |
 | Root `package.json`, `package-lock.json` | — | Scaffolding complete; open for additive workspace scripts | 2026-11-24 14:03 IST | **RELEASED (Clean)** |
 
@@ -77,26 +77,27 @@ This document serves as the shared coordination and synchronization registry for
 - **Ready for Client Wiring**:
   - Agent B can wire client auth/onboarding forms in `apps/web` and `apps/mobile` directly to `http://localhost:4000/api/v1/identity/*`.
 
-### [2026-11-24 14:34 IST] Agent B $\rightarrow$ Agent A:
-- **Phase 2 Identity & Onboarding Client Complete & Verified**:
-  - Interactive multi-step onboarding wizard implemented at `apps/web/app/onboarding/page.tsx` covering:
-    1. Institutional email verification (`@*.study.iitm.ac.in`).
-    2. 6-digit OTP verification & JWT storage.
-    3. Strict 18+ Date-of-Birth age gate (blocks minors `< 18` with explanatory banner per Doc 01).
-    4. IITM BS Programme selection (strictly the 4 approved BS tracks) & Roll Number verification.
-    5. Success screen unlocking Dating Discovery.
-  - End-to-end integration verified: Automated test script (`scripts/test-identity-flow.mjs`) ran against live API at `http://localhost:4000/api/v1` and passed all 7/7 checks including negative underage rejection (403) and positive adult/student verification (200).
-  - Next.js Web server running live on `http://localhost:3000` (`/`, `/onboarding`, `/discover`, `/matches`, `/chats`, `/profile`).
-- **Advancing to Phase 3: Core Discovery & Matchmaking (P0 Dating Loop)**:
-  - Agent A focuses on:
-    - `profiles` module (`POST /api/v1/profiles` - bio, photos, prompts, interests per Doc 04 §4).
-    - `dating` module (`GET /api/v1/dating/candidates` bounded discovery queue, `POST /api/v1/dating/likes`, `POST /api/v1/dating/passes`, `GET /api/v1/dating/matches` per Doc 04 §5 & Doc 06 §6).
-    - `messaging` module (`POST /api/v1/messaging/conversations/:id/messages` per Doc 04 §6).
-    - `safety` module (`POST /api/v1/safety/block`, `POST /api/v1/safety/report` per Doc 07).
-  - Agent B focuses on:
-    - Building interactive Discovery card stack in `apps/web/app/discover/page.tsx` with Like/Pass actions, editorial layout, and cohort badge.
-    - Building Matches list in `apps/web/app/matches/page.tsx` and 1-on-1 bilateral Chat view in `apps/web/app/chats/page.tsx` (enforcing "Like is not permission to message" and "mutual match required").
-    - Wiring immediate block & report modal actions into Chat and Profile views.
+### [2026-11-24 14:53 IST] Agent B & Agent A Synchronisation:
+- **Phase 3 Core Discovery & Matchmaking (P0 Dating Loop) Fully Completed & Verified**:
+  - **Backend (Agent A)**:
+    - `profiles` module: full profile management, bio, prompts, interests, cohort tag.
+    - `dating` module: candidate queue, like, pass, mutual match detection with lexicographical ordering (`userLowId < userHighId` per Doc 06 §6.3).
+    - `messaging` module: bilateral mutual-match conversations, message persistence, 1000 character validation.
+    - `safety` module: immediate universal block (`POST /api/v1/safety/block`) and confidential report (`POST /api/v1/safety/report`) with match termination.
+    - Unit tests: 9/9 passed (`identity.test.ts` & `dating.test.ts`).
+  - **Frontend (Agent B)**:
+    - Interactive candidate discovery card deck (`/discover`) with editorial layout, prompt answer cards, cohort badges, and like/pass actions.
+    - Mutual match celebration modal with direct transition to chat.
+    - Active matches list (`/matches`) with "Like is not permission to message" invariant banner.
+    - Bilateral 1-on-1 chat interface (`/chats`) with message thread, character counter, delivery state markers, and universal block/report actions.
+    - Profile editor & privacy controls (`/profile`) with "Pause Discovery" and 18+ student badges.
+    - Likes received queue (`/likes`) with privacy callout.
+  - **Local Hosting Verified**:
+    - Web Client: `http://localhost:3000` (all 9 routes responding 200 OK via `scripts/test-web-routes.mjs`).
+    - API Server: `http://localhost:4000` (all 7 identity & eligibility checks passing via `scripts/test-identity-flow.mjs`, Swagger docs at `/docs`).
+  - **Commit**: `a1e096e` (`feat(phase3): complete P0 dating loop, candidate discovery, bilateral chat and safety controls`).
+- **Advancing to Phase 4**: Together Experience (LiveKit WebRTC calling, word games, and bilateral Relationship Mode).
+
 
 
 
