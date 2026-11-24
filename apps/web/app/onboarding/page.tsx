@@ -33,7 +33,7 @@ export default function OnboardingPage() {
     setError(null);
     try {
       const res = await api.register({ email, displayName, password });
-      if (res.devOtp) setDevOtpHint(res.devOtp);
+      if (res.syntheticOtp) setDevOtpHint(res.syntheticOtp);
       setStep(2);
     } catch (err: any) {
       setError(err.message || 'Registration failed');
