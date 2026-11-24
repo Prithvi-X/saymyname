@@ -43,7 +43,7 @@ export default function HomePage() {
 
         <div style={{ display: 'flex', justifyContent: 'center', gap: '16px', flexWrap: 'wrap' }}>
           <Link
-            href="/discover"
+            href="/onboarding"
             style={{
               padding: '12px 28px',
               backgroundColor: 'var(--color-brand-primary)',
@@ -54,10 +54,10 @@ export default function HomePage() {
               boxShadow: 'var(--elevation-1)',
             }}
           >
-            Enter Discovery
+            Register & Get Verified
           </Link>
           <Link
-            href="/eligibility"
+            href="/discover"
             style={{
               padding: '12px 28px',
               backgroundColor: 'var(--color-surface)',
@@ -68,7 +68,21 @@ export default function HomePage() {
               fontWeight: 600,
             }}
           >
-            Check Programme Eligibility
+            Preview Discovery
+          </Link>
+          <Link
+            href="/eligibility"
+            style={{
+              padding: '12px 28px',
+              backgroundColor: 'var(--color-surface)',
+              color: 'var(--color-text-secondary)',
+              border: '1px solid var(--color-border-default)',
+              borderRadius: 'var(--radius-md)',
+              fontSize: '16px',
+              fontWeight: 500,
+            }}
+          >
+            Check Eligibility
           </Link>
         </div>
       </section>

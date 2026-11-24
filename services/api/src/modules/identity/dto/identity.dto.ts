@@ -1,4 +1,4 @@
-import { IsEmail, IsNotEmpty, IsString, MinLength } from 'class-validator';
+import { IsEmail, IsNotEmpty, IsOptional, IsString, MinLength } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 
 export class RegisterDto {
@@ -68,6 +68,8 @@ export class VerifyStudentDto {
     description: 'Evidence reference key',
     required: false,
   })
+  @IsOptional()
+  @IsString()
   idDocumentRef?: string;
 }
 

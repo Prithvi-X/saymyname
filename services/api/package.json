@@ -5,7 +5,7 @@
   "scripts": {
     "build": "tsc",
     "test": "node --test dist/test/identity.test.js",
-    "start": "node dist/main.js",
+    "start": "node dist/src/main.js",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {

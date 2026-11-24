@@ -70,6 +70,19 @@ export default function Navbar() {
           Safety & Consent
         </Link>
         <Link
+          href="/onboarding"
+          style={{
+            fontSize: '14px',
+            fontWeight: 600,
+            color: 'var(--color-brand-primary)',
+            padding: '6px 12px',
+            backgroundColor: 'var(--color-brand-primary-subtle)',
+            borderRadius: 'var(--radius-md)',
+          }}
+        >
+          Register (18+)
+        </Link>
+        <Link
           href="/discover"
           style={{
             padding: '8px 16px',
