@@ -3,6 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
+    "prebuild": "node ./scripts/prebuild.js",
     "build": "tsc",
     "test": "node --test dist/test/identity.test.js dist/test/dating.test.js dist/test/calling.test.js dist/test/together.test.js",
     "start": "node dist/src/main.js",
