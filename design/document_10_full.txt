@@ -1,0 +1,1700 @@
+
+
+SAYMYNAME   /   INDEPENDENT PRODUCT
+
+DOCUMENT 10
+
+BRAND IDENTITY
+& DIGITAL DESIGN
+LANGUAGE
+
+THE INTERVAL
+
+Two identities. One moment of recognition.
+A dark cinematic system built from sculptural form, precise geometry and controlled digital transformation.
+
+DESIGN AUTHORITY  /  Companion specification to Document 03: UI/UX Design Specification
+
+Status: Approved direction for prototyping. Final identity assets, final font deployment and detailed screen compositions require visual validation before they are frozen.
+
+01 / DESIGN SYSTEM
+
+Purpose, authority and relationship to the nine product documents
+
+This document defines the visual identity and digital design language for SayMyName. It is not a mood board and it is not permission for an agent to improvise a new aesthetic on every screen.
+
+APPROVED DIRECTION
+
+Primary environment: dark cinematic. Typography: contemporary neo-grotesk led by Instrument Sans. Art direction: a new synthesis of sculptural objects, architectural geometry and selective digital fragmentation. The unifying concept is THE INTERVAL.
+
+What this document controls
+
+Brand premise, wordmark behaviour and symbolic direction.
+
+Colour, typography, composition, geometry, surfaces and imagery.
+
+Graphic devices, 3D art direction, motion language and interaction character.
+
+How these principles translate into web and mobile screens.
+
+Rules for designers and Antigravity when creating or changing visual components.
+
+Relationship to Document 03
+
+Document 10 becomes the source of truth for brand identity and visual style. It supersedes the earlier Warm Editorial Minimalism direction where that direction conflicts with this document. In particular, the previous warm-ivory canvas, oxblood-led palette, serif-led page headings, pill-shaped navigation and centred narrow-column composition are no longer the approved visual direction.
+
+Document 03 remains authoritative for information architecture, screen inventory, responsive behaviour, interaction requirements and accessibility requirements unless a visual decision directly conflicts with Document 10. Documents 01, 02, 04, 05, 06, 07, 08 and 09 remain in force for product scope, flows, features, engineering, data, testing, delivery and agent operation.
+
+What this document does not authorise
+
+Changing authentication, student eligibility, mutual-consent or privacy behaviour for aesthetic reasons.
+
+Introducing new product features or changing API/database contracts.
+
+Copying any reference website, television franchise, logo, proprietary type treatment or signature artwork.
+
+Treating untested palettes, fonts, motion timings or layouts as proven user preferences.
+
+IMPLEMENTATION RULE
+
+When style and function conflict, preserve the approved product behaviour and access rules. Rework the visual treatment around the requirement; do not weaken the requirement.
+
+02 / DESIGN SYSTEM
+
+The design thesis: THE INTERVAL
+
+The visual language is built around the space between two separate identities. The interval is not emptiness for decoration. It is the moment before recognition.
+
+Concept diagram only. This is not final logo artwork. It illustrates two distinct masses, a deliberate negative space and a third visual relationship that appears through alignment.
+
+The three ingredients
+
+Ingredient
+
+Role in the identity
+
+How it appears
+
+MASS
+
+Sculptural presence
+
+Large solid forms, controlled depth, carefully lit material, strong silhouettes.
+
+CUT
+
+Architectural precision
+
+Notches, voids, offset planes, hard-edged transitions and deliberate framing.
+
+SIGNAL
+
+Digital transformation
+
+Large facets or fragments that align, resolve or combine during a few meaningful brand moments.
+
+Core brand sentence
+
+TWO IDENTITIES. ONE MOMENT OF RECOGNITION.
+
+A person should feel individually seen before they feel part of a match. The visual system therefore begins with distinct forms and only combines them when the product state genuinely represents mutual connection.
+
+What the language should feel like
+
+Cinematic and precise, without becoming theatrical or cold.
+
+Experimental in brand art, familiar and dependable in core usability.
+
+Emotionally resonant without romantic clichés or synthetic-tech tropes.
+
+03 / DESIGN SYSTEM
+
+Reading the supplied references
+
+The references are treated as ingredients, not templates. The final identity must be a new composition, not a collage of borrowed styles.
+
+Reference board from the supplied image set. The first seven uploads are current SayMyName screens and existing brand treatments; the ten images shown above are the additional visual references.
+
+04 / DESIGN SYSTEM
+
+Reference decisions: retain, adapt and reject
+
+These decisions are explicit so Antigravity does not accidentally reintroduce the patterns you said you dislike.
+
+Reference
+
+Retain or adapt
+
+Reject / do not copy
+
+R01-R07: current SayMyName screens
+
+Retain useful product copy and approved information architecture only.
+
+Retire ivory/oxblood visual system, serif-led headings, narrow centre layouts, oversized blank areas, pill badges and inconsistent form styling.
+
+R08: monochrome pixel architecture
+
+High contrast, bold silhouette, negative space and a clear graphic idea.
+
+Pixel scatter, block noise as a permanent background and imitation of the original silhouette.
+
+R09: dark sculptural scene
+
+A dark stage, one focal object, human presence and spatial composition.
+
+Literal robotic hands, purple neon glow and generic sci-fi imagery.
+
+R10-R11: fragmented symbol and pixel cursor
+
+A controlled transformation from fragments into a resolved mark.
+
+Tiny pixel dust, dotted fields, fuzzy glow, random glitch and pixelated text.
+
+R12: dimensional object
+
+Architectural mass, strong lighting and material depth.
+
+Generic glowing cube, ambient gradient haze and decorative 3D objects with no meaning.
+
+R13: layered landscape
+
+Depth, atmospheric colour and a sense of spatial distance, used very selectively.
+
+Pastel gradient waves as a repeated site background.
+
+R14: halftone cloud
+
+No direct adoption. It is a useful contrast reference for what not to repeat.
+
+Halftone, dot matrices, grain fields and dotted cloud textures.
+
+R15: glass capsule navigation
+
+No component treatment retained.
+
+Capsule rails, glass pills, full-width rounded navigation and blur as a default material.
+
+R16: glass chart tile
+
+Only the idea of controlled hierarchy within a bounded information area.
+
+Floating glass dashboard cards, neon chart glows and unnecessary data visualisation.
+
+R17: soft 3D heart
+
+A single expressive object can carry emotion when it is original and meaningful.
+
+Literal glossy heart as the brand mark or the default visual for every relationship feature.
+
+REFERENCE RULE
+
+If a visual can be described as "the same dots, lines, capsules, purple glow or floating glass card used by dozens of AI-generated websites", it is not part of the SayMyName identity.
+
+05 / DESIGN SYSTEM
+
+Brand character and design principles
+
+The system must be recognisable through proportion, type, silhouette and interaction, even when the logo is removed.
+
+Principle
+
+Meaning
+
+Design consequence
+
+IDENTITY FIRST
+
+A person is not a card, score or engagement event.
+
+Names and profile content receive clear hierarchy. Never rank people or display popularity metrics.
+
+CINEMATIC RESTRAINT
+
+Create atmosphere through composition and light, not decoration.
+
+One focal visual per view; controlled contrast; avoid layers of visual effects.
+
+STRUCTURAL ORIGINALITY
+
+Be distinctive through form and layout, not borrowed UI conventions.
+
+Use a consistent grid with purposeful asymmetry and a unique geometry vocabulary.
+
+HUMAN PRESENCE
+
+The product should feel inhabited, not synthetic.
+
+Natural photography, human copy and respectful treatment of personal information.
+
+CALM CONTROL
+
+Users should understand what happened and what they can do next.
+
+Immediate feedback, reversible actions where appropriate, no manipulative urgency.
+
+QUIET PRECISION
+
+Small details must feel deliberate and consistent.
+
+Tight spacing logic, stable baselines, optical alignment, crisp borders and polished states.
+
+Personality boundaries
+
+We are
+
+We are not
+
+Confident
+
+Aggressive
+
+Intimate
+
+Sentimental or childish
+
+Cinematic
+
+Theatrical or game-like
+
+Experimental in brand art
+
+Unusual in basic controls
+
+Premium through craft
+
+Premium through glow, blur and giant radius
+
+Private and respectful
+
+Mysterious about consent or data use
+
+Psychological design commitments
+
+Do not create artificial scarcity, streaks, countdown pressure or popularity ranking.
+
+Do not turn Likes, read states, presence or relationship features into surveillance.
+
+Make mutual consent and account state obvious without repeating warnings on every screen.
+
+Treat empty states as normal product states, not failures or a reason to fabricate activity.
+
+The interface must reduce uncertainty rather than intensify romantic anxiety.
+
+06 / DESIGN SYSTEM
+
+Wordmark, symbol and the subtle name reference
+
+The product name already carries the strongest brand idea. The visual system should give that name authority rather than adding a competing mascot or decorative emblem.
+
+Wordmark direction
+
+Use the exact brand spelling: SayMyName. Preserve the internal capital letters.
+
+Move away from the current serif wordmark. Explore a confident modern grotesk with a custom optical correction.
+
+Investigate a bespoke treatment of the N or M where a shared cut or negative space becomes a signature detail.
+
+Do not add routine labels such as PHASE 1, VERIFIED or IITM BS as part of the logo lockup.
+
+Prepare horizontal, compact and symbol-only versions only after the primary wordmark is approved.
+
+Symbol direction: the interval mark
+
+Explore a mark made from two distinct solid forms that face one another across a deliberate gap. When aligned, the gap creates a third shared shape. The mark should be recognisable at small sizes in a single flat colour. It must not depend on glow, gradients, transparency or animated effects to be understood.
+
+Subtle Breaking Bad inspiration
+
+The reference is the conceptual force of the phrase "Say my name": identity, recognition, confidence and being known. Translate that into the weight of the wordmark and the moment two forms align. Do not reproduce the series title typography, periodic-table title treatment, character imagery, costumes, hazmat motifs, chemical labels or any franchise logo.
+
+IP AND BRAND INDEPENDENCE
+
+The relationship is conceptual only. The SayMyName identity must be original, independently recognisable and usable without any viewer knowing the television reference.
+
+07 / DESIGN SYSTEM
+
+Colour system: mineral night
+
+Dark cinematic is the primary visual environment. It should be deep and layered, not pure black with neon accents and not a purple-blue gradient.
+
+The palette is deliberately narrow. Neutral surfaces carry most of the product. Iris is the primary brand signal. Ember is a secondary warmth accent, reserved for selected emphasis and visual storytelling. They are not blended into gradients.
+
+Token
+
+Value
+
+Usage
+
+Void
+
+#0B0D10
+
+Primary page stage
+
+Coal
+
+#12161B
+
+Main application surface
+
+Iron
+
+#1A2027
+
+Raised surface / panels
+
+Slate
+
+#252D37
+
+Selected surface / interaction area
+
+Chalk
+
+#F0F1EE
+
+Primary text
+
+Silver
+
+#B6BDC4
+
+Secondary text
+
+Ash
+
+#8B949E
+
+Tertiary text / metadata
+
+Edge
+
+#343D48
+
+Borders and separators
+
+Iris
+
+#8580C4
+
+Primary brand signal
+
+Ember
+
+#E18A62
+
+Secondary signal / warmth
+
+Success
+
+#77C5A1
+
+Success state
+
+Warning
+
+#E6BC69
+
+Warning state
+
+Danger
+
+#F07878
+
+Critical / destructive state
+
+Contrast verification for core pairs
+
+Foreground / background
+
+Contrast ratio
+
+Use
+
+Chalk #F0F1EE on Void #0B0D10
+
+17.16:1
+
+Primary text on main stage
+
+Silver #B6BDC4 on Void #0B0D10
+
+10.25:1
+
+Secondary text
+
+Ash #8B949E on Void #0B0D10
+
+6.33:1
+
+Tertiary text / metadata; still verify in context
+
+Iris #8580C4 on Coal #12161B
+
+5.09:1
+
+Accent text / focus accent
+
+Ember #E18A62 on Coal #12161B
+
+6.93:1
+
+Accent text / selected highlight
+
+Void #0B0D10 on Iris #8580C4
+
+5.45:1
+
+Text on primary accent button
+
+Void #0B0D10 on Ember #E18A62
+
+7.42:1
+
+Text on secondary accent surface
+
+08 / DESIGN SYSTEM
+
+Colour behaviour and restrictions
+
+The palette is a hierarchy, not a bag of colours. Every accent must communicate something meaningful.
+
+Distribution guidance
+
+Role
+
+Indicative share
+
+Rule
+
+Dark neutral surfaces
+
+75-88%
+
+The app should read as a dark environment, not a coloured poster.
+
+Primary text and neutral content
+
+10-20%
+
+Use chalk and silver. Avoid pure white everywhere.
+
+Iris accent
+
+2-5%
+
+Use for selected interaction, primary action and the brand signal.
+
+Ember accent
+
+0-2%
+
+Use sparingly for warmth, editorial emphasis or one focal detail.
+
+Semantic colours
+
+As needed
+
+Only appear when an actual state requires them.
+
+Rules
+
+No purple-to-blue, purple-to-orange or multi-stop mesh gradients.
+
+No neon cyan as a default accent, and no glow around every button, card or icon.
+
+Do not use accent colour as a large full-page background.
+
+Do not use colour alone to communicate selected, error, blocked, verified or success state.
+
+Use layered neutral surfaces for elevation instead of a strong drop shadow or coloured glow.
+
+Keep photography colour grading independent from interface accent tokens; do not tint every face purple or blue.
+
+Dark environment is not a licence for low contrast
+
+Dark mode can be preferred in some environments, but it is not universally more legible or more comfortable. Research indicates that contrast polarity, brightness and ambient illumination affect legibility. The product should validate small text and longer reading tasks on real devices and under both low and bright ambient light. A future light theme must be designed intentionally; do not create one by mechanically inverting these tokens.
+
+THEME DECISION
+
+Phase 1 uses the dark cinematic environment as its approved default. The exact hues are initial prototype tokens and must be validated on real screens and displays before final lock. Keep colour roles semantic so an intentionally designed light appearance can be developed later if user research justifies it. Do not add an unvalidated theme toggle now.
+
+09 / DESIGN SYSTEM
+
+Typography: contemporary neo-grotesk
+
+Typography should feel modern, self-assured and human. The interface should not depend on editorial serifs, condensed techno fonts or excessive monospaced labels.
+
+Primary typeface decision
+
+INSTRUMENT SANS
+
+Use Instrument Sans as the primary product family for the first design prototype. It is a variable neo-grotesk with weight and width axes and stylistic alternates. Its precision and subtle warmth fit the desired direction better than a generic geometric SaaS font or a serif-led editorial system.
+
+License: Instrument Sans is released under the SIL Open Font License 1.1. Include its license file and attribution notices in the repository when self-hosting or bundling. Source and current license must be checked at implementation time.
+
+Typography roles
+
+Role
+
+Desktop starting point
+
+Mobile starting point
+
+Weight / behaviour
+
+Display / hero
+
+64-76 px / 0.98
+
+42-50 px / 1.00
+
+600-700; width axis may tighten carefully
+
+Page heading
+
+40-48 px / 1.05
+
+32-38 px / 1.08
+
+600-650
+
+Section heading
+
+26-32 px / 1.12
+
+23-28 px / 1.15
+
+600
+
+Card / profile title
+
+22-28 px / 1.15
+
+20-24 px / 1.18
+
+600
+
+Body
+
+16-18 px / 1.5
+
+16 px / 1.5
+
+400-450
+
+Secondary
+
+14-15 px / 1.45
+
+14 px / 1.45
+
+400-500
+
+Metadata
+
+12-13 px / 1.35
+
+12-13 px / 1.35
+
+500; avoid long all-caps labels
+
+Character and typesetting rules
+
+Use one primary family throughout product UI. Do not mix three or four fonts to manufacture personality.
+
+Use Instrument Sans variable weight for hierarchy; use width axis for display only after optical testing.
+
+Evaluate selected stylistic alternates for the SayMyName wordmark and a few brand headlines, not across every component.
+
+No hairline or ultra-light UI text. Body copy must remain comfortably readable.
+
+Avoid all-caps micro-labels as the default. Use sentence case for navigation and normal interface language.
+
+Monospaced type is permitted only for actual codes, technical identifiers or small metadata where it serves recognition.
+
+10 / DESIGN SYSTEM
+
+Composition and layout: asymmetry with discipline
+
+The interface should use the whole viewport intentionally. Avoid the current pattern of placing a narrow column in the centre of a very wide monitor and leaving the rest of the page empty.
+
+Breakpoint
+
+Grid
+
+Gutter / page margin
+
+Behaviour
+
+Wide desktop: 1600+
+
+12 columns
+
+64-88 px outer margins; 20-24 px gutters
+
+Use broad editorial compositions, not stretched text lines.
+
+Desktop: 1280-1599
+
+12 columns
+
+40-64 px outer margins; 20 px gutters
+
+Primary content and contextual rail only when useful.
+
+Tablet: 768-1279
+
+8 columns
+
+28-36 px margins; 16-20 px gutters
+
+Collapse secondary rails; preserve hierarchy.
+
+Mobile: 360-767
+
+4 columns
+
+18-22 px margins; 12-16 px gutters
+
+Single-column priority, bottom navigation where appropriate.
+
+Composition rules
+
+Use a consistent grid, but do not display the grid as decorative lines or a visible dot matrix.
+
+Asymmetry is allowed only when hierarchy and reading order remain obvious.
+
+Do not centre every page, every heading and every card. Left alignment is the default for functional content.
+
+Do not use a narrow fixed-width page column on large desktop viewports.
+
+Do not fill empty space with useless cards, statistics, labels or ornaments.
+
+Text columns should retain readable line lengths. Images and sculptural visuals can occupy larger spans.
+
+Use a deliberate focal point per screen and a clear next action.
+
+Core composition patterns
+
+Pattern
+
+Use
+
+Do not use when
+
+Single focus
+
+One important action or profile is the main event.
+
+The screen has several equally important tasks.
+
+Split presence
+
+Two people, two states or two coordinated objects need comparison.
+
+A split is decorative and adds no meaning.
+
+Primary + context
+
+Main task occupies 7-9 columns; contextual information uses 3-5.
+
+The context rail would be empty or repetitive.
+
+Open list
+
+Messages, Likes or Matches are browsable as structured rows.
+
+A dense card grid is not needed.
+
+Immersive surface
+
+Audio call or virtual date needs a focused environment.
+
+The content is a standard form or settings page.
+
+11 / DESIGN SYSTEM
+
+Geometry, surfaces and component shape
+
+The geometry should feel architectural and precise. It should never default to capsule shapes or over-rounded cards.
+
+Shape vocabulary
+
+Token
+
+Value
+
+Use
+
+radius-none
+
+0 px
+
+Image frames, architectural panels and hard-edged artwork.
+
+radius-tight
+
+4 px
+
+Inputs, compact controls and small rectangular labels.
+
+radius-control
+
+6-8 px
+
+Buttons, menus, selection controls and modest panels.
+
+radius-panel
+
+10-12 px
+
+Large content surfaces when the content genuinely needs enclosure.
+
+radius-feature
+
+14-16 px
+
+Rare large media surfaces or immersive views.
+
+pill / capsule
+
+Prohibited as default
+
+Do not use 999px radius, capsule tabs or pill navigation.
+
+Surface hierarchy
+
+Surface
+
+Token
+
+Purpose
+
+Stage
+
+Void
+
+The background field. Keep it quiet.
+
+Base surface
+
+Coal
+
+Main reading and working surface.
+
+Raised surface
+
+Iron
+
+Panels that need clear separation.
+
+Active surface
+
+Slate
+
+Selected, interactive or focused group.
+
+Boundary
+
+Edge
+
+Subtle structural separation only.
+
+Component rules
+
+Do not wrap every element in a card. Use open layout, spacing and hierarchy first.
+
+Avoid nested cards. A panel inside another panel is allowed only when the containment relationship is necessary.
+
+Use borders sparingly and consistently. Do not add an outline to every component.
+
+Use elevation through surface contrast before using shadow.
+
+No glassmorphism across the application. No blurred translucent navigation bars.
+
+No chips or filter tags shaped as long capsules. Use compact rectangular selections with clear selected state.
+
+Primary buttons are rectangular with 6-8 px corner radius and clear text. Secondary buttons can be outlined or text-based.
+
+Control measurements
+
+Component
+
+Starting size
+
+Interaction rule
+
+Primary button
+
+46-50 px height
+
+Clear label, visible focus, immediate pressed feedback.
+
+Text input
+
+46-50 px height
+
+Label above; hint and error below.
+
+Icon control
+
+44 x 44 px target
+
+Accessible name; tooltip when the icon is ambiguous.
+
+Navigation item
+
+44-48 px target height
+
+No pill background; use weight or a quiet rectangular state.
+
+Status label
+
+Compact rectangular label
+
+Use shape and text, not colour alone.
+
+Spacing scale
+
+Token
+
+Value
+
+Typical use
+
+space-1
+
+4 px
+
+Icon-to-label and micro alignment.
+
+space-2
+
+8 px
+
+Compact control internals and related metadata.
+
+space-3
+
+12 px
+
+Form groups and compact list rhythm.
+
+space-4
+
+16 px
+
+Default control and content spacing.
+
+space-6
+
+24 px
+
+Related sections and card internals.
+
+space-8
+
+32 px
+
+Major content group separation.
+
+space-12
+
+48 px
+
+Page section rhythm.
+
+space-16
+
+64 px
+
+Large compositional separation.
+
+Focus, validation and state boundaries
+
+Keyboard focus must remain clearly visible on every interactive control. Use a consistent high-contrast focus treatment with a small offset; never remove the browser focus indicator without an accessible replacement.
+
+Hover, focus, pressed, selected, disabled, loading and error states must be visually distinct. Do not rely on colour alone to communicate state.
+
+Form labels remain visible above their fields. Place helper text and validation messages consistently below the control, and associate them programmatically.
+
+A disabled control must still communicate why it is unavailable when that reason is important to task completion.
+
+12 / DESIGN SYSTEM
+
+Graphic language: sculptural geometry and controlled fragments
+
+This is where the references become a new system. Use a small set of repeatable ideas, not a library of random effects.
+
+Primary graphic devices
+
+Device
+
+Description
+
+Allowed use
+
+Paired mass
+
+Two distinct solids with different scale or orientation.
+
+Brand hero, match moment, relationship entry artwork.
+
+Shared void
+
+A carefully shaped negative space between forms.
+
+Wordmark detail, icon, transition or editorial visual.
+
+Offset plane
+
+One plane sits slightly out of alignment with another.
+
+Section composition, visual hierarchy or selected state.
+
+Facet assembly
+
+A few large rectangular or polygonal pieces align into a form.
+
+One-off brand animation or campaign art. Pieces must be large and intentional.
+
+Aperture
+
+A cut-out reveals a second plane or material below.
+
+Image framing, hero art or immersive transition.
+
+Material seam
+
+A visible join between two surfaces.
+
+A restrained cue for shared state, not a decorative vertical rule.
+
+Strictly prohibited graphic habits
+
+No dot grids, scattered particles, halftone clouds or small square noise as a background texture.
+
+No decorative vertical line running down the left edge of every page or section.
+
+No random horizontal rules, circuit traces, orbital paths, UI grids or crosshairs.
+
+No scanlines, glitch noise or pixel dust over text and controls.
+
+No purple-blue glowing mesh gradients or blurred blobs.
+
+No generic floating 3D cube, glowing orb or heart as an automatic hero object.
+
+Digital transformation rule
+
+Fragmentation is a narrative device, not a texture. A few large facets may separate, move and align to express a state change, such as two users becoming a mutual match. The final resolved form must be crisp. Do not keep the interface permanently distorted, pixelated or noisy.
+
+13 / DESIGN SYSTEM
+
+Photography and human imagery
+
+The product is about real people. Human photography must never look like synthetic stock imagery or an artificial beauty campaign.
+
+Profile photography
+
+Use actual user-uploaded images for real profiles, subject to the product's moderation and consent requirements.
+
+Never present AI-generated portraits, stock portraits or internal demo images as real verified members.
+
+When using test fixtures, visibly label the profiles as synthetic demo data and prevent them from entering production.
+
+Preserve natural skin tone and realistic lighting. Do not apply blue/purple colour casts to every portrait.
+
+Do not force all portraits into the same crop, pose or studio background.
+
+Provide clear image crop, reorder, remove and preview behaviour to the user.
+
+Brand and campaign photography
+
+Campaign imagery may be more cinematic than member photography. Use a controlled light source, deliberate shadows, tactile materials, carefully composed environments and authentic human expression. Avoid over-retouching, fake HDR, extreme teal-orange grading and synthetic neon atmospheres.
+
+Portrait composition
+
+Do
+
+Avoid
+
+Natural expression and recognisable human presence.
+
+Perfectly airbrushed, plastic or uncanny faces.
+
+Varied environmental context and genuine personal style.
+
+Every person against the same gradient backdrop.
+
+Consistent crop logic without forcing uniform poses.
+
+Over-tight face crops that remove useful context.
+
+User-controlled photo ordering and visibility.
+
+Artificially composited or misleading verified portraits.
+
+14 / DESIGN SYSTEM
+
+Sculptural material direction
+
+Dimensional artwork should feel like a commissioned object, not a default AI-generated 3D asset.
+
+Material vocabulary
+
+Material
+
+Visual character
+
+Use sparingly for
+
+Matte ceramic
+
+Dense, calm, light-absorbing surface.
+
+Primary sculptural forms.
+
+Anodised metal
+
+Precise edge, restrained colour response.
+
+A seam, joint or accent plane.
+
+Smoked glass as an object
+
+Translucent volume, not a UI blur.
+
+A single object in campaign or hero art.
+
+Black stone / graphite
+
+Weight, depth and understated texture.
+
+Large foundational masses.
+
+Warm brushed alloy
+
+Human warmth and tactile precision.
+
+A secondary plane or edge detail.
+
+Lighting and rendering rules
+
+One clear key light and one controlled edge or fill light are usually sufficient.
+
+Use real shadow and material response; do not add bloom to compensate for weak form.
+
+The silhouette must remain readable at thumbnail size.
+
+Avoid floating objects unless their spatial relationship is meaningful.
+
+Use a restrained palette. Do not put ultraviolet, cyan and orange glow on the same object.
+
+Keep 3D artwork separate from functional UI controls. Do not turn navigation, buttons or form fields into 3D objects.
+
+When not to use 3D
+
+Do not use sculptural art in dense member workflows, settings, chat message lists or forms merely to make those screens appear premium. In everyday product screens, typography, image quality, spacing and interaction quality should carry the design.
+
+15 / DESIGN SYSTEM
+
+Motion system: intentional, tactile and fast
+
+Movement should clarify a state change and make the interface feel responsive. It must not delay the user or become a decorative performance.
+
+Motion token
+
+Starting duration
+
+Use
+
+instant
+
+0-80 ms
+
+State confirmation where animation adds no value.
+
+micro
+
+100-140 ms
+
+Pressed state, icon response, focus or small hover response.
+
+standard
+
+150-210 ms
+
+Menu, tab, small panel and message entry.
+
+context
+
+220-300 ms
+
+Route-level transition, profile change or larger panel.
+
+signature
+
+260-380 ms
+
+One meaningful brand moment, such as mutual match.
+
+Easing
+
+Use an ease-out curve for elements entering or responding, and a restrained ease-in for exit. Initial implementation candidates: cubic-bezier(0.2, 0.7, 0.2, 1) for entering; cubic-bezier(0.4, 0, 1, 1) for exiting. Measure the result on real devices. Avoid overshoot, elastic bounce and long cinematic delays in routine workflows.
+
+Signature interaction: mutual match
+
+1. Two distinct forms are shown with a clear separation.
+
+2. They move towards a shared alignment, with the gap becoming the central visual event.
+
+3. The shared form resolves briefly and clearly, communicating mutuality.
+
+4. The user receives a simple next action: start a conversation or continue discovery.
+
+No confetti, coins, fireworks, celebratory counters or forced conversation prompt. The animation must not obscure the person's name or the next action.
+
+Motion restrictions
+
+Respect prefers-reduced-motion and provide a static equivalent.
+
+Do not animate large background shapes continuously.
+
+Do not use parallax as a default.
+
+Do not animate layout dimensions when transform or opacity will work.
+
+Do not use transitions to hide slow loading or delayed API responses.
+
+Do not use sound or haptics without a clear user benefit and user control.
+
+16 / DESIGN SYSTEM
+
+Screen translation I: public, onboarding and discovery
+
+These directions translate the design language into key product surfaces without changing the approved product flows.
+
+Public homepage
+
+Use an asymmetric 12-column composition. Place the primary headline and product explanation on one side and one original sculptural/convergence visual on the other.
+
+The headline should be left-aligned and confidently sized. Do not vertically centre every element in a narrow column.
+
+The public navigation should be simple: brand, Eligibility, Safety & Consent, Sign In and Register.
+
+The visual should support the product promise, not compete with registration or eligibility actions.
+
+No fake member portraits, fake activity, fake match counts or unsupported legal/security claims.
+
+Registration and verification
+
+Use a purposeful two-region desktop layout only if it improves understanding: concise context on one side, form on the other.
+
+Keep the form aligned, labels above inputs and field widths consistent.
+
+Show the verification stages as a clear progress sequence, not a row of pill-shaped capsules.
+
+Never prefill sample student data or passwords.
+
+Keep eligibility, adult verification and current student verification visibly distinct.
+
+Discover
+
+At desktop width, use a substantial profile region with enough room for the person and their story, plus a contextual rail only where it adds useful information.
+
+Avoid a narrow single-column card floating in a wide empty screen.
+
+Profile name, programme, location where allowed, bio, interests and prompts must have clear hierarchy.
+
+Actions should be immediately understandable. Like and Pass must work with pointer, keyboard and touch.
+
+The discovery interface should support considered choice, not infinite consumption or fake scarcity.
+
+17 / DESIGN SYSTEM
+
+Screen translation II: Likes, Matches, Chats and Profile
+
+Core interaction screens should feel quieter than campaign art. The brand should remain present through typography, spacing, shape and state feedback.
+
+Likes and Matches
+
+Use a deliberate list or large-row structure. Do not default to small floating cards with excessive whitespace.
+
+Make Like Back, Pass, Message and Unmatch labels explicit and consistent with the mutual-consent rules.
+
+A received Like must never imply permission to message.
+
+Design zero, one and many states. Do not fabricate profiles to fill the screen.
+
+Chats
+
+Use a stable two-pane desktop layout: a useful conversation list and a broad message thread.
+
+The conversation thread should prioritise legible message width and stable vertical rhythm.
+
+The composer remains visible and functional as the viewport changes or the mobile keyboard appears.
+
+Organise call, Together Space, Relationship Mode and Safety actions. Do not show a row of unexplained icons.
+
+Use honest privacy copy only. Do not expose internal document references or claim unimplemented encryption.
+
+Loading, empty, failed, offline and reconnecting states are part of the design, not developer leftovers.
+
+Profile and settings
+
+Separate the public profile editor from confidential verification and account information.
+
+Never display institutional email, roll number, date of birth or verification documents on the public profile.
+
+Use structured sections rather than one endless form.
+
+Use real upload and crop interactions for profile photos, not a raw URL field for ordinary users.
+
+Saving, validation errors and unsaved changes must be obvious.
+
+18 / DESIGN SYSTEM
+
+Screen translation III: safety, consent and Relationship Mode
+
+The brand must never make a sensitive or consequential decision feel like a playful trick.
+
+Safety and consent
+
+Use calm, clear language and a visible information hierarchy.
+
+Report, Block, Unmatch and consent actions must remain discoverable and unambiguous.
+
+Use high-contrast focus and destructive states. Do not hide safety actions behind decorative gesture-only interactions.
+
+A status indicator should explain what it means, not rely only on colour or an icon.
+
+Relationship Mode
+
+Create a distinct atmosphere through composition and shared-object imagery, not by turning it into a dashboard of partner activity.
+
+The shared space should feel like a place the two people choose to enter together.
+
+Use the convergence language sparingly: shared calendars, memories and activities can use paired visual elements, but not constant split-screen motifs.
+
+Mutual activation must be explicit, and either partner must be able to leave independently.
+
+Never introduce read monitoring, GPS tracking, partner activity scoring or any other surveillance pattern.
+
+Audio calls and virtual dates
+
+Calls should use an uncluttered, high-clarity environment with immediate controls and clear call state. Virtual dates can use more expressive sculptural and spatial art direction, but functionality, network quality and accessibility remain primary. The visual treatment must not obstruct mute, speaker, leave or safety actions.
+
+19 / DESIGN SYSTEM
+
+Accessibility, responsiveness and performance
+
+Cinematic does not mean inaccessible. The dark environment must remain readable on inexpensive displays, under brightness changes and with accessibility settings enabled.
+
+Accessibility baseline
+
+Target WCAG 2.2 AA for web interfaces.
+
+Normal text contrast must be at least 4.5:1; large text at least 3:1. Non-text controls and focus indicators must meet the relevant non-text contrast requirements.
+
+Do not use thin weights for small text. Provide visible keyboard focus.
+
+Support text resize and reflow without loss of content or functionality.
+
+Respect reduced-motion settings. WCAG 2.2 includes an AAA criterion allowing interaction-triggered motion to be disabled; treat that as a design goal.
+
+Provide keyboard operation and clear accessible names for icon controls.
+
+Do not make dragging, swiping or hover the only way to perform an action.
+
+Responsive requirements
+
+Viewport
+
+Required design response
+
+1920 / 1600 desktop
+
+Broad layout with balanced primary and contextual regions; no narrow centre-only column.
+
+1440 / 1280 laptop
+
+Preserve the same hierarchy while reducing side regions before compressing content.
+
+1024 / 768 tablet
+
+Collapse secondary context and maintain a readable single primary flow.
+
+430 / 390 / 375 / 360 mobile
+
+Recompose, do not shrink. Keep primary actions reachable, text readable and no horizontal overflow.
+
+Performance principles
+
+Use lightweight transitions and avoid expensive continuous animation.
+
+Optimise images and fonts; reserve media dimensions to prevent layout shift.
+
+Load below-the-fold imagery appropriately and prioritise the primary visual.
+
+Do not bundle large 3D scenes into routine product routes.
+
+Measure real page performance; do not claim speed based on visual impression.
+
+20 / DESIGN SYSTEM
+
+Copy, labels and product language
+
+The interface voice should feel composed, human and precise. A premium interface does not need to sound grand or cryptic.
+
+Prefer
+
+Avoid
+
+"You matched"
+
+"A connection has been activated"
+
+"Message"
+
+"Initiate communication"
+
+"Your profile is paused"
+
+"Discovery state suspended"
+
+"Try again"
+
+"Reattempt operation"
+
+"Verification is still in progress"
+
+"Identity validation pending"
+
+Voice rules
+
+Use plain, direct, respectful language. Shorten explanations rather than making them cryptic.
+
+Avoid fake urgency, excessive romance, gamified praise and manipulative emotional copy.
+
+Do not expose internal labels such as Document 01, API, database, seed data or feature flags.
+
+Privacy statements must accurately describe implemented controls.
+
+Institutional eligibility copy must not imply endorsement or official affiliation.
+
+Implementation tokens
+
+/* SayMyName / The Interval - initial semantic tokens */
+:root {
+  --smn-stage: #0B0D10;
+  --smn-surface-base: #12161B;
+  --smn-surface-raised: #1A2027;
+  --smn-surface-active: #252D37;
+  --smn-text-primary: #F0F1EE;
+  --smn-text-secondary: #B6BDC4;
+  --smn-text-tertiary: #8B949E;
+  --smn-border-subtle: #343D48;
+  --smn-accent-iris: #8580C4;
+  --smn-accent-ember: #E18A62;
+  --smn-success: #77C5A1;
+  --smn-warning: #E6BC69;
+  --smn-danger: #F07878;
+  --smn-font-ui: "Instrument Sans", sans-serif;
+  --smn-radius-control: 8px;
+  --smn-radius-panel: 12px;
+  --smn-motion-fast: 130ms;
+  --smn-motion-standard: 180ms;
+  --smn-motion-context: 260ms;
+}
+
+21 / DESIGN SYSTEM
+
+Design acceptance checklist
+
+The system is not approved because it looks attractive in one hero screenshot. It is approved when the rules hold across real product screens and states.
+
+Area
+
+Pass condition
+
+Identity
+
+The wordmark, type, colour and distinctive graphic logic feel consistent and recognisable.
+
+Composition
+
+The viewport is used intentionally; main content is neither cramped nor floating in a sea of empty space.
+
+Geometry
+
+No capsule navigation, pill UI system, excessive radii or card-within-card composition.
+
+Graphic language
+
+No dot matrices, halftone, decorative left rail lines, random particles, generic mesh gradients or noisy glitch.
+
+Typography
+
+Instrument Sans roles and hierarchy are consistent; no tiny low-contrast labels or decorative type overload.
+
+Dark theme
+
+Core text and controls pass contrast; layered surfaces are distinct without glow.
+
+Photography
+
+Real members are represented only by real user-controlled photos; demo fixtures are explicitly synthetic.
+
+Motion
+
+Motion clarifies an event, is quick, is not required for understanding and respects reduced motion.
+
+Accessibility
+
+Keyboard, screen reader, contrast, reflow and target size checks are completed.
+
+Performance
+
+No large animation bundle or 3D asset harms startup, route changes or low-end devices.
+
+Product integrity
+
+Mutual consent, eligibility, privacy and security behaviour remain unchanged.
+
+Visual review procedure
+
+1. Capture the same screens at 1920x1080, 1440x900, 1280x800, 768px, 430px, 390px and 360px.
+
+2. Review public, unverified and verified states separately. Do not use private member data in visual fixtures.
+
+3. Review empty, loading, error, selected, disabled, hover, focus and success states.
+
+4. Check typography, contrast, alignment, scroll behaviour, image crop and content density at 100% zoom.
+
+5. Run keyboard and reduced-motion checks. Record actual results, not impressions.
+
+6. Fix defects before widening the redesign to more routes.
+
+22 / DESIGN SYSTEM
+
+Antigravity implementation contract
+
+This section is written for the coding agent. It prevents the visual direction from being diluted or reinterpreted into generic AI design patterns.
+
+MANDATORY SOURCE OF TRUTH
+
+Read Document 10 before creating or restyling visual components. Document 10 is authoritative for brand identity, colour, typography, composition, geometry, imagery and motion. Document 03 remains authoritative for product screen inventory and functional UX requirements.
+
+Agent rules
+
+Do not invent palettes, fonts, background motifs, component shapes or navigation patterns. Record new decisions for human review.
+
+Never use gradients, dot fields, halftone, decorative side rules, random lines, capsules, glassmorphism or generic glowing 3D objects.
+
+Extract principles from references; create original assets. Never copy a supplied design or franchise property.
+
+Do not alter authentication, eligibility, consent, privacy, access control or feature behaviour during visual work. Product safety rules always win.
+
+Reuse the existing component system. Refactor deliberately, centralise semantic tokens and avoid parallel duplicate components or hardcoded per-screen values.
+
+Use Instrument Sans from an approved source with its license. Verify font loading, fallbacks and variable-axis behaviour.
+
+Add 3D or animation libraries only when justified and performance-reviewed. Never present AI-generated people as verified members.
+
+Capture before/after screenshots at target viewports. Test keyboard, touch, screen readers, reduced motion and functional regression.
+
+Required agent workflow
+
+Step
+
+Expected output
+
+1. Inspect
+
+Routes, components, tokens, screenshots, responsive and functional states.
+
+2. Plan
+
+Screen-level changes and their rationale.
+
+3. Prototype
+
+One representative screen, reviewed before broad rollout.
+
+4. Systematise
+
+Shared tokens, typography, controls, surfaces and motion.
+
+5. Implement
+
+Apply approved system without changing product logic.
+
+6. Verify
+
+Visual, responsive, accessibility, performance and regression tests.
+
+7. Report
+
+Files, screenshots, measurements, test results and open decisions.
+
+23 / DESIGN SYSTEM
+
+First design sprint: validate before scaling
+
+Do not redesign the entire product in one uncontrolled pass. Validate the visual language on a small set of representative surfaces.
+
+Representative prototype set
+
+Prototype
+
+What it validates
+
+Required review
+
+Public homepage hero
+
+Brand mark, art direction, asymmetrical composition and navigation.
+
+Distinctiveness, clarity, independent product positioning.
+
+Discover profile
+
+Photography, text hierarchy, profile structure, actions and desktop grid.
+
+Human presence, content density, action clarity and mobile reflow.
+
+Chat
+
+Daily usability, message rhythm, toolbar, composer and state feedback.
+
+Readability, long-session comfort, keyboard and loading/error behaviour.
+
+Mutual match moment
+
+The Interval graphic language and signature motion.
+
+Meaning, brevity, reduced-motion fallback and emotional restraint.
+
+Validation participants and method
+
+Use a small mixed group of eligible adults familiar and unfamiliar with the current prototype; do not infer preference from internal review alone.
+
+Ask participants to complete realistic tasks rather than only rate screenshots.
+
+Test in bright ambient light and low light, on at least one mid-range laptop and one mid-range Android phone.
+
+Measure task completion, misclicks, time to locate primary action, comprehension and subjective comfort.
+
+Ask which visual elements feel distinctive and which feel decorative or distracting.
+
+Capture qualitative feedback without collecting sensitive profile or relationship data.
+
+Decision governance
+
+The design direction is approved for prototyping, not for irreversible lock-in. Final logo artwork, exact display settings, final art assets and whether to add a light appearance should be decided after the representative prototype review. All changes should be recorded in the design decision log and reflected in Document 03 and the Antigravity instruction package where appropriate.
+
+SUCCESS TEST
+
+A user should recognise the product as SayMyName from its visual language alone, understand the next action without explanation, and complete core tasks without decorative design getting in the way.
+
+24 / DESIGN SYSTEM
+
+Research and standards informing the system
+
+Research informs the principles; it does not dictate a single aesthetic. The specific SayMyName direction remains a design hypothesis to validate with real users.
+
+Research papers
+
+Tuch, A. N., Presslaber, E. E., Stöcklin, M., Opwis, K., & Bargas-Avila, J. A. (2012). The role of visual complexity and prototypicality regarding first impression of websites: Working towards understanding aesthetic judgments. International Journal of Human-Computer Studies, 70(11), 794-811. DOI: 10.1016/j.ijhcs.2012.06.003.
+
+https://doi.org/10.1016/j.ijhcs.2012.06.003  |  Design implication: Visual complexity and prototypicality affected first impressions in two experiments; use this as support for a controlled, coherent visual hierarchy, not as a universal rule that all screens should be minimal.
+
+Andrew, S., Bishop, C., & Tigwell, G. W. (2024). Light and Dark Mode: A Comparison Between Android and iOS App UI Modes and Interviews with App Designers and Developers. Proceedings of the ACM on Interactive, Mobile, Wearable and Ubiquitous Technologies, 8(1), Article 32. DOI: 10.1145/3643539.
+
+https://doi.org/10.1145/3643539  |  Design implication: The study inspected 120 popular apps and interviewed 15 designers/developers. It highlights that dark-mode implementation is contextual and must be designed consistently across UI elements.
+
+Li, Y., Huang, Y., Li, X., Ma, J., Zhang, J., & Li, J. (2022). The influence of brightness combinations and background colour on legibility and subjective preference under negative polarity. Ergonomics, 65(8), 1046-1056. DOI: 10.1080/00140139.2021.2013546.
+
+https://doi.org/10.1080/00140139.2021.2013546  |  Design implication: In two tasks (37 participants and 44 participants), higher brightness contrast improved legibility in negative polarity; text brightness mattered more than background hue. Validate the actual contrast pairs.
+
+Bhandari, U., Neben, T., Chang, K., & Chua, W. Y. (2017). Effects of interface design factors on affective responses and quality evaluations in mobile applications. Computers in Human Behavior, 72, 525-534. DOI: 10.1016/j.chb.2017.02.044.
+
+https://doi.org/10.1016/j.chb.2017.02.044  |  Design implication: The study examines balance and originality as contributors to affective response and perceived quality. It supports combining strong composition with controlled originality.
+
+Liu, N., & Yu, R. (2017). Identifying design feature factors critical to acceptance and usage behavior of smartphones. Computers in Human Behavior, 70, 131-142. DOI: 10.1016/j.chb.2016.12.073.
+
+https://doi.org/10.1016/j.chb.2016.12.073  |  Design implication: A study of smartphone feature factors identifies touch feedback and display among usability-related factors; use this as a reminder that tactile interaction needs validation on real devices.
+
+Standards and platform guidance
+
+W3C Web Content Accessibility Guidelines (WCAG) 2.2: https://www.w3.org/TR/WCAG22/  |  Normative accessibility reference. Use AA as the product target; check contrast, reflow, focus, input, keyboard and target-size requirements.
+
+Apple Human Interface Guidelines: Dark Mode: https://developer.apple.com/design/human-interface-guidelines/dark-mode  |  Layered dark surfaces, contrast, image adaptation and system appearance.
+
+Apple Human Interface Guidelines: Typography: https://developer.apple.com/design/human-interface-guidelines/typography  |  Legibility, weight, hierarchy and limiting typefaces.
+
+Instrument Sans source and license: https://github.com/Instrument/instrument-sans  |  Official source repository and SIL Open Font License 1.1 information.
+
+25 / DESIGN SYSTEM
+
+The one-page design law
+
+This is the short version every designer and agent should remember.
+
+SAYMYNAME / THE INTERVAL
+
+Dark cinematic. Instrument Sans. Two distinct forms. A deliberate gap. A third form appears through alignment.
+
+Keep
+
+Never reintroduce
+
+Sculptural form
+
+Generic glowing 3D orbs and cubes
+
+Architectural negative space
+
+Decorative dots, grids and side rails
+
+Large geometric facets
+
+Pixel dust, halftone and scanline noise
+
+One deliberate signal colour
+
+Purple-blue AI gradients and neon everywhere
+
+Contemporary neo-grotesk typography
+
+Serif-led old direction or techno fonts everywhere
+
+Purposeful asymmetric layout
+
+Narrow centred column on giant screens
+
+Rectangular controls with modest radii
+
+Capsule navigation and pill UI
+
+Real human photography
+
+Synthetic portraits presented as real users
+
+Meaningful motion
+
+Confetti, bounce, long transitions and ambient loops
+
+Privacy, consent and user agency
+
+Surveillance, urgency or manipulative engagement
+
+Final approval status
+
+Approved for prototype implementation: dark cinematic environment, Instrument Sans-led typography, sculptural/architectural/controlled-digital art direction and the THE INTERVAL brand concept.
+
+Still to validate: final wordmark and symbol artwork, precise type settings, the final landing-page composition, asset-production technique, reduced-motion behaviour and whether a future light appearance is needed.
+
+Do not declare the design language final until the representative prototype screens have been tested at the defined viewports and reviewed with actual users.
+

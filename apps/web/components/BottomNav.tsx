@@ -12,6 +12,12 @@ import {
   UserIcon,
 } from './icons';
 
+/**
+ * SayMyName Mobile Bottom Navigation Bar (Document 10)
+ * - Fixed architectural bar with Coal #12161B surface and Edge #343D48 top separator
+ * - Strictly hidden for unauthenticated visitors
+ * - Rectangular interaction touch targets with Iris accent indicator
+ */
 export default function BottomNav() {
   const pathname = usePathname();
   const { authState } = useAuth();
@@ -38,13 +44,13 @@ export default function BottomNav() {
         left: 0,
         right: 0,
         height: '62px',
-        backgroundColor: 'var(--color-surface)',
-        borderTop: '1px solid var(--color-border-default)',
+        backgroundColor: 'var(--smn-surface-base, #12161B)',
+        borderTop: '1px solid var(--smn-border-subtle, #343D48)',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'space-around',
         zIndex: 90,
-        boxShadow: '0 -2px 10px rgba(30, 26, 24, 0.04)',
+        boxShadow: '0 -2px 12px rgba(0, 0, 0, 0.4)',
         paddingBottom: 'env(safe-area-inset-bottom, 0px)',
       }}
       aria-label="Mobile Navigation Bar"
@@ -62,18 +68,18 @@ export default function BottomNav() {
               alignItems: 'center',
               justifyContent: 'center',
               gap: '3px',
-              color: isActive ? 'var(--color-brand-primary)' : 'var(--color-text-secondary)',
+              color: isActive ? 'var(--smn-text-primary, #F0F1EE)' : 'var(--smn-text-tertiary, #8B949E)',
               fontSize: '11px',
               fontWeight: isActive ? 600 : 500,
               minWidth: '56px',
               minHeight: '48px',
               position: 'relative',
-              transition: 'color var(--duration-fast)',
+              transition: 'color 120ms ease-out',
             }}
           >
             <Icon
               size={19}
-              color={isActive ? 'var(--color-brand-primary)' : 'var(--color-text-secondary)'}
+              color={isActive ? 'var(--smn-accent-iris, #8580C4)' : 'var(--smn-text-tertiary, #8B949E)'}
               strokeWidth={isActive ? 2.2 : 1.75}
             />
             <span>{tab.label}</span>
@@ -81,11 +87,11 @@ export default function BottomNav() {
               <span
                 style={{
                   position: 'absolute',
-                  bottom: '3px',
-                  width: '4px',
-                  height: '4px',
-                  borderRadius: '50%',
-                  backgroundColor: 'var(--color-brand-primary)',
+                  bottom: '2px',
+                  width: '16px',
+                  height: '2px',
+                  borderRadius: '1px',
+                  backgroundColor: 'var(--smn-accent-iris, #8580C4)',
                 }}
               />
             )}

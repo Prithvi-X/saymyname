@@ -1,7 +1,40 @@
 /**
- * SayMyName Design Tokens - Colors
- * Baseline: Warm Editorial Minimalism with Understated Authority (Document 03)
+ * SayMyName Design Tokens - Colors (Mineral Night)
+ * Source: Document 10 (Brand Identity & Digital Design Language - THE INTERVAL)
+ * Supersedes Document 03 Warm Editorial Minimalism
  */
+
+export interface MineralNightTokens {
+  void: string;        // #0B0D10 - Primary page stage
+  coal: string;        // #12161B - Main application surface
+  iron: string;        // #1A2027 - Raised surface / panels
+  slate: string;       // #252D37 - Selected surface / active area
+  edge: string;        // #343D48 - Borders and separators
+  chalk: string;       // #F0F1EE - Primary text (17.16:1 contrast on Void)
+  silver: string;      // #B6BDC4 - Secondary text (10.25:1 contrast on Void)
+  ash: string;         // #8B949E - Tertiary text / metadata (6.33:1 contrast on Void)
+  iris: string;        // #8580C4 - Primary brand signal (5.09:1 on Coal)
+  ember: string;       // #E18A62 - Secondary signal / warmth (6.93:1 on Coal)
+  success: string;     // #77C5A1 - Semantic success
+  warning: string;     // #E6BC69 - Semantic warning
+  danger: string;      // #F07878 - Critical / destructive
+}
+
+export const mineralNightColors: MineralNightTokens = {
+  void: '#0B0D10',
+  coal: '#12161B',
+  iron: '#1A2027',
+  slate: '#252D37',
+  edge: '#343D48',
+  chalk: '#F0F1EE',
+  silver: '#B6BDC4',
+  ash: '#8B949E',
+  iris: '#8580C4',
+  ember: '#E18A62',
+  success: '#77C5A1',
+  warning: '#E6BC69',
+  danger: '#F07878',
+};
 
 export interface ColorTokens {
   canvas: string;
@@ -32,60 +65,37 @@ export interface ColorTokens {
   focusRing: string;
 }
 
-export const lightColors: ColorTokens = {
-  canvas: '#F7F4EF',
-  surface: '#FFFEFB',
-  surfaceRaised: '#FFFFFF',
-  surfaceSubtle: '#EDE7DF',
-  surfaceMuted: '#E4DCD2',
-  textPrimary: '#1E1A18',
-  textSecondary: '#655C56',
-  textMuted: '#887E77',
-  borderDefault: '#D8D1C7',
-  borderSubtle: '#E8E2D9',
-  borderStrong: '#B8ADA1',
-  brandPrimary: '#6E2638', // Deep oxblood / wine
-  brandPrimaryHover: '#5A1D2D',
-  brandPrimarySubtle: '#F4E8EB',
-  brandPrimaryTint: '#FAF2F4',
-  accentWarm: '#A34C38', // Mineral terracotta
-  accentWarmSubtle: '#FAEEEB',
-  statusSuccess: '#246550',
-  statusSuccessSubtle: '#E8F3EE',
-  statusWarning: '#855218',
-  statusWarningSubtle: '#FBF4E8',
-  statusDanger: '#9B2838',
-  statusDangerSubtle: '#FBEBED',
-  statusInfo: '#2B577A',
-  statusInfoSubtle: '#EBF2F8',
-  focusRing: '#6E2638',
+/**
+ * Primary dark cinematic theme (Document 10: Mineral Night)
+ */
+export const darkColors: ColorTokens = {
+  canvas: mineralNightColors.void,
+  surface: mineralNightColors.coal,
+  surfaceRaised: mineralNightColors.iron,
+  surfaceSubtle: mineralNightColors.iron,
+  surfaceMuted: mineralNightColors.slate,
+  textPrimary: mineralNightColors.chalk,
+  textSecondary: mineralNightColors.silver,
+  textMuted: mineralNightColors.ash,
+  borderDefault: mineralNightColors.edge,
+  borderSubtle: '#222831',
+  borderStrong: '#4B5563',
+  brandPrimary: mineralNightColors.iris,
+  brandPrimaryHover: '#9894D1',
+  brandPrimarySubtle: '#1C1C2E',
+  brandPrimaryTint: '#27263E',
+  accentWarm: mineralNightColors.ember,
+  accentWarmSubtle: '#2D1F18',
+  statusSuccess: mineralNightColors.success,
+  statusSuccessSubtle: '#13281E',
+  statusWarning: mineralNightColors.warning,
+  statusWarningSubtle: '#2E2412',
+  statusDanger: mineralNightColors.danger,
+  statusDangerSubtle: '#301618',
+  statusInfo: mineralNightColors.iris,
+  statusInfoSubtle: '#1C1C2E',
+  focusRing: mineralNightColors.iris,
 };
 
-export const darkColors: ColorTokens = {
-  canvas: '#141211',
-  surface: '#1E1A18',
-  surfaceRaised: '#282321',
-  surfaceSubtle: '#2C2624',
-  surfaceMuted: '#38312E',
-  textPrimary: '#F5EFEB',
-  textSecondary: '#C4B9B2',
-  textMuted: '#8E837C',
-  borderDefault: '#423A36',
-  borderSubtle: '#332C28',
-  borderStrong: '#5C524C',
-  brandPrimary: '#E59BAE',
-  brandPrimaryHover: '#F2B4C3',
-  brandPrimarySubtle: '#381E25',
-  brandPrimaryTint: '#2A171C',
-  accentWarm: '#E29C87',
-  accentWarmSubtle: '#3A231C',
-  statusSuccess: '#78C7A3',
-  statusSuccessSubtle: '#193127',
-  statusWarning: '#ECC078',
-  statusWarningSubtle: '#382914',
-  statusDanger: '#EE93A1',
-  statusDangerSubtle: '#3B1B20',
-  statusInfo: '#95C3EA',
-  statusInfoSubtle: '#192D3D',
-  focusRing: '#95C3EA',
-};
+// Aliased as default theme for SayMyName
+export const lightColors = darkColors;

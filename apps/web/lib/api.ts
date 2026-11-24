@@ -19,7 +19,7 @@ import { ProgrammeFamily } from '@saymyname/contracts';
  */
 export function getApiBaseUrl(): string {
   if (typeof window !== 'undefined') {
-    const { hostname, port, protocol } = window.location;
+    const { hostname } = window.location;
     if (hostname === 'localhost' || hostname === '127.0.0.1') {
       return 'http://localhost:4000/api/v1';
     }
@@ -29,9 +29,10 @@ export function getApiBaseUrl(): string {
     if (process.env.NEXT_PUBLIC_API_URL) {
       return process.env.NEXT_PUBLIC_API_URL;
     }
-    return `${protocol}//${hostname}${port ? `:${port}` : ''}/api/v1`;
+    // Deployed fallback points to the live Render web service
+    return 'https://saymyname-ri9e.onrender.com/api/v1';
   }
-  return process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api/v1';
+  return process.env.NEXT_PUBLIC_API_URL || process.env.API_BACKEND_URL || 'https://saymyname-ri9e.onrender.com/api/v1';
 }
 
 export interface RegisterPayload {

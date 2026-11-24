@@ -4,6 +4,8 @@ import React from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useAuth } from '../lib/auth-context';
+import { Logo } from './brand/Logo';
+import { Badge } from './ui/Badge';
 import {
   CompassIcon,
   HeartIcon,
@@ -11,9 +13,15 @@ import {
   ChatIcon,
   UserIcon,
   ShieldIcon,
-  CheckIcon,
 } from './icons';
 
+/**
+ * SayMyName Navigation Bar (Document 10)
+ * - Mineral Night Surfaces: Coal #12161B with Edge #343D48 bottom separator
+ * - Logo Lockup: The Interval Symbol + Grotesk Wordmark
+ * - Navigation: Rectangular architectural tabs (6px radius), strictly NO pills
+ * - Strict auth segregation: Visitors see only public informational routes
+ */
 export default function Navbar() {
   const pathname = usePathname();
   const { authState, user, logout } = useAuth();
@@ -33,46 +41,19 @@ export default function Navbar() {
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'space-between',
-        padding: '0 32px',
-        height: '68px',
-        backgroundColor: 'var(--color-surface)',
-        borderBottom: '1px solid var(--color-border-default)',
+        padding: '0 28px',
+        height: '66px',
+        backgroundColor: 'var(--smn-surface-base, #12161B)',
+        borderBottom: '1px solid var(--smn-border-subtle, #343D48)',
         position: 'sticky',
         top: 0,
         zIndex: 100,
         boxShadow: 'var(--elevation-1)',
       }}
     >
-      {/* Brand Wordmark with Restrained Editorial Authority */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: '36px' }}>
-        <Link
-          href="/"
-          style={{ display: 'inline-flex', alignItems: 'baseline', gap: '8px' }}
-          aria-label="SayMyName Home"
-        >
-          <span
-            style={{
-              fontFamily: 'var(--font-display)',
-              fontSize: '26px',
-              fontWeight: 600,
-              color: 'var(--color-brand-primary)',
-              letterSpacing: '-0.03em',
-            }}
-          >
-            SayMyName
-          </span>
-          <span
-            className="index-stamp"
-            style={{
-              fontSize: '9px',
-              color: 'var(--color-text-muted)',
-              display: 'inline-block',
-              transform: 'translateY(-2px)',
-            }}
-          >
-            Phase 1 • Verified
-          </span>
-        </Link>
+      {/* Brand Logo & Main Navigation Tabs */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: '32px' }}>
+        <Logo size="md" symbolConcept="A" />
 
         {/* Navigation Tabs: Member Tabs IF Authenticated, Public Links IF Visitor */}
         {isVerifiedMember ? (
@@ -91,19 +72,20 @@ export default function Navbar() {
                   style={{
                     display: 'inline-flex',
                     alignItems: 'center',
-                    gap: '8px',
-                    padding: '8px 16px',
-                    borderRadius: 'var(--radius-pill)',
+                    gap: '7px',
+                    padding: '8px 14px',
+                    borderRadius: '6px',
                     fontSize: '13.5px',
                     fontWeight: isActive ? 600 : 500,
-                    color: isActive ? 'var(--color-brand-primary)' : 'var(--color-text-secondary)',
-                    backgroundColor: isActive ? 'var(--color-brand-primary-subtle)' : 'transparent',
-                    transition: 'all var(--duration-fast) var(--ease-editorial)',
+                    color: isActive ? 'var(--smn-text-primary, #F0F1EE)' : 'var(--smn-text-secondary, #B6BDC4)',
+                    backgroundColor: isActive ? 'var(--smn-surface-active, #252D37)' : 'transparent',
+                    border: isActive ? '1px solid var(--smn-border-subtle, #343D48)' : '1px solid transparent',
+                    transition: 'all 120ms ease-out',
                   }}
                 >
                   <Icon
                     size={16}
-                    color={isActive ? 'var(--color-brand-primary)' : 'var(--color-text-secondary)'}
+                    color={isActive ? 'var(--smn-accent-iris, #8580C4)' : 'var(--smn-text-tertiary, #8B949E)'}
                     strokeWidth={isActive ? 2 : 1.75}
                   />
                   <span>{tab.label}</span>
@@ -114,7 +96,7 @@ export default function Navbar() {
         ) : (
           <nav
             className="nav-desktop-tabs"
-            style={{ display: 'flex', alignItems: 'center', gap: '8px' }}
+            style={{ display: 'flex', alignItems: 'center', gap: '6px' }}
             aria-label="Public Navigation"
           >
             <Link
@@ -122,9 +104,10 @@ export default function Navbar() {
               style={{
                 fontSize: '13.5px',
                 fontWeight: pathname === '/eligibility' ? 600 : 500,
-                color: pathname === '/eligibility' ? 'var(--color-brand-primary)' : 'var(--color-text-secondary)',
-                padding: '8px 14px',
-                borderRadius: 'var(--radius-pill)',
+                color: pathname === '/eligibility' ? 'var(--smn-text-primary, #F0F1EE)' : 'var(--smn-text-secondary, #B6BDC4)',
+                backgroundColor: pathname === '/eligibility' ? 'var(--smn-surface-raised, #1A2027)' : 'transparent',
+                padding: '7px 12px',
+                borderRadius: '6px',
               }}
             >
               Eligibility Guide
@@ -134,9 +117,10 @@ export default function Navbar() {
               style={{
                 fontSize: '13.5px',
                 fontWeight: pathname === '/safety' ? 600 : 500,
-                color: pathname === '/safety' ? 'var(--color-brand-primary)' : 'var(--color-text-secondary)',
-                padding: '8px 14px',
-                borderRadius: 'var(--radius-pill)',
+                color: pathname === '/safety' ? 'var(--smn-text-primary, #F0F1EE)' : 'var(--smn-text-secondary, #B6BDC4)',
+                backgroundColor: pathname === '/safety' ? 'var(--smn-surface-raised, #1A2027)' : 'transparent',
+                padding: '7px 12px',
+                borderRadius: '6px',
               }}
             >
               Safety & Consent
@@ -145,8 +129,8 @@ export default function Navbar() {
         )}
       </div>
 
-      {/* Right Controls: Authenticated Member Controls or Public Visitor CTA */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+      {/* Right Controls: Member Profile/Status OR Visitor CTA */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
         {isVerifiedMember ? (
           <>
             <Link
@@ -157,33 +141,23 @@ export default function Navbar() {
                 gap: '6px',
                 fontSize: '13px',
                 fontWeight: 500,
-                color: 'var(--color-text-secondary)',
+                color: 'var(--smn-text-secondary, #B6BDC4)',
                 padding: '6px 12px',
-                borderRadius: 'var(--radius-pill)',
+                borderRadius: '6px',
               }}
               title="Safety and Consent Commitments"
             >
-              <ShieldIcon size={15} color="var(--color-text-secondary)" />
+              <ShieldIcon size={15} color="var(--smn-text-secondary, #B6BDC4)" />
               <span className="nav-desktop-tabs">Safety</span>
             </Link>
 
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-              <span
-                style={{
-                  fontSize: '13px',
-                  fontWeight: 600,
-                  color: 'var(--color-text-primary)',
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: '5px',
-                }}
-              >
-                <span className="badge-verified" style={{ fontSize: '9px', padding: '1px 6px' }}>
-                  <CheckIcon size={9} color="var(--color-brand-primary)" />
-                  <span>Verified</span>
+              <div style={{ display: 'inline-flex', alignItems: 'center', gap: '8px' }}>
+                <Badge variant="verified">Verified</Badge>
+                <span className="nav-desktop-tabs" style={{ fontSize: '13px', fontWeight: 600, color: 'var(--smn-text-primary)' }}>
+                  {user?.displayName || 'Member'}
                 </span>
-                <span className="nav-desktop-tabs">{user?.displayName || 'Member'}</span>
-              </span>
+              </div>
 
               <button
                 onClick={() => logout()}
@@ -200,7 +174,7 @@ export default function Navbar() {
             <Link
               href="/onboarding"
               className="badge-tag"
-              style={{ color: 'var(--color-accent-warm)', fontWeight: 600, fontSize: '12px', padding: '6px 12px' }}
+              style={{ color: 'var(--smn-accent-ember, #E18A62)', fontWeight: 600, fontSize: '12px', padding: '6px 12px' }}
             >
               Complete Verification →
             </Link>

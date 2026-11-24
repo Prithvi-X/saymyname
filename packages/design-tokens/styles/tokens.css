@@ -1,49 +1,78 @@
 /**
  * SayMyName Design Tokens - CSS Variables
- * Conforms to Document 03: Warm Editorial Minimalism with Understated Authority
+ * Conforms strictly to Document 10: Brand Identity & Digital Design Language
+ * Creative Concept: THE INTERVAL
+ * Environment: Dark Cinematic (Mineral Night)
  */
 
+@import url('https://fonts.googleapis.com/css2?family=Instrument+Sans:ital,wght@0,400..700;1,400..700&display=swap');
+
 :root {
-  /* Colors - Light Theme (Warm Paper & Deep Oxblood) */
-  --color-canvas: #F7F4EF;
-  --color-surface: #FFFEFB;
-  --color-surface-raised: #FFFFFF;
-  --color-surface-subtle: #EDE7DF;
-  --color-surface-muted: #E4DCD2;
-  
-  --color-text-primary: #1E1A18;
-  --color-text-secondary: #655C56;
-  --color-text-muted: #887E77;
-  
-  --color-border-default: #D8D1C7;
-  --color-border-subtle: #E8E2D9;
-  --color-border-strong: #B8ADA1;
-  
-  --color-brand-primary: #6E2638;
-  --color-brand-primary-hover: #5A1D2D;
-  --color-brand-primary-subtle: #F4E8EB;
-  --color-brand-primary-tint: #FAF2F4;
-  
-  --color-accent-warm: #A34C38;
-  --color-accent-warm-subtle: #FAEEEB;
-  
-  --color-status-success: #246550;
-  --color-status-success-subtle: #E8F3EE;
-  --color-status-warning: #855218;
-  --color-status-warning-subtle: #FBF4E8;
-  --color-status-danger: #9B2838;
-  --color-status-danger-subtle: #FBEBED;
-  --color-status-info: #2B577A;
-  --color-status-info-subtle: #EBF2F8;
-  
-  --color-focus-ring: #6E2638;
+  /* Document 10 Canonical Tokens */
+  --smn-stage: #0B0D10;           /* Void: Primary page stage */
+  --smn-surface-base: #12161B;    /* Coal: Main application surface */
+  --smn-surface-raised: #1A2027;  /* Iron: Raised surface / panels */
+  --smn-surface-active: #252D37;  /* Slate: Selected surface / interaction area */
+  --smn-border-subtle: #343D48;   /* Edge: Borders and structural separators */
+  --smn-text-primary: #F0F1EE;    /* Chalk: Primary text (17.16:1 on Void) */
+  --smn-text-secondary: #B6BDC4;  /* Silver: Secondary text (10.25:1 on Void) */
+  --smn-text-tertiary: #8B949E;   /* Ash: Tertiary / metadata (6.33:1 on Void) */
+  --smn-accent-iris: #8580C4;     /* Iris: Primary brand signal (5.09:1 on Coal) */
+  --smn-accent-ember: #E18A62;    /* Ember: Secondary warmth signal (6.93:1 on Coal) */
+  --smn-success: #77C5A1;         /* Semantic Success */
+  --smn-warning: #E6BC69;         /* Semantic Warning */
+  --smn-danger: #F07878;          /* Critical / Destructive */
 
-  /* Typography */
-  --font-display: 'Newsreader', Georgia, serif;
-  --font-body: 'DM Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  --font-mono: 'SF Mono', Menlo, Consolas, Monaco, monospace;
+  /* Compatibility Mapping to existing --color-* variables */
+  --color-canvas: var(--smn-stage);
+  --color-surface: var(--smn-surface-base);
+  --color-surface-raised: var(--smn-surface-raised);
+  --color-surface-subtle: var(--smn-surface-raised);
+  --color-surface-muted: var(--smn-surface-active);
+  --color-text-primary: var(--smn-text-primary);
+  --color-text-secondary: var(--smn-text-secondary);
+  --color-text-muted: var(--smn-text-tertiary);
+  --color-border-default: var(--smn-border-subtle);
+  --color-border-subtle: #20262E;
+  --color-border-strong: #4B5563;
+  --color-brand-primary: var(--smn-accent-iris);
+  --color-brand-primary-hover: #9894D1;
+  --color-brand-primary-subtle: #1C1C2E;
+  --color-brand-primary-tint: #27263E;
+  --color-accent-warm: var(--smn-accent-ember);
+  --color-accent-warm-subtle: #2D1F18;
+  --color-status-success: var(--smn-success);
+  --color-status-success-subtle: #13281E;
+  --color-status-warning: var(--smn-warning);
+  --color-status-warning-subtle: #2E2412;
+  --color-status-danger: var(--smn-danger);
+  --color-status-danger-subtle: #301618;
+  --color-status-info: var(--smn-accent-iris);
+  --color-status-info-subtle: #1C1C2E;
+  --color-focus-ring: var(--smn-accent-iris);
 
-  /* Spacing Scale */
+  /* Typography: Neo-grotesk Instrument Sans */
+  --font-ui: "Instrument Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --font-body: "Instrument Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --font-display: "Instrument Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --font-mono: "SF Mono", Menlo, Consolas, Monaco, monospace;
+
+  /* Architectural Radii: Pills strictly prohibited */
+  --smn-radius-none: 0px;
+  --smn-radius-tight: 4px;
+  --smn-radius-control: 8px;
+  --smn-radius-panel: 12px;
+  --smn-radius-feature: 16px;
+
+  --radius-xs: 4px;
+  --radius-sm: 4px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-xl: 14px;
+  --radius-2xl: 16px;
+  --radius-pill: 8px; /* Redefined away from 999px */
+
+  /* Spacing */
   --space-1: 4px;
   --space-2: 8px;
   --space-3: 12px;
@@ -56,80 +85,35 @@
   --space-16: 64px;
   --space-20: 80px;
 
-  /* Corner Radii */
-  --radius-xs: 4px;
-  --radius-sm: 8px;
-  --radius-md: 12px;
-  --radius-lg: 16px;
-  --radius-xl: 20px;
-  --radius-2xl: 24px;
-  --radius-pill: 999px;
+  /* Motion */
+  --smn-motion-instant: 80ms;
+  --smn-motion-fast: 120ms;
+  --smn-motion-standard: 180ms;
+  --smn-motion-context: 260ms;
+  --smn-motion-signature: 340ms;
+  --smn-ease-enter: cubic-bezier(0.2, 0.7, 0.2, 1);
+  --smn-ease-exit: cubic-bezier(0.4, 0, 1, 1);
 
-  /* Restrained Tactile Elevation */
-  --elevation-1: 0 1px 2px rgba(30, 26, 24, 0.04), 0 1px 3px rgba(30, 26, 24, 0.03);
-  --elevation-2: 0 3px 8px -1px rgba(30, 26, 24, 0.06), 0 1px 3px -1px rgba(30, 26, 24, 0.04);
-  --elevation-3: 0 12px 28px -4px rgba(30, 26, 24, 0.1), 0 4px 10px -2px rgba(30, 26, 24, 0.04);
-  --elevation-like: 0 6px 20px rgba(110, 38, 56, 0.28);
-
-  /* Calibrated Motion */
-  --duration-immediate: 100ms;
-  --duration-fast: 160ms;
-  --duration-normal: 240ms;
-  --duration-slow: 340ms;
-  --ease-editorial: cubic-bezier(0.16, 1, 0.3, 1);
+  --duration-immediate: 80ms;
+  --duration-fast: 120ms;
+  --duration-normal: 180ms;
+  --duration-slow: 260ms;
+  --ease-editorial: cubic-bezier(0.2, 0.7, 0.2, 1);
   --ease-in-out: cubic-bezier(0.4, 0, 0.2, 1);
-}
 
-[data-theme="dark"],
-.dark {
-  /* Colors - Dark Theme (Deep Ink & Warm Mineral Rose) */
-  --color-canvas: #141211;
-  --color-surface: #1E1A18;
-  --color-surface-raised: #282321;
-  --color-surface-subtle: #2C2624;
-  --color-surface-muted: #38312E;
-  
-  --color-text-primary: #F5EFEB;
-  --color-text-secondary: #C4B9B2;
-  --color-text-muted: #8E837C;
-  
-  --color-border-default: #423A36;
-  --color-border-subtle: #332C28;
-  --color-border-strong: #5C524C;
-  
-  --color-brand-primary: #E59BAE;
-  --color-brand-primary-hover: #F2B4C3;
-  --color-brand-primary-subtle: #381E25;
-  --color-brand-primary-tint: #2A171C;
-  
-  --color-accent-warm: #E29C87;
-  --color-accent-warm-subtle: #3A231C;
-  
-  --color-status-success: #78C7A3;
-  --color-status-success-subtle: #193127;
-  --color-status-warning: #ECC078;
-  --color-status-warning-subtle: #382914;
-  --color-status-danger: #EE93A1;
-  --color-status-danger-subtle: #3B1B20;
-  --color-status-info: #95C3EA;
-  --color-status-info-subtle: #192D3D;
-  
-  --color-focus-ring: #95C3EA;
-
+  /* Elevations */
   --elevation-1: 0 1px 3px rgba(0, 0, 0, 0.35);
-  --elevation-2: 0 4px 10px rgba(0, 0, 0, 0.45);
-  --elevation-3: 0 14px 32px rgba(0, 0, 0, 0.6);
-  --elevation-like: 0 6px 20px rgba(229, 155, 174, 0.35);
+  --elevation-2: 0 4px 12px rgba(0, 0, 0, 0.45);
+  --elevation-3: 0 12px 28px rgba(0, 0, 0, 0.6);
+  --elevation-like: 0 4px 16px rgba(133, 128, 196, 0.35);
 }
 
-/* Accessible Reduced Motion Support */
+/* Reduced Motion Override */
 @media (prefers-reduced-motion: reduce) {
-  *,
-  *::before,
-  *::after {
-    animation-duration: 0.001ms !important;
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
-    transition-duration: 0.001ms !important;
+    transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;
   }
 }

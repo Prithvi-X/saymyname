@@ -1,12 +1,13 @@
 /**
- * SayMyName Design Tokens - Typography
- * Baseline: Newsreader (Display Serif) + DM Sans (Interface Sans) (Document 03, Section 4)
+ * SayMyName Design Tokens - Typography (Contemporary Neo-Grotesk)
+ * Source: Document 10, Section 09 (Instrument Sans)
  */
 
 export const fontFamilies = {
-  display: 'Newsreader, Georgia, serif',
-  body: 'DM Sans, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif',
-  system: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif',
+  ui: '"Instrument Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+  body: '"Instrument Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+  display: '"Instrument Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+  mono: '"SF Mono", Menlo, Consolas, Monaco, monospace',
 };
 
 export interface TypographyStyle {
@@ -18,70 +19,65 @@ export interface TypographyStyle {
 }
 
 export const typeScale: Record<string, TypographyStyle> = {
-  displayLg: {
-    fontSize: '48px',
-    lineHeight: '54px',
-    fontWeight: 400,
-    fontFamily: fontFamilies.display,
-  },
-  displayMd: {
-    fontSize: '40px',
-    lineHeight: '46px',
-    fontWeight: 400,
-    fontFamily: fontFamilies.display,
-  },
-  heading1: {
-    fontSize: '32px',
-    lineHeight: '38px',
+  displayHero: {
+    fontSize: '68px',
+    lineHeight: '0.98',
     fontWeight: 700,
-    fontFamily: fontFamilies.body,
+    fontFamily: fontFamilies.ui,
+    letterSpacing: '-0.03em',
   },
-  heading2: {
+  displayHeroMobile: {
+    fontSize: '44px',
+    lineHeight: '1.0',
+    fontWeight: 700,
+    fontFamily: fontFamilies.ui,
+    letterSpacing: '-0.025em',
+  },
+  pageHeading: {
+    fontSize: '42px',
+    lineHeight: '1.05',
+    fontWeight: 650,
+    fontFamily: fontFamilies.ui,
+    letterSpacing: '-0.02em',
+  },
+  pageHeadingMobile: {
+    fontSize: '34px',
+    lineHeight: '1.08',
+    fontWeight: 650,
+    fontFamily: fontFamilies.ui,
+    letterSpacing: '-0.02em',
+  },
+  sectionHeading: {
+    fontSize: '28px',
+    lineHeight: '1.12',
+    fontWeight: 600,
+    fontFamily: fontFamilies.ui,
+    letterSpacing: '-0.015em',
+  },
+  cardTitle: {
     fontSize: '24px',
-    lineHeight: '30px',
-    fontWeight: 700,
-    fontFamily: fontFamilies.body,
-  },
-  heading3: {
-    fontSize: '20px',
-    lineHeight: '26px',
+    lineHeight: '1.15',
     fontWeight: 600,
-    fontFamily: fontFamilies.body,
+    fontFamily: fontFamilies.ui,
+    letterSpacing: '-0.01em',
   },
-  heading4: {
-    fontSize: '18px',
-    lineHeight: '24px',
-    fontWeight: 600,
-    fontFamily: fontFamilies.body,
-  },
-  bodyLg: {
-    fontSize: '18px',
-    lineHeight: '28px',
-    fontWeight: 400,
-    fontFamily: fontFamilies.body,
-  },
-  bodyMd: {
+  body: {
     fontSize: '16px',
-    lineHeight: '24px',
+    lineHeight: '1.5',
     fontWeight: 400,
-    fontFamily: fontFamilies.body,
+    fontFamily: fontFamilies.ui,
   },
-  bodySm: {
+  bodySecondary: {
     fontSize: '14px',
-    lineHeight: '20px',
-    fontWeight: 400,
-    fontFamily: fontFamilies.body,
+    lineHeight: '1.45',
+    fontWeight: 450,
+    fontFamily: fontFamilies.ui,
   },
-  labelMd: {
-    fontSize: '14px',
-    lineHeight: '18px',
-    fontWeight: 600,
-    fontFamily: fontFamilies.body,
-  },
-  meta: {
+  metadata: {
     fontSize: '12px',
-    lineHeight: '16px',
+    lineHeight: '1.35',
     fontWeight: 500,
-    fontFamily: fontFamilies.body,
+    fontFamily: fontFamilies.ui,
+    letterSpacing: '0.01em',
   },
 };
