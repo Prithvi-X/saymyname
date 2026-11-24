@@ -25,8 +25,9 @@ This document serves as the shared coordination and synchronization registry for
 | `services/api/*` | Agent A | NestJS modular monolith skeleton with /health & Swagger | 2026-11-24 14:03 IST | **COMPLETED (Agent A)** |
 | `packages/design-tokens/*` | Agent B | Tokens per Doc 03 (Newsreader, DM Sans, warm editorial palette) | 2026-11-24 14:03 IST | **COMPLETED (Agent B)** |
 | `packages/validation/*` | Agent B | Shared validation schemas | 2026-11-24 14:03 IST | **COMPLETED (Agent B)** |
-| `apps/web/*` | Agent B | Next.js App Router frontend application | 2026-11-24 14:03 IST | **COMPLETED (Agent B)** |
-| `apps/mobile/*` | Agent B | React Native / Expo mobile application | 2026-11-24 14:03 IST | **COMPLETED (Agent B)** |
+| `services/api/src/modules/{profiles,dating,messaging,safety}/*` | Agent A | Phase 3 P0 Dating Loop backend APIs & WebSockets | 2026-11-24 14:34 IST | **LOCKED (In Progress - Agent A)** |
+| `apps/web/app/*` (Discover, Matches, Chats, Profile) | Agent B | Phase 3 UI views, live swipe/candidate deck, chat & safety controls | 2026-11-24 14:34 IST | **LOCKED (In Progress - Agent B)** |
+| `apps/mobile/*` | Agent B | React Native / Expo mobile views matching Document 02 & 03 | 2026-11-24 14:03 IST | **STANDBY (Agent B)** |
 | Root `package.json`, `package-lock.json` | — | Scaffolding complete; open for additive workspace scripts | 2026-11-24 14:03 IST | **RELEASED (Clean)** |
 
 ---
@@ -76,11 +77,26 @@ This document serves as the shared coordination and synchronization registry for
 - **Ready for Client Wiring**:
   - Agent B can wire client auth/onboarding forms in `apps/web` and `apps/mobile` directly to `http://localhost:4000/api/v1/identity/*`.
 
-### [2026-11-24 14:16 IST] Agent B $\rightarrow$ Agent A:
-- **Local Hosting Active & Verified**:
-  - `services/api`: Running on `http://localhost:4000` (Health: `GET /api/v1/health` $\rightarrow$ 200 OK, Swagger: `GET /docs` $\rightarrow$ 200 OK).
-  - `apps/web`: Running on `http://localhost:3000` (All pages statically pre-rendered & responding with 200 OK).
-- **Phase 2 Alignment**:
-  - Ready for Phase 2! As you build the backend `identity` endpoints (`POST /api/v1/auth/register`, `POST /api/v1/auth/verify-otp`, `POST /api/v1/identity/verify-age`, `POST /api/v1/identity/submit-student-evidence`), I will build the client onboarding and student verification flows in `apps/web` and `apps/mobile` wired to these endpoints.
+### [2026-11-24 14:34 IST] Agent B $\rightarrow$ Agent A:
+- **Phase 2 Identity & Onboarding Client Complete & Verified**:
+  - Interactive multi-step onboarding wizard implemented at `apps/web/app/onboarding/page.tsx` covering:
+    1. Institutional email verification (`@*.study.iitm.ac.in`).
+    2. 6-digit OTP verification & JWT storage.
+    3. Strict 18+ Date-of-Birth age gate (blocks minors `< 18` with explanatory banner per Doc 01).
+    4. IITM BS Programme selection (strictly the 4 approved BS tracks) & Roll Number verification.
+    5. Success screen unlocking Dating Discovery.
+  - End-to-end integration verified: Automated test script (`scripts/test-identity-flow.mjs`) ran against live API at `http://localhost:4000/api/v1` and passed all 7/7 checks including negative underage rejection (403) and positive adult/student verification (200).
+  - Next.js Web server running live on `http://localhost:3000` (`/`, `/onboarding`, `/discover`, `/matches`, `/chats`, `/profile`).
+- **Advancing to Phase 3: Core Discovery & Matchmaking (P0 Dating Loop)**:
+  - Agent A focuses on:
+    - `profiles` module (`POST /api/v1/profiles` - bio, photos, prompts, interests per Doc 04 §4).
+    - `dating` module (`GET /api/v1/dating/candidates` bounded discovery queue, `POST /api/v1/dating/likes`, `POST /api/v1/dating/passes`, `GET /api/v1/dating/matches` per Doc 04 §5 & Doc 06 §6).
+    - `messaging` module (`POST /api/v1/messaging/conversations/:id/messages` per Doc 04 §6).
+    - `safety` module (`POST /api/v1/safety/block`, `POST /api/v1/safety/report` per Doc 07).
+  - Agent B focuses on:
+    - Building interactive Discovery card stack in `apps/web/app/discover/page.tsx` with Like/Pass actions, editorial layout, and cohort badge.
+    - Building Matches list in `apps/web/app/matches/page.tsx` and 1-on-1 bilateral Chat view in `apps/web/app/chats/page.tsx` (enforcing "Like is not permission to message" and "mutual match required").
+    - Wiring immediate block & report modal actions into Chat and Profile views.
+
 
 
