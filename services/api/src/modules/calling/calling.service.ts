@@ -45,6 +45,7 @@ const ALLOWED_AUDIO_MIMES = [
 
 @Injectable()
 export class CallingService {
+  private readonly livekitUrl: string;
   private readonly livekitApiKey: string;
   private readonly livekitApiSecret: string;
   private readonly mockCallSessions: Map<string, MockCallSession> = new Map();
@@ -54,6 +55,7 @@ export class CallingService {
     private readonly cryptoService: CryptoService,
   ) {
     void this.prisma;
+    this.livekitUrl = process.env.LIVEKIT_URL || 'wss://saymyname-fwlu8ud3.livekit.cloud';
     this.livekitApiKey = process.env.LIVEKIT_API_KEY || 'devkey_saymyname_livekit';
     this.livekitApiSecret = process.env.LIVEKIT_API_SECRET || 'devsecret_saymyname_livekit_super_secure';
   }
@@ -146,7 +148,7 @@ export class CallingService {
   /**
    * Initiates 1:1 LiveKit call session with explicit invitation (Doc 01 §3.4)
    */
-  async inviteCall(userId: string, dto: CallInviteDto): Promise<{ callSession: CallSessionDto; token: string }> {
+  async inviteCall(userId: string, dto: CallInviteDto): Promise<{ callSession: CallSessionDto; token: string; livekitUrl: string }> {
     const callSessionId = crypto.randomUUID();
     const livekitRoomId = `saymyname_call_${dto.conversationId.slice(0, 8)}_${Date.now()}`;
 
@@ -184,6 +186,7 @@ export class CallingService {
         durationSeconds: 0,
       },
       token: callerToken,
+      livekitUrl: this.livekitUrl,
     };
   }
 
@@ -210,6 +213,7 @@ export class CallingService {
         livekitRoomId: session.livekitRoomId,
         token,
         callStatus: CallStatus.ACCEPTED,
+        livekitUrl: this.livekitUrl,
       };
     } else {
       session.callStatus = CallStatus.REJECTED;

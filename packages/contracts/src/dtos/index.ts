@@ -136,6 +136,7 @@ export interface CallTokenResponseDto {
   livekitRoomId: string;
   token: string;
   callStatus: CallStatus;
+  livekitUrl?: string;
 }
 
 export interface GameCatalogItemDto {
