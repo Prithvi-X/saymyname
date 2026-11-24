@@ -85,6 +85,39 @@ export class IdentityService {
   }
 
   /**
+   * 1b. Request Login OTP for existing or returning members
+   */
+  async requestLoginOtp(rawEmail: string) {
+    if (!this.validateIitmEmail(rawEmail)) {
+      throw new BadRequestException(
+        'Phase 1 is strictly restricted to verified IIT Madras non-campus BS students. Email must be an official @*.study.iitm.ac.in domain.',
+      );
+    }
+
+    const email = rawEmail.toLowerCase().trim();
+
+    // Generate or use synthetic OTP
+    const otp = process.env.NODE_ENV === 'production' ? Math.floor(100000 + Math.random() * 900000).toString() : '123456';
+    this.pendingOtps.set(email, {
+      otp,
+      expiresAt: Date.now() + 10 * 60 * 1000, // 10 minutes
+    });
+
+    // If Resend API Key is configured, dispatch real email
+    if (process.env.RESEND_API_KEY) {
+      await this.dispatchResendOtpEmail(email, otp).catch((err) => {
+        console.warn('[Resend] Warning: Could not deliver email via Resend:', err);
+      });
+    }
+
+    return {
+      message: 'Login code sent to your institutional email.',
+      email,
+      syntheticOtp: process.env.NODE_ENV !== 'production' ? otp : undefined,
+    };
+  }
+
+  /**
    * Dispatches branded HTML OTP email via Resend API
    */
   private async dispatchResendOtpEmail(toEmail: string, otpCode: string): Promise<void> {
@@ -144,7 +177,7 @@ export class IdentityService {
     this.pendingOtps.delete(email);
 
     // Upsert account
-    let account = await this.prisma.account.findUnique({ where: { email } }).catch(() => null);
+    let account = await this.prisma.account.findUnique({ where: { email }, include: { eligibility: true } }).catch(() => null);
     if (!account) {
       account = await this.prisma.account.create({
         data: {
@@ -189,7 +222,8 @@ export class IdentityService {
       });
     }
 
-    const session = await this.createSession(account.id, account.email, false);
+    const isDiscoveryEligible = Boolean(account.eligibility?.discoveryEligible);
+    const session = await this.createSession(account.id, account.email, isDiscoveryEligible);
     return {
       message: 'Email verified successfully.',
       account: {

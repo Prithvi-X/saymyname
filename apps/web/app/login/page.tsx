@@ -33,11 +33,7 @@ function LoginForm() {
     }
 
     try {
-      const res = await api.register({
-        email: cleanEmail,
-        displayName: cleanEmail.split('@')[0],
-        password: 'TemporaryPassword123!',
-      });
+      const res = await api.requestLoginOtp(cleanEmail);
       if (res.syntheticOtp) setDevOtpHint(res.syntheticOtp);
       setStep('otp');
     } catch (err: any) {

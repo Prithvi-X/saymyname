@@ -226,6 +226,16 @@ class ApiClient {
 
   // --- Identity & Auth ---
 
+  async requestLoginOtp(email: string) {
+    return this.request<{ success?: boolean; message: string; syntheticOtp?: string }>(
+      '/identity/login',
+      {
+        method: 'POST',
+        body: JSON.stringify({ email }),
+      },
+    );
+  }
+
   async register(payload: RegisterPayload) {
     return this.request<{ success: boolean; message: string; syntheticOtp?: string }>(
       '/identity/register',

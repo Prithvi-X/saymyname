@@ -17,6 +17,7 @@ import {
 import { IdentityService } from './identity.service';
 import {
   RegisterDto,
+  RequestLoginOtpDto,
   VerifyOtpDto,
   AgeCheckDto,
   VerifyStudentDto,
@@ -28,6 +29,17 @@ import { JwtAuthGuard, AuthenticatedRequest } from './guards/jwt-auth.guard';
 @Controller('identity')
 export class IdentityController {
   constructor(private readonly identityService: IdentityService) {}
+
+  @Post('login')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'Member Login: Request OTP code for institutional @*.study.iitm.ac.in email',
+  })
+  @ApiResponse({ status: 200, description: 'Login code dispatched to institutional email' })
+  @ApiResponse({ status: 400, description: 'Invalid institutional email domain' })
+  requestLoginOtp(@Body() dto: RequestLoginOtpDto) {
+    return this.identityService.requestLoginOtp(dto.email);
+  }
 
   @Post('register')
   @HttpCode(HttpStatus.OK)

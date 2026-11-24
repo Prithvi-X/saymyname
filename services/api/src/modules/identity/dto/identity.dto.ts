@@ -21,6 +21,16 @@ export class RegisterDto {
   password: string;
 }
 
+export class RequestLoginOtpDto {
+  @ApiProperty({
+    example: 'student@study.iitm.ac.in',
+    description: 'IIT Madras student institutional email',
+  })
+  @IsEmail()
+  @IsNotEmpty()
+  email: string;
+}
+
 export class VerifyOtpDto {
   @ApiProperty({ example: 'student@study.iitm.ac.in' })
   @IsEmail()
