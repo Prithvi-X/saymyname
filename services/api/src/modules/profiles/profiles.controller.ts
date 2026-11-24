@@ -1,7 +1,25 @@
-import { Controller, Get, Put, Post, Delete, Body, Param, UseGuards, Req } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Put,
+  Post,
+  Delete,
+  Body,
+  Param,
+  UseGuards,
+  Req,
+  HttpCode,
+  HttpStatus,
+} from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth, ApiResponse } from '@nestjs/swagger';
 import { ProfilesService } from './profiles.service';
-import { UpdateProfileDto, AddPhotoDto, UpdatePreferencesDto, PresignPhotoDto } from './dto/profile.dto';
+import {
+  UpdateProfileDto,
+  AddPhotoDto,
+  UpdatePreferencesDto,
+  PresignPhotoDto,
+  PublishProfileDto,
+} from './dto/profile.dto';
 import { JwtAuthGuard, AuthenticatedRequest } from '../identity/guards/jwt-auth.guard';
 
 @ApiTags('Profiles & Settings')
@@ -11,33 +29,52 @@ import { JwtAuthGuard, AuthenticatedRequest } from '../identity/guards/jwt-auth.
 export class ProfilesController {
   constructor(private readonly profilesService: ProfilesService) {}
 
+  @Get('catalog')
+  @ApiOperation({ summary: 'Get active interests and profile prompts catalog' })
+  getCatalog() {
+    return this.profilesService.getCatalog();
+  }
+
   @Get('me')
-  @ApiOperation({ summary: 'Get current user full dating profile' })
-  @ApiResponse({ status: 200, description: 'Profile details with photos and preferences' })
+  @ApiOperation({ summary: 'Get current user profile (initializes draft if absent)' })
+  @ApiResponse({ status: 200, description: 'Profile details with signed R2 photo URLs' })
   getProfile(@Req() req: AuthenticatedRequest) {
     return this.profilesService.getProfile(req.user.sub);
   }
 
   @Put('me')
-  @ApiOperation({ summary: 'Update profile bio, display name and details' })
+  @ApiOperation({ summary: 'Update profile fields, interests, and prompt answers (draft allowed)' })
   updateProfile(@Req() req: AuthenticatedRequest, @Body() dto: UpdateProfileDto) {
     return this.profilesService.updateProfile(req.user.sub, dto);
   }
 
   @Post('me/photos/presign')
-  @ApiOperation({ summary: 'Pre-sign a Cloudflare R2 / S3 photo upload URL' })
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Pre-sign a private Cloudflare R2 photo upload PUT URL' })
   presignPhoto(@Req() req: AuthenticatedRequest, @Body() dto: PresignPhotoDto) {
     return this.profilesService.presignPhoto(req.user.sub, dto);
   }
 
   @Post('me/photos')
-  @ApiOperation({ summary: 'Add a photo to profile (up to 6 photos max)' })
+  @ApiOperation({ summary: 'Attach an uploaded private R2 portrait photo (up to 6 photos max)' })
   addPhoto(@Req() req: AuthenticatedRequest, @Body() dto: AddPhotoDto) {
     return this.profilesService.addPhoto(req.user.sub, dto);
   }
 
+  @Get('me/photos/:id/url')
+  @ApiOperation({ summary: 'Issue a short-lived signed GET URL for own portrait preview' })
+  getPhotoUrl(@Req() req: AuthenticatedRequest, @Param('id') photoId: string) {
+    return this.profilesService.getSignedPhotoUrl(req.user.sub, photoId);
+  }
+
+  @Put('me/photos/:id/primary')
+  @ApiOperation({ summary: 'Set primary portrait photo' })
+  setPrimaryPhoto(@Req() req: AuthenticatedRequest, @Param('id') photoId: string) {
+    return this.profilesService.setPrimaryPhoto(req.user.sub, photoId);
+  }
+
   @Delete('me/photos/:id')
-  @ApiOperation({ summary: 'Delete a photo from profile' })
+  @ApiOperation({ summary: 'Remove a portrait photo from profile' })
   removePhoto(@Req() req: AuthenticatedRequest, @Param('id') photoId: string) {
     return this.profilesService.removePhoto(req.user.sub, photoId);
   }
@@ -48,9 +85,21 @@ export class ProfilesController {
     return this.profilesService.updatePreferences(req.user.sub, dto);
   }
 
+  @Post('me/publish')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'Publish completed profile into Discover (requires verified eligibility & >=1 photo)',
+  })
+  publishProfile(@Req() req: AuthenticatedRequest, @Body() dto: PublishProfileDto) {
+    return this.profilesService.publishProfile(req.user.sub, {
+      ...dto,
+      isPublished: true,
+    });
+  }
+
   @Put('me/publish')
-  @ApiOperation({ summary: 'Toggle profile discoverability (published/hidden)' })
-  togglePublish(@Req() req: AuthenticatedRequest, @Body('isPublished') isPublished: boolean) {
-    return this.profilesService.togglePublish(req.user.sub, isPublished);
+  @ApiOperation({ summary: 'Publish or pause profile discoverability' })
+  togglePublish(@Req() req: AuthenticatedRequest, @Body() dto: PublishProfileDto) {
+    return this.profilesService.publishProfile(req.user.sub, dto);
   }
 }

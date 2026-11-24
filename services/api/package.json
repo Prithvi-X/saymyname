@@ -5,7 +5,7 @@
   "scripts": {
     "prebuild": "node ./scripts/prebuild.js",
     "build": "tsc",
-    "test": "node --test dist/test/identity.test.js dist/test/dating.test.js dist/test/calling.test.js dist/test/together.test.js",
+    "test": "node --test dist/test/identity.test.js dist/test/security-prod.test.js dist/test/profiles.test.js dist/test/dating.test.js dist/test/calling.test.js dist/test/together.test.js",
     "start": "node dist/src/main.js",
     "typecheck": "tsc --noEmit"
   },
@@ -19,6 +19,7 @@
     "@nestjs/swagger": "^11.0.0",
     "@saymyname/contracts": "*",
     "@saymyname/database": "*",
+    "@saymyname/validation": "*",
     "class-transformer": "^0.5.1",
     "class-validator": "^0.14.1",
     "helmet": "^8.0.0",

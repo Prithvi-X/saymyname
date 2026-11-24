@@ -1,107 +1,162 @@
-// End-to-end verification of Identity & Eligibility API endpoints
-const BASE_URL = 'http://localhost:4000/api/v1';
+/**
+ * Phase 2 Identity & Manual Verification Pipeline Integration Script
+ * Updated for D-P2-01..D-P2-05 (Password + DB OTP challenge + Manual Review Gate + ReviewerGuard).
+ *
+ * Refuses non-localhost DATABASE_URL. Cleans up created test accounts on completion.
+ */
+import assert from 'node:assert/strict';
+import { PrismaClient } from '@prisma/client';
 
-async function runTests() {
-  console.log('=== SayMyName Phase 2: Identity API Verification ===\n');
+const API_BASE = (process.env.API_BASE || 'http://127.0.0.1:4000/api/v1').replace(/\/$/, '');
+const REVIEWER_KEY = process.env.REVIEWER_API_KEY || 'test-reviewer-secret-key-min-16';
+const TEST_PASSWORD = 'IdentityFlowPass123!';
 
-  // 1. Health check
-  const healthRes = await fetch(`${BASE_URL}/health`);
-  console.log(`[PASS] GET /health -> ${healthRes.status} ${healthRes.statusText}`);
-
-  // 2. Register with valid IITM BS email and required fields
-  const email = '21f1000001@ds.study.iitm.ac.in';
-  const displayName = 'Arun Kumar';
-  const password = 'SecurePassword123!';
-
-  const regRes = await fetch(`${BASE_URL}/identity/register`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ email, displayName, password }),
-  });
-  const regData = await regRes.json();
-  if (regRes.status !== 201 && regRes.status !== 200) {
-    throw new Error(`Register failed: ${JSON.stringify(regData)}`);
+if (process.env.DATABASE_URL) {
+  const host = new URL(process.env.DATABASE_URL).hostname;
+  if (!['localhost', '127.0.0.1'].includes(host)) {
+    throw new Error(`SAFETY ABORT: Non-localhost DATABASE_URL host "${host}" rejected.`);
   }
-  console.log(`[PASS] POST /identity/register -> ${regRes.status}. Synthetic OTP: ${regData.syntheticOtp}`);
-
-  // 3. Verify OTP
-  const otpRes = await fetch(`${BASE_URL}/identity/verify-otp`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ email, otp: regData.syntheticOtp }),
-  });
-  const otpData = await otpRes.json();
-  if (!otpData.accessToken) {
-    throw new Error(`OTP verification failed: ${JSON.stringify(otpData)}`);
-  }
-  console.log(`[PASS] POST /identity/verify-otp -> ${otpRes.status}. Received JWT access token`);
-
-  let currentToken = otpData.accessToken;
-  const getAuthHeader = () => ({
-    'Content-Type': 'application/json',
-    Authorization: `Bearer ${currentToken}`,
-  });
-
-  // 4. Negative test: Minor (<18) must be strictly forbidden (403)
-  const minorRes = await fetch(`${BASE_URL}/identity/age-check`, {
-    method: 'POST',
-    headers: getAuthHeader(),
-    body: JSON.stringify({ dateOfBirth: '2010-01-01' }),
-  });
-  const minorData = await minorRes.json();
-  if (minorRes.status === 403) {
-    console.log(`[PASS] POST /identity/age-check (DOB: 2010-01-01) -> 403 Forbidden correctly rejected under-18 user: "${minorData.message}"`);
-  } else {
-    throw new Error(`Under-18 check failed! Expected 403, got ${minorRes.status}: ${JSON.stringify(minorData)}`);
-  }
-
-  // 5. Positive test: Adult (22 years)
-  const adultRes = await fetch(`${BASE_URL}/identity/age-check`, {
-    method: 'POST',
-    headers: getAuthHeader(),
-    body: JSON.stringify({ dateOfBirth: '2004-05-15' }),
-  });
-  const adultData = await adultRes.json();
-  if (adultRes.status === 200 && adultData.calculatedAge >= 18) {
-    console.log(`[PASS] POST /identity/age-check (DOB: 2004-05-15) -> 200 OK. Calculated age: ${adultData.calculatedAge}, Status: ${adultData.eligibility?.ageStatus}`);
-  } else {
-    throw new Error(`Adult check failed: ${JSON.stringify(adultData)}`);
-  }
-
-  // 6. Student Verification with approved BS programme
-  const studentRes = await fetch(`${BASE_URL}/identity/verify-student`, {
-    method: 'POST',
-    headers: getAuthHeader(),
-    body: JSON.stringify({
-      programmeFamily: 'data_science_applications',
-      studentRollNo: '21F1000001',
-    }),
-  });
-  const studentData = await studentRes.json();
-  if (studentRes.status === 200 && studentData.eligibility?.discoveryEligible === true) {
-    console.log(`[PASS] POST /identity/verify-student -> 200 OK. Discovery unlocked: ${studentData.eligibility.discoveryEligible}, Programme: ${studentData.eligibility.programmeFamily}`);
-    if (studentData.accessToken) {
-      currentToken = studentData.accessToken;
-    }
-  } else {
-    throw new Error(`Student verification failed: ${JSON.stringify(studentData)}`);
-  }
-
-  // 7. GET /identity/me to verify persistent profile & eligibility state
-  const meRes = await fetch(`${BASE_URL}/identity/me`, {
-    headers: getAuthHeader(),
-  });
-  const meData = await meRes.json();
-  if (meRes.status === 200 && meData.eligibility?.discoveryEligible === true) {
-    console.log(`[PASS] GET /identity/me -> 200 OK. User ID: ${meData.id}, Discovery Eligible: ${meData.eligibility.discoveryEligible}, Programme: ${meData.eligibility.programmeFamily}`);
-  } else {
-    throw new Error(`GET /identity/me failed: ${JSON.stringify(meData)}`);
-  }
-
-  console.log('\n=== All 7 Identity & Eligibility API Checks PASSED Successfully ===');
 }
 
-runTests().catch((err) => {
-  console.error('\n[FAIL] Test Error:', err);
-  process.exit(1);
-});
+const prisma = new PrismaClient();
+const createdEmails = [];
+
+async function testIdentityPipeline() {
+  const suffix = `${Date.now()}.${Math.floor(Math.random() * 1000)}`;
+  const adultEmail = `idflow.adult.${suffix}@ds.study.iitm.ac.in`;
+  const minorEmail = `idflow.minor.${suffix}@es.study.iitm.ac.in`;
+  createdEmails.push(adultEmail, minorEmail);
+
+  console.log(`\n=== Running Updated Identity & Verification Flow Checks against ${API_BASE} ===\n`);
+
+  // 1. Minor Path: Register -> verify devOtp -> reject under-18 DOB (403) -> reject student submission (403)
+  const minorRegRes = await fetch(`${API_BASE}/identity/register`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email: minorEmail, password: TEST_PASSWORD, displayName: 'Minor Check' }),
+  });
+  const minorReg = await minorRegRes.json();
+  assert.equal(minorRegRes.status, 200, `Minor registration failed: ${JSON.stringify(minorReg)}`);
+  assert.ok(minorReg.devOtp, 'EXPOSE_DEV_OTP must be enabled on local dev API to test OTP without email inbox');
+
+  const minorVerifyRes = await fetch(`${API_BASE}/identity/verify-otp`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email: minorEmail, otp: minorReg.devOtp }),
+  });
+  const minorVerify = await minorVerifyRes.json();
+  assert.equal(minorVerifyRes.status, 200);
+  const minorToken = minorVerify.accessToken;
+
+  const minorAgeRes = await fetch(`${API_BASE}/identity/age-check`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${minorToken}` },
+    body: JSON.stringify({ dateOfBirth: `${new Date().getUTCFullYear() - 17}-01-01` }),
+  });
+  assert.equal(minorAgeRes.status, 403, 'Under-18 DOB check must return 403');
+
+  const minorStudentRes = await fetch(`${API_BASE}/identity/verify-student`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${minorToken}` },
+    body: JSON.stringify({ programmeFamily: 'electronic_systems', pathwayCode: 'foundation' }),
+  });
+  assert.equal(minorStudentRes.status, 403, 'Rejected minor must remain blocked from student step');
+  console.log('[PASS] Under-18 rejection (403) and persistent minor student block verified.');
+
+  // 2. Adult Path: Register -> static 123456 rejected -> devOtp -> login -> pending age & student -> ReviewerGuard
+  const adultRegRes = await fetch(`${API_BASE}/identity/register`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email: adultEmail, password: TEST_PASSWORD, displayName: 'Aarav Test' }),
+  });
+  const adultReg = await adultRegRes.json();
+  assert.equal(adultRegRes.status, 200);
+
+  const staticOtp = adultReg.devOtp === '123456' ? '000000' : '123456';
+  const staticOtpRes = await fetch(`${API_BASE}/identity/verify-otp`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email: adultEmail, otp: staticOtp }),
+  });
+  assert.equal(staticOtpRes.status, 401, 'Static 123456 OTP fallback must fail 401');
+
+  const verifyOkRes = await fetch(`${API_BASE}/identity/verify-otp`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email: adultEmail, otp: adultReg.devOtp }),
+  });
+  assert.equal(verifyOkRes.status, 200);
+
+  const loginRes = await fetch(`${API_BASE}/identity/login`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email: adultEmail, password: TEST_PASSWORD }),
+  });
+  const loginData = await loginRes.json();
+  assert.equal(loginRes.status, 200);
+  const accessToken = loginData.accessToken;
+  assert.ok(accessToken, 'Password login returns accessToken cleanly');
+
+  const ageRes = await fetch(`${API_BASE}/identity/age-check`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${accessToken}` },
+    body: JSON.stringify({ dateOfBirth: '2003-05-15' }),
+  });
+  const ageData = await ageRes.json();
+  assert.equal(ageRes.status, 200);
+  assert.equal(ageData.ageStatus, 'pending', 'Self-declared 18+ DOB stays pending manual review');
+  assert.equal(ageData.eligibility?.discoveryEligible, false);
+
+  const studentRes = await fetch(`${API_BASE}/identity/verify-student`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${accessToken}` },
+    body: JSON.stringify({ programmeFamily: 'data_science_applications', pathwayCode: 'diploma' }),
+  });
+  const studentData = await studentRes.json();
+  assert.equal(studentRes.status, 200);
+  assert.equal(studentData.studentStatus, 'pending', 'Student check enters pending manual review');
+  assert.equal(studentData.discoveryEligible, false);
+  console.log('[PASS] Adult age + student submissions stay pending review without auto-approval.');
+
+  // 3. Manual Reviewer Queue & Approval
+  const queueRes = await fetch(`${API_BASE}/verification-cases/pending`, {
+    headers: { 'x-smn-reviewer-key': REVIEWER_KEY, 'x-smn-reviewer-id': 'idflow_reviewer' },
+  });
+  assert.equal(queueRes.status, 200);
+  const queueJson = await queueRes.json();
+  assert.equal(queueJson.integrationMode, 'manual_review_only_no_external_provider');
+  const queueIds = new Set((queueJson.cases || []).map((c) => c.id));
+  assert.ok(queueIds.has(ageData.caseId) && queueIds.has(studentData.caseId));
+
+  for (const caseId of [ageData.caseId, studentData.caseId]) {
+    const revRes = await fetch(`${API_BASE}/verification-cases/${caseId}/decision`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-smn-reviewer-key': REVIEWER_KEY,
+        'x-smn-reviewer-id': 'idflow_reviewer',
+      },
+      body: JSON.stringify({ decision: 'approved' }),
+    });
+    assert.equal(revRes.status, 200);
+  }
+
+  const finalMeRes = await fetch(`${API_BASE}/identity/me`, {
+    headers: { Authorization: `Bearer ${accessToken}` },
+  });
+  const finalMe = await finalMeRes.json();
+  assert.equal(finalMeRes.status, 200);
+  assert.equal(finalMe.eligibility?.discoveryEligible, true);
+  assert.equal(finalMe.accountStatus, 'active');
+  console.log('[PASS] Authorised manual review unlocked discoveryEligible=true and accountStatus=active.\n');
+}
+
+testIdentityPipeline()
+  .catch((err) => {
+    console.error('FAILED:', err);
+    process.exitCode = 1;
+  })
+  .finally(async () => {
+    await prisma.account.deleteMany({ where: { email: { in: createdEmails } } }).catch(() => {});
+    await prisma.$disconnect();
+  });

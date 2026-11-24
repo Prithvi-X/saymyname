@@ -9,29 +9,82 @@ export interface JwtPayload {
   exp?: number;
 }
 
+const DEV_SYNTHETIC_JWT_SECRET = 'dev-synthetic-access-secret-do-not-use-in-prod';
+
 @Injectable()
 export class CryptoService {
   private readonly jwtSecret: string;
 
   constructor() {
-    this.jwtSecret = process.env.JWT_ACCESS_SECRET || 'dev-synthetic-access-secret-do-not-use-in-prod';
+    const configured = process.env.JWT_ACCESS_SECRET;
+    if (
+      process.env.NODE_ENV === 'production' &&
+      (!configured || configured === DEV_SYNTHETIC_JWT_SECRET || configured.length < 24)
+    ) {
+      throw new Error('JWT_ACCESS_SECRET must be set securely in production.');
+    }
+    this.jwtSecret = configured || DEV_SYNTHETIC_JWT_SECRET;
   }
 
   /**
-   * Secure password hashing using PBKDF2 with SHA-512 and salt
+   * Secure password hashing using PBKDF2-HMAC-SHA512 (100,000 iterations + per-hash random salt)
    */
   hashPassword(password: string): string {
     const salt = crypto.randomBytes(16).toString('hex');
-    const hash = crypto.pbkdf2Sync(password, salt, 10000, 64, 'sha512').toString('hex');
-    return `${salt}:${hash}`;
+    const hash = crypto.pbkdf2Sync(password, salt, 100000, 64, 'sha512').toString('hex');
+    return `pbkdf2$100000$${salt}$${hash}`;
   }
 
   verifyPassword(password: string, storedHash: string): boolean {
+    if (!storedHash || typeof storedHash !== 'string') return false;
+
+    if (storedHash.startsWith('pbkdf2$')) {
+      const parts = storedHash.split('$');
+      if (parts.length !== 4) return false;
+      const iterations = Number(parts[1]);
+      const salt = parts[2];
+      const originalHash = parts[3];
+      if (!Number.isFinite(iterations) || iterations < 10000 || !salt || !originalHash) {
+        return false;
+      }
+      const derived = crypto
+        .pbkdf2Sync(password, salt, iterations, 64, 'sha512')
+        .toString('hex');
+      const a = Buffer.from(derived, 'utf8');
+      const b = Buffer.from(originalHash, 'utf8');
+      return a.length === b.length && crypto.timingSafeEqual(a, b);
+    }
+
+    // Legacy 2-part format compatibility (10,000 iterations)
     const parts = storedHash.split(':');
     if (parts.length !== 2) return false;
     const [salt, originalHash] = parts;
-    const hash = crypto.pbkdf2Sync(password, salt, 10000, 64, 'sha512').toString('hex');
-    return crypto.timingSafeEqual(Buffer.from(hash), Buffer.from(originalHash));
+    const derived = crypto.pbkdf2Sync(password, salt, 10000, 64, 'sha512').toString('hex');
+    const a = Buffer.from(derived, 'utf8');
+    const b = Buffer.from(originalHash, 'utf8');
+    return a.length === b.length && crypto.timingSafeEqual(a, b);
+  }
+
+  /**
+   * Server-keyed HMAC for short-lived numeric OTP challenges (prevents offline brute-forcing if DB rows leak)
+   */
+  hashChallengeCode(code: string, email: string, purpose = 'email_verification'): string {
+    return crypto
+      .createHmac('sha256', this.jwtSecret)
+      .update(`${purpose}:${email.toLowerCase().trim()}:${code}`)
+      .digest('hex');
+  }
+
+  verifyChallengeCode(
+    code: string,
+    email: string,
+    expectedHash: string,
+    purpose = 'email_verification',
+  ): boolean {
+    const computed = this.hashChallengeCode(code, email, purpose);
+    const a = Buffer.from(computed, 'utf8');
+    const b = Buffer.from(expectedHash, 'utf8');
+    return a.length === b.length && crypto.timingSafeEqual(a, b);
   }
 
   /**
@@ -55,9 +108,13 @@ export class CryptoService {
   }
 
   /**
-   * Verify and decode HMAC-SHA256 JWT
+   * Verify and decode HMAC-SHA256 JWT (timing-safe length guard)
    */
   verifyJwt(token: string): JwtPayload {
+    if (!token || typeof token !== 'string') {
+      throw new UnauthorizedException('Invalid token format');
+    }
+
     const parts = token.split('.');
     if (parts.length !== 3) {
       throw new UnauthorizedException('Invalid token format');
@@ -67,7 +124,9 @@ export class CryptoService {
     const dataToSign = `${encodedHeader}.${encodedPayload}`;
     const expectedSignature = this.hmacSha256(dataToSign, this.jwtSecret);
 
-    if (!crypto.timingSafeEqual(Buffer.from(signature), Buffer.from(expectedSignature))) {
+    const sigBuf = Buffer.from(signature, 'utf8');
+    const expBuf = Buffer.from(expectedSignature, 'utf8');
+    if (sigBuf.length !== expBuf.length || !crypto.timingSafeEqual(sigBuf, expBuf)) {
       throw new UnauthorizedException('Invalid token signature');
     }
 

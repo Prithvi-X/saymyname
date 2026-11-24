@@ -1,5 +1,19 @@
 // End-to-End Test for Phase 4 (Calling, Voice Notes) & Phase 5/6 (Together Space, Games, Virtual Dates, Relationship Mode)
-const BASE_URL = 'http://localhost:4000/api/v1';
+// Updated for Phase 2 Password + DB OTP + Manual ReviewerGuard Verification Flow (D-P2-01..D-P2-05).
+import { PrismaClient } from '@prisma/client';
+
+const BASE_URL = (process.env.API_BASE || 'http://127.0.0.1:4000/api/v1').replace(/\/$/, '');
+const REVIEWER_KEY = process.env.REVIEWER_API_KEY || 'test-reviewer-secret-key-min-16';
+
+if (process.env.DATABASE_URL) {
+  const host = new URL(process.env.DATABASE_URL).hostname;
+  if (!['localhost', '127.0.0.1'].includes(host)) {
+    throw new Error(`SAFETY ABORT: Non-localhost DATABASE_URL host "${host}" rejected.`);
+  }
+}
+
+const prisma = new PrismaClient();
+const createdEmails = [];
 
 async function request(path, options = {}) {
   const { headers, ...restOptions } = options;
@@ -17,20 +31,26 @@ async function request(path, options = {}) {
 }
 
 async function run() {
-  console.log('--- Testing Phase 4 Calling & Phase 5/6 Together Space Endpoints ---');
+  console.log(`--- Testing Phase 4 Calling & Phase 5/6 Together Space Endpoints against ${BASE_URL} ---`);
 
-  // Step 1: Login user A
-  const emailA = 'ananya.iyer@study.iitm.ac.in';
-  await request('/identity/register', {
+  // Step 1: Register + Verify persistent devOtp + Manual Reviewer Approval -> Active Member
+  const emailA = `phase4.flow.${Date.now()}@study.iitm.ac.in`;
+  const passwordA = 'StrongPassword123!';
+  createdEmails.push(emailA);
+
+  const regResA = await request('/identity/register', {
     method: 'POST',
-    body: JSON.stringify({ email: emailA, password: 'StrongPassword123!' }),
+    body: JSON.stringify({ email: emailA, password: passwordA, displayName: 'Phase4 Member' }),
   });
+  if (!regResA.ok || !regResA.data.devOtp) {
+    console.error('Failed to register User A (ensure EXPOSE_DEV_OTP=true locally):', regResA.data);
+    process.exit(1);
+  }
 
   const otpResA = await request('/identity/verify-otp', {
     method: 'POST',
-    body: JSON.stringify({ email: emailA, otp: '123456' }),
+    body: JSON.stringify({ email: emailA, otp: regResA.data.devOtp }),
   });
-
   if (!otpResA.ok) {
     console.error('Failed to authenticate User A:', otpResA.data);
     process.exit(1);
@@ -40,29 +60,56 @@ async function run() {
   const userAId = otpResA.data.account.id;
   console.log(`[PASS] User A authenticated: ${userAId}`);
 
-  // Complete age and student verification
-  await request('/identity/age-check', {
+  // Submit pending age & student verification cases, then approve via ReviewerGuard
+  const ageRes = await request('/identity/age-check', {
     method: 'POST',
     headers: { Authorization: `Bearer ${tokenA}` },
     body: JSON.stringify({ dateOfBirth: '2002-05-14' }),
   });
+  if (!ageRes.ok || !ageRes.data.caseId) {
+    console.error('[FAIL] Age check submission failed:', ageRes.data);
+    process.exit(1);
+  }
 
   const studentRes = await request('/identity/verify-student', {
     method: 'POST',
     headers: { Authorization: `Bearer ${tokenA}` },
     body: JSON.stringify({
       programmeFamily: 'data_science_applications',
+      pathwayCode: 'diploma',
       studentRollNo: '21F1000123',
     }),
   });
-
-  if (studentRes.ok && (studentRes.data.accessToken || studentRes.data.session?.accessToken)) {
-    tokenA = studentRes.data.accessToken || studentRes.data.session?.accessToken;
-    console.log(`[PASS] Student verification complete, updated token acquired with discoveryEligible=true`);
-  } else {
-    console.error('[FAIL] Student verification failed:', studentRes.data);
+  if (!studentRes.ok || !studentRes.data.caseId) {
+    console.error('[FAIL] Student verification submission failed:', studentRes.data);
     process.exit(1);
   }
+
+  for (const caseId of [ageRes.data.caseId, studentRes.data.caseId]) {
+    const revRes = await request(`/verification-cases/${caseId}/decision`, {
+      method: 'POST',
+      headers: {
+        'x-smn-reviewer-key': REVIEWER_KEY,
+        'x-smn-reviewer-id': 'phase4_test_reviewer',
+      },
+      body: JSON.stringify({ decision: 'approved' }),
+    });
+    if (!revRes.ok) {
+      console.error(`[FAIL] Reviewer decision failed for ${caseId}:`, revRes.data);
+      process.exit(1);
+    }
+  }
+
+  const loginResA = await request('/identity/login', {
+    method: 'POST',
+    body: JSON.stringify({ email: emailA, password: passwordA }),
+  });
+  if (!loginResA.ok || !loginResA.data.accessToken || !loginResA.data.account?.eligibility?.discoveryEligible) {
+    console.error('[FAIL] Re-login after reviewer approval failed:', loginResA.data);
+    process.exit(1);
+  }
+  tokenA = loginResA.data.accessToken;
+  console.log(`[PASS] Reviewer verification complete, active session acquired with discoveryEligible=true`);
 
   // Step 2: Test Voice Note Presign
   console.log('\n[TEST] 1. Voice Note Presign URL');
@@ -292,7 +339,12 @@ async function run() {
   console.log('\n🎉 ALL Phase 4 & 5/6 Endpoints Verified 100% Successfully!');
 }
 
-run().catch((err) => {
-  console.error('Unhandled error in test:', err);
-  process.exit(1);
-});
+run()
+  .catch((err) => {
+    console.error('Unhandled error in test:', err);
+    process.exitCode = 1;
+  })
+  .finally(async () => {
+    await prisma.account.deleteMany({ where: { email: { in: createdEmails } } }).catch(() => {});
+    await prisma.$disconnect();
+  });

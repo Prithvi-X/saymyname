@@ -17,8 +17,22 @@
  *    - Missing/broken images trigger architectural fallback
  */
 
-const WEB_BASE = 'http://localhost:3000';
-const API_BASE = 'http://localhost:4000/api/v1';
+import { PrismaClient } from '@prisma/client';
+
+const WEB_BASE = process.env.WEB_BASE || 'http://127.0.0.1:3001';
+const API_BASE = process.env.API_BASE || 'http://127.0.0.1:4000/api/v1';
+const REVIEWER_KEY = process.env.REVIEWER_API_KEY || 'test-reviewer-secret-key-min-16';
+const TEST_PASSWORD = 'Password123!';
+
+if (process.env.DATABASE_URL) {
+  const host = new URL(process.env.DATABASE_URL).hostname;
+  if (!['localhost', '127.0.0.1'].includes(host)) {
+    throw new Error(`SAFETY ABORT: Non-localhost DATABASE_URL host "${host}" rejected.`);
+  }
+}
+
+const prisma = new PrismaClient();
+let createdTestEmail = null;
 
 const results = [];
 
@@ -35,6 +49,7 @@ async function runTests() {
 
   let testAuthToken = null;
   const testStudentEmail = `student_${Date.now()}@ds.study.iitm.ac.in`;
+  createdTestEmail = testStudentEmail;
 
   // --------------------------------------------------------------------------
   // SECTION 1: IDENTITY & PRIVATE IDENTIFIER SECURITY
@@ -49,7 +64,7 @@ async function runTests() {
       body: JSON.stringify({
         email: testStudentEmail,
         displayName: 'Test Candidate',
-        password: 'Password123!',
+        password: TEST_PASSWORD,
       }),
     });
     const regData = await regRes.json();
@@ -57,7 +72,7 @@ async function runTests() {
     const otpRes = await fetch(`${API_BASE}/identity/verify-otp`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email: testStudentEmail, otp: regData.syntheticOtp || '123456' }),
+      body: JSON.stringify({ email: testStudentEmail, otp: regData.devOtp }),
     });
     const otpData = await otpRes.json();
     testAuthToken = otpData.accessToken;
@@ -76,9 +91,10 @@ async function runTests() {
       headers: { Authorization: `Bearer ${testAuthToken}` },
     });
     const meData = await meRes.json();
-    const hasRollNumber = /^\d{2}[a-zA-Z]\d+$/.test(meData.displayName || '') || (meData.displayName || '').includes('@');
+    const displayName = meData.account?.displayName ?? meData.displayName ?? '';
+    const hasRollNumber = /^\d{2}[a-zA-Z]\d+$/.test(displayName) || displayName.includes('@');
     const passed = meRes.status === 200 && !hasRollNumber;
-    recordTest('IDENT-002', 'IDENTITY', 'GET /identity/me strictly excludes roll numbers from displayName', passed, `displayName: ${meData.displayName}`);
+    recordTest('IDENT-002', 'IDENTITY', 'GET /identity/me strictly excludes roll numbers from displayName', passed, `displayName: ${displayName}`);
   } catch (err) {
     recordTest('IDENT-002', 'IDENTITY', 'GET /identity/me strictly excludes roll numbers', false, err.message);
   }
@@ -91,7 +107,7 @@ async function runTests() {
         'Content-Type': 'application/json',
         Authorization: `Bearer ${testAuthToken}`,
       },
-      body: JSON.stringify({ displayName: '26f1001842' }),
+      body: JSON.stringify({ displayName: '99f0000001' }),
     });
     const passed = putRes.status === 400;
     recordTest('IDENT-003', 'IDENTITY', 'PUT /profiles/me rejects roll number format as displayName', passed, `status: ${putRes.status}`);
@@ -157,20 +173,46 @@ async function runTests() {
   // --------------------------------------------------------------------------
   console.log('\n--- 2. Public Profile Serialization & Allowlist Tests ---');
 
-  // Complete age and student verification to enable discovery
-  await fetch(`${API_BASE}/identity/age-check`, {
+  // Complete age and student verification + manual ReviewerGuard approval + fresh login to enable discovery
+  const ageRes = await fetch(`${API_BASE}/identity/age-check`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${testAuthToken}` },
     body: JSON.stringify({ dateOfBirth: '2001-05-15' }),
   });
+  const ageData = await ageRes.json();
+
   const studentRes = await fetch(`${API_BASE}/identity/verify-student`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${testAuthToken}` },
-    body: JSON.stringify({ programmeFamily: 'data_science_applications', studentRollNo: '21F1009999' }),
+    body: JSON.stringify({
+      programmeFamily: 'data_science_applications',
+      pathwayCode: 'diploma',
+      studentRollNo: '21F1009999',
+    }),
   });
   const studentData = await studentRes.json();
-  if (studentData.accessToken) {
-    testAuthToken = studentData.accessToken;
+
+  for (const caseId of [ageData.caseId, studentData.caseId]) {
+    if (!caseId) continue;
+    await fetch(`${API_BASE}/verification-cases/${caseId}/decision`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-smn-reviewer-key': REVIEWER_KEY,
+        'x-smn-reviewer-id': 'phase11_reviewer',
+      },
+      body: JSON.stringify({ decision: 'approved' }),
+    });
+  }
+
+  const reLoginRes = await fetch(`${API_BASE}/identity/login`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email: testStudentEmail, password: TEST_PASSWORD }),
+  });
+  const reLoginData = await reLoginRes.json();
+  if (reLoginData.accessToken) {
+    testAuthToken = reLoginData.accessToken;
   }
 
   // PRIV-001: Candidate serialization excludes confidential fields
@@ -253,7 +295,14 @@ async function runTests() {
   }
 }
 
-runTests().catch((err) => {
-  console.error('Test execution failed:', err);
-  process.exitCode = 1;
-});
+runTests()
+  .catch((err) => {
+    console.error('Test execution failed:', err);
+    process.exitCode = 1;
+  })
+  .finally(async () => {
+    if (createdTestEmail) {
+      await prisma.account.deleteMany({ where: { email: createdTestEmail } }).catch(() => {});
+    }
+    await prisma.$disconnect();
+  });

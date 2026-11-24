@@ -7,7 +7,12 @@ const nextConfig = {
     cpus: 1,
   },
   async rewrites() {
-    const backendUrl = process.env.API_BACKEND_URL || 'https://saymyname-ri9e.onrender.com';
+    const defaultLocal = 'http://127.0.0.1:4000';
+    const backendUrl =
+      process.env.API_BACKEND_URL ||
+      (process.env.NODE_ENV === 'production'
+        ? process.env.NEXT_PUBLIC_API_ORIGIN || defaultLocal
+        : defaultLocal);
     return [
       {
         source: '/api/v1/:path*',

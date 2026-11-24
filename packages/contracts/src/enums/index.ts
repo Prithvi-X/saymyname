@@ -21,9 +21,44 @@ export enum AccountStatus {
 export enum VerificationStatus {
   NOT_STARTED = 'not_started',
   PENDING = 'pending',
+  IN_REVIEW = 'in_review',
   APPROVED = 'approved',
   NEEDS_INFORMATION = 'needs_information',
   REJECTED = 'rejected',
+  EXPIRED = 'expired',
+}
+
+export enum PathwayCode {
+  FOUNDATION = 'foundation',
+  DIPLOMA = 'diploma',
+  DEGREE = 'degree',
+}
+
+export enum ProfileStatus {
+  DRAFT = 'draft',
+  READY_FOR_REVIEW = 'ready_for_review',
+  LIVE = 'live',
+  PAUSED = 'paused',
+  RESTRICTED = 'restricted',
+  REMOVED = 'removed',
+}
+
+export enum VerificationCheckType {
+  AGE = 'age',
+  STUDENT_ENROLMENT = 'student_enrolment',
+}
+
+export enum AccountLifecycleState {
+  UNAUTHENTICATED = 'UNAUTHENTICATED',
+  EMAIL_PENDING = 'EMAIL_PENDING',
+  AGE_VERIFICATION = 'AGE_VERIFICATION',
+  STUDENT_VERIFICATION = 'STUDENT_VERIFICATION',
+  VERIFICATION_PENDING = 'VERIFICATION_PENDING',
+  VERIFICATION_NEEDS_INFORMATION = 'VERIFICATION_NEEDS_INFORMATION',
+  VERIFICATION_REJECTED = 'VERIFICATION_REJECTED',
+  PROFILE_INCOMPLETE = 'PROFILE_INCOMPLETE',
+  ACTIVE_MEMBER = 'ACTIVE_MEMBER',
+  SUSPENDED = 'SUSPENDED',
 }
 
 export enum MatchStatus {

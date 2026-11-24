@@ -1,77 +1,62 @@
-const BASE_URL = 'http://localhost:4000/api/v1';
+/**
+ * Phase 2 External Adapter Readiness Check (Resend & R2)
+ *
+ * SAFETY DEFAULT (D-P2-05):
+ * - Runs non-destructive preflight checks only unless BOTH `--confirm-live-quota`
+ *   AND `ALLOW_LIVE_STAGING_SMOKE=true` are explicitly passed.
+ * - Uses password auth + `devOtp` (or manual inbox code), never retired `123456` / `syntheticOtp`.
+ */
+import assert from 'node:assert/strict';
+
+const API_BASE = (process.env.API_BASE || 'http://127.0.0.1:4000/api/v1').replace(/\/$/, '');
+const LIVE_CONFIRMED =
+  process.argv.includes('--confirm-live-quota') &&
+  process.env.ALLOW_LIVE_STAGING_SMOKE === 'true';
 
 async function testLiveAdapters() {
-  console.log('--- Testing Live API Adapters (Resend & Cloudflare R2) ---');
+  const healthRes = await fetch(`${API_BASE}/health`);
+  assert.equal(healthRes.status, 200, 'API /health must respond 200');
+  console.log(`[PASS] API health check passed at ${API_BASE}/health.`);
 
-  // 1. Health probe
-  const healthRes = await fetch(`${BASE_URL}/health`);
-  console.log('[1/3] Health probe status:', healthRes.status, await healthRes.json());
-
-  // 2. Register with institutional email to trigger real Resend dispatch
-  const studentEmail = '21f1000123@study.iitm.ac.in';
-  console.log(`[2/3] Calling POST /identity/register for "${studentEmail}"...`);
-  const regRes = await fetch(`${BASE_URL}/identity/register`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      email: studentEmail,
-      displayName: 'Priya Iyer',
-      password: 'StrongStudentPass123!',
-    }),
-  });
-  const regData = await regRes.json();
-  console.log('Register response status:', regRes.status);
-  console.log('Register response payload:', regData);
-
-  // 3. Authenticate and test R2 Photo Pre-signing
-  const otpRes = await fetch(`${BASE_URL}/identity/verify-otp`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      email: studentEmail,
-      otp: regData.syntheticOtp || '123456',
-    }),
-  });
-  const otpData = await otpRes.json();
-  const token = otpData.accessToken;
-
-  console.log(`[3/3] Calling POST /profiles/me/photos/presign...`);
-  const presignRes = await fetch(`${BASE_URL}/profiles/me/photos/presign`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${token}`,
-    },
-    body: JSON.stringify({
-      filename: 'campus_photo.jpg',
-      mimeType: 'image/jpeg',
-    }),
-  });
-  const presignData = await presignRes.json();
-  console.log('Photo presign status:', presignRes.status);
-  console.log('Photo presign response:', presignData);
-
-  const isR2Url = presignData.uploadUrl && presignData.uploadUrl.includes('r2.cloudflarestorage.com');
-  console.log('Is live Cloudflare R2 Signed URL?', isR2Url ? 'YES! [VERIFIED]' : 'Fallback mock');
-
-  // 4. Test actual PUT upload to the pre-signed R2 URL!
-  if (isR2Url) {
-    console.log('[4/4] Uploading binary test JPEG to Cloudflare R2 via pre-signed URL...');
-    const dummyJpeg = Buffer.from([0xff, 0xd8, 0xff, 0xe0, 0x00, 0x10, 0x4a, 0x46, 0x49, 0x46]);
-    const uploadRes = await fetch(presignData.uploadUrl, {
-      method: 'PUT',
-      headers: {
-        'Content-Type': 'image/jpeg',
-      },
-      body: dummyJpeg,
-    });
-    console.log('Cloudflare R2 PUT response status:', uploadRes.status);
-    if (uploadRes.status === 200) {
-      console.log('🎉 DIRECT CLIENT UPLOAD TO CLOUDFLARE R2 VERIFIED 100%!');
-    }
+  if (!LIVE_CONFIRMED) {
+    console.log(
+      '[DRY-RUN] Skipping live Resend email dispatch and live Cloudflare R2 PUT/presign test (no external quota spent).\n' +
+        'Run `node scripts/smoke-staging-resend-r2.mjs` or pass `--confirm-live-quota` with `ALLOW_LIVE_STAGING_SMOKE=true` after approval.',
+    );
+    return;
   }
 
-  console.log('\n🎉 Live Adapter Verification Complete!');
+  const studentEmail = process.env.SMOKE_EMAIL;
+  if (!studentEmail || !studentEmail.endsWith('study.iitm.ac.in')) {
+    throw new Error('SMOKE_EMAIL (@*.study.iitm.ac.in) must be provided for live adapter test.');
+  }
+
+  const password = `LiveAdapt-${Date.now()}-Pass!`;
+  const regRes = await fetch(`${API_BASE}/identity/register`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email: studentEmail, password, displayName: 'Adapter Smoke User' }),
+  });
+  const regData = await regRes.json();
+  console.log(`Register status=${regRes.status}`, { devOtpPresent: Boolean(regData.devOtp) });
+
+  const otpToUse = process.env.LIVE_EMAIL_OTP || regData.devOtp;
+  if (!otpToUse) {
+    console.log('[INFO] Production mode suppressed devOtp; supply LIVE_EMAIL_OTP from Resend inbox to finish token verification.');
+    return;
+  }
+
+  const otpRes = await fetch(`${API_BASE}/identity/verify-otp`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email: studentEmail, otp: otpToUse }),
+  });
+  const otpData = await otpRes.json();
+  assert.equal(otpRes.status, 200, `OTP verify failed: ${JSON.stringify(otpData)}`);
+  console.log('[PASS] Verified OTP without retired 123456 bypass.');
 }
 
-testLiveAdapters().catch(console.error);
+testLiveAdapters().catch((err) => {
+  console.error('FAILED:', err);
+  process.exit(1);
+});

@@ -2,6 +2,8 @@ import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { PrismaModule } from './prisma/prisma.module';
 import { HealthModule } from './modules/health/health.module';
+import { SecurityModule } from './modules/identity/security/security.module';
+import { VerificationModule } from './modules/verification/verification.module';
 import { IdentityModule } from './modules/identity/identity.module';
 import { ProfilesModule } from './modules/profiles/profiles.module';
 import { DatingModule } from './modules/dating/dating.module';
@@ -17,6 +19,8 @@ import { TogetherModule } from './modules/together/together.module';
       envFilePath: ['.env.local', 'services/api/.env.local', '.env'],
     }),
     PrismaModule,
+    SecurityModule,
+    VerificationModule,
     HealthModule,
     IdentityModule,
     ProfilesModule,

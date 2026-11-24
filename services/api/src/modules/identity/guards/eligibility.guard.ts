@@ -3,16 +3,55 @@ import {
   CanActivate,
   ExecutionContext,
   ForbiddenException,
+  Optional,
 } from '@nestjs/common';
+import { PrismaService } from '../../../prisma/prisma.service';
 
 @Injectable()
 export class EligibilityGuard implements CanActivate {
-  canActivate(context: ExecutionContext): boolean {
+  constructor(@Optional() private readonly prisma?: PrismaService) {}
+
+  async canActivate(context: ExecutionContext): Promise<boolean> {
     const request = context.switchToHttp().getRequest();
     const user = request.user;
 
-    if (!user) {
+    if (!user || !user.sub) {
       throw new ForbiddenException('User context not found');
+    }
+
+    // Check authoritative PostgreSQL state when PrismaService is active
+    if (this.prisma && typeof this.prisma.account?.findUnique === 'function') {
+      const account = await this.prisma.account
+        .findUnique({
+          where: { id: user.sub },
+          select: {
+            accountStatus: true,
+            deletedAt: true,
+            eligibility: {
+              select: {
+                ageStatus: true,
+                studentStatus: true,
+                discoveryEligible: true,
+              },
+            },
+          },
+        })
+        .catch(() => null);
+
+      if (account) {
+        const ok =
+          !account.deletedAt &&
+          account.accountStatus === 'active' &&
+          account.eligibility?.discoveryEligible === true &&
+          account.eligibility?.ageStatus === 'approved' &&
+          account.eligibility?.studentStatus === 'approved';
+        if (!ok) {
+          throw new ForbiddenException(
+            'Dating capabilities require verified 18+ age and approved IIT Madras BS student eligibility',
+          );
+        }
+        return true;
+      }
     }
 
     if (!user.discoveryEligible) {

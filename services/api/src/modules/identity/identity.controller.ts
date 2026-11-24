@@ -17,11 +17,15 @@ import {
 import { IdentityService } from './identity.service';
 import {
   RegisterDto,
-  RequestLoginOtpDto,
+  LoginDto,
   VerifyOtpDto,
+  ResendOtpDto,
+  ForgotPasswordDto,
+  ResetPasswordDto,
   AgeCheckDto,
   VerifyStudentDto,
   RefreshTokenDto,
+  RevokeOtherSessionsDto,
 } from './dto/identity.dto';
 import { JwtAuthGuard, AuthenticatedRequest } from './guards/jwt-auth.guard';
 
@@ -30,37 +34,58 @@ import { JwtAuthGuard, AuthenticatedRequest } from './guards/jwt-auth.guard';
 export class IdentityController {
   constructor(private readonly identityService: IdentityService) {}
 
-  @Post('login')
-  @HttpCode(HttpStatus.OK)
-  @ApiOperation({
-    summary: 'Member Login: Request OTP code for institutional @*.study.iitm.ac.in email',
-  })
-  @ApiResponse({ status: 200, description: 'Login code dispatched to institutional email' })
-  @ApiResponse({ status: 400, description: 'Invalid institutional email domain' })
-  requestLoginOtp(@Body() dto: RequestLoginOtpDto) {
-    return this.identityService.requestLoginOtp(dto.email);
-  }
-
   @Post('register')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
-    summary: 'Step 1: Register with institutional @*.study.iitm.ac.in email',
+    summary: 'Step 1: Register with approved IITM non-campus BS email & password',
   })
-  @ApiResponse({ status: 200, description: 'OTP sent to IITM institutional email' })
-  @ApiResponse({ status: 400, description: 'Invalid institutional email domain' })
+  @ApiResponse({ status: 200, description: 'Email verification OTP dispatched' })
+  @ApiResponse({ status: 400, description: 'Invalid institutional email domain or payload' })
   register(@Body() dto: RegisterDto) {
     return this.identityService.register(dto);
+  }
+
+  @Post('login')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'Member Login: Authenticate using verified institutional email & password',
+  })
+  @ApiResponse({ status: 200, description: 'Authenticated session returned' })
+  @ApiResponse({ status: 401, description: 'Invalid email or password' })
+  login(@Body() dto: LoginDto) {
+    return this.identityService.login(dto);
   }
 
   @Post('verify-otp')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
-    summary: 'Step 2: Verify 6-digit email OTP and obtain initial session',
+    summary: 'Step 2: Verify 6-digit email OTP against persistent challenge and obtain session',
   })
-  @ApiResponse({ status: 200, description: 'OTP verified, session returned' })
-  @ApiResponse({ status: 401, description: 'Invalid or expired OTP' })
+  @ApiResponse({ status: 200, description: 'Email verified, session returned' })
+  @ApiResponse({ status: 401, description: 'Invalid or expired verification code' })
   verifyOtp(@Body() dto: VerifyOtpDto) {
     return this.identityService.verifyOtp(dto);
+  }
+
+  @Post('resend-otp')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Resend email verification OTP respecting cooldown' })
+  resendOtp(@Body() dto: ResendOtpDto) {
+    return this.identityService.resendOtp(dto.email);
+  }
+
+  @Post('forgot-password')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Request password reset link for institutional email' })
+  forgotPassword(@Body() dto: ForgotPasswordDto) {
+    return this.identityService.forgotPassword(dto);
+  }
+
+  @Post('reset-password')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Complete password reset using single-use token' })
+  resetPassword(@Body() dto: ResetPasswordDto) {
+    return this.identityService.resetPassword(dto);
   }
 
   @Post('age-check')
@@ -68,9 +93,9 @@ export class IdentityController {
   @ApiBearerAuth()
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
-    summary: 'Step 3: Age Verification Gate (Strict 18+ Boundary)',
+    summary: 'Step 3: Submit 18+ age eligibility screen (pending verification review)',
   })
-  @ApiResponse({ status: 200, description: 'Age verified (18+)' })
+  @ApiResponse({ status: 200, description: 'Age case created and queued for review' })
   @ApiResponse({ status: 403, description: 'Under-18 rejected' })
   checkAge(@Req() req: AuthenticatedRequest, @Body() dto: AgeCheckDto) {
     return this.identityService.checkAge(req.user.sub, dto);
@@ -81,10 +106,10 @@ export class IdentityController {
   @ApiBearerAuth()
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
-    summary: 'Step 4: Verify enrollment in 1 of 4 approved IITM BS programme tracks',
+    summary: 'Step 4: Submit IITM non-campus BS student enrolment verification case',
   })
-  @ApiResponse({ status: 200, description: 'Programme verified, dating capabilities unlocked' })
-  @ApiResponse({ status: 400, description: 'Invalid programme family' })
+  @ApiResponse({ status: 200, description: 'Student verification case queued for review' })
+  @ApiResponse({ status: 400, description: 'Invalid programme track or pathway' })
   verifyStudent(@Req() req: AuthenticatedRequest, @Body() dto: VerifyStudentDto) {
     return this.identityService.verifyStudent(req.user.sub, dto);
   }
@@ -106,11 +131,20 @@ export class IdentityController {
     return this.identityService.logout(dto.refreshToken);
   }
 
+  @Post('sessions/revoke-others')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Revoke all other active sessions for this account' })
+  revokeOthers(@Req() req: AuthenticatedRequest, @Body() dto: RevokeOtherSessionsDto) {
+    return this.identityService.revokeOtherSessions(req.user.sub, dto.currentRefreshToken);
+  }
+
   @Get('me')
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
-  @ApiOperation({ summary: 'Get current authenticated account and eligibility state' })
-  @ApiResponse({ status: 200, description: 'Account, eligibility, and profile data' })
+  @ApiOperation({ summary: 'Get current authenticated account, lifecycle state, and eligibility' })
+  @ApiResponse({ status: 200, description: 'Account, lifecycleState, eligibility, and profile data' })
   getMe(@Req() req: AuthenticatedRequest) {
     return this.identityService.getMe(req.user.sub);
   }

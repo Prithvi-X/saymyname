@@ -11,6 +11,7 @@ const config: Config = {
     extend: {
       colors: {
         void: '#0B0D10',
+        stage: '#0B0D10',
         coal: '#12161B',
         iron: '#1A2027',
         slate: '#252D37',

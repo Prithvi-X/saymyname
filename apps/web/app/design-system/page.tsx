@@ -24,7 +24,7 @@ export default function DesignSystemPage() {
   const [selectedConcept, setSelectedConcept] = useState<'A' | 'B' | 'C'>('A');
   const [activeTab, setActiveTab] = useState('all');
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [testInputValue, setTestInputValue] = useState('26f1001842@ds.study.iitm.ac.in');
+  const [testInputValue, setTestInputValue] = useState('synthetic.learner@study.iitm.ac.in');
 
   const colorTokens = [
     { name: 'Void', token: '--smn-stage', hex: '#0B0D10', role: 'Primary page stage', contrast: 'Stage Background' },

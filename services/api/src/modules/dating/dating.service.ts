@@ -1,10 +1,14 @@
-import { Injectable, BadRequestException, NotFoundException } from '@nestjs/common';
+import { Injectable, BadRequestException, NotFoundException, Optional } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
+import { ProfilesService } from '../profiles/profiles.service';
 import { LikeCandidateDto, PassCandidateDto, UnmatchDto } from './dto/dating.dto';
 
 @Injectable()
 export class DatingService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    @Optional() private readonly profilesService?: ProfilesService,
+  ) {}
 
   /**
    * 1. Get Discovery Candidates Feed
@@ -39,44 +43,64 @@ export class DatingService {
       ...passes.map((p) => p.toAccountId),
     ]);
 
-    // 3. Query real eligible profiles from database
+    // 3. Query verified, published profiles with >= 1 genuine portrait photo
     const dbProfiles = await this.prisma.profile.findMany({
       where: {
         accountId: { notIn: Array.from(excludedIds) },
         isPublished: true,
         isPaused: false,
+        profileStatus: 'live',
+        photos: { some: { deletedAt: null } },
         account: {
           accountStatus: 'active',
-          eligibility: { discoveryEligible: true },
+          deletedAt: null,
+          eligibility: {
+            ageStatus: 'approved',
+            studentStatus: 'approved',
+            discoveryEligible: true,
+          },
         },
       },
       include: {
-        photos: { orderBy: { displayOrder: 'asc' } },
+        photos: { where: { deletedAt: null }, orderBy: { displayOrder: 'asc' } },
         interests: { include: { interest: true } },
         promptAnswers: { include: { prompt: true } },
       },
       take: 20,
     }).catch(() => []);
 
-    const candidates = dbProfiles.map((p) => {
-      const isPrivate = !p.displayName || /^\d{2}[a-zA-Z]\d+$/i.test(p.displayName) || p.displayName.includes('@') || /^[0-9a-f-]{36}$/i.test(p.displayName);
-      const safeDisplayName = isPrivate ? 'Member' : p.displayName;
-      return {
-        profileId: p.id,
-        accountId: p.accountId,
-        displayName: safeDisplayName,
-        age: 22,
-        programmeFamily: p.programmeFamily,
-        termOrYear: p.termOrYear,
-        locationCity: p.locationCity,
-        locationState: p.locationState,
-        bio: p.bio,
-        intention: p.intention,
-        interests: p.interests.map((i) => i.interest.name),
-        photos: p.photos,
-        promptAnswers: p.promptAnswers.map((pa) => ({ promptText: pa.prompt.promptText, answerText: pa.answerText })),
-      };
-    });
+    const candidates = await Promise.all(
+      dbProfiles.map(async (p) => {
+        const isPrivate =
+          !p.displayName ||
+          /^\d{2}[a-zA-Z]\d+$/i.test(p.displayName) ||
+          p.displayName.includes('@') ||
+          /^[0-9a-f-]{36}$/i.test(p.displayName);
+        const safeDisplayName = isPrivate ? 'Member' : p.displayName;
+        const hydrated = this.profilesService
+          ? await this.profilesService.hydrateProfileMedia(p)
+          : p;
+
+        return {
+          profileId: p.id,
+          accountId: p.accountId,
+          displayName: safeDisplayName,
+          age: null,
+          programmeFamily: p.programmeFamily,
+          termOrYear: p.termOrYear,
+          locationCity: p.locationCity,
+          locationState: p.locationState,
+          bio: p.bio,
+          intention: p.intention,
+          interests: p.interests.map((i) => i.interest.name),
+          photos: hydrated.photos,
+          promptAnswers: p.promptAnswers.map((pa) => ({
+            promptText: pa.prompt.promptText,
+            answerText: pa.answerText,
+          })),
+        };
+      }),
+    );
 
     return { candidates, count: candidates.length };
   }

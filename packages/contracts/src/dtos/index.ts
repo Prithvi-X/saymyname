@@ -2,6 +2,10 @@ import {
   ProgrammeFamily,
   AccountStatus,
   VerificationStatus,
+  PathwayCode,
+  ProfileStatus,
+  VerificationCheckType,
+  AccountLifecycleState,
   MatchStatus,
   MessageType,
   DeliveryState,
@@ -16,6 +20,7 @@ export interface AccountDto {
   id: string;
   email: string;
   accountStatus: AccountStatus;
+  emailVerifiedAt?: string | null;
   displayName?: string | null;
   createdAt: string;
 }
@@ -25,8 +30,36 @@ export interface AccountEligibilityDto {
   ageStatus: VerificationStatus;
   studentStatus: VerificationStatus;
   programmeFamily?: ProgrammeFamily | null;
+  pathwayCode?: PathwayCode | string | null;
   discoveryEligible: boolean;
+  ageVerifiedAt?: string | null;
+  studentVerifiedAt?: string | null;
+  validUntil?: string | null;
   verifiedAt?: string | null;
+}
+
+export interface VerificationCaseDto {
+  id: string;
+  checkType: VerificationCheckType | string;
+  providerCode: string;
+  status: VerificationStatus | string;
+  reasonCode?: string | null;
+  rejectionReason?: string | null;
+  submittedAt: string;
+  decidedAt?: string | null;
+  evidenceCount?: number;
+}
+
+export interface SafeAccountMeDto {
+  id: string;
+  email: string;
+  displayName: string | null;
+  accountStatus: AccountStatus | string;
+  emailVerified: boolean;
+  hasPassword: boolean;
+  lifecycleState: AccountLifecycleState;
+  eligibility: AccountEligibilityDto | null;
+  profile: ProfileDto | null;
 }
 
 export interface ProfileDto {
@@ -39,7 +72,12 @@ export interface ProfileDto {
   locationCity?: string | null;
   locationState?: string | null;
   intention?: string | null;
+  profileStatus?: ProfileStatus | string;
+  ageDisplayMode?: 'hidden' | 'show_calculated_age' | string;
+  publishedAt?: string | null;
+  consentAcceptedAt?: string | null;
   isPublished: boolean;
+  isPaused?: boolean;
   photos: ProfilePhotoDto[];
   interests: string[];
   promptAnswers: ProfilePromptAnswerDto[];
@@ -47,9 +85,10 @@ export interface ProfileDto {
 
 export interface ProfilePhotoDto {
   id: string;
-  photoUrl: string;
+  photoUrl?: string | null;
   displayOrder: number;
   isPrimary: boolean;
+  moderationStatus?: string;
 }
 
 export interface ProfilePromptAnswerDto {

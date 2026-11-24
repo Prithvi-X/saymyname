@@ -13,24 +13,64 @@ generator client {
 // ==========================================
 
 model Account {
-  id             String    @id @default(uuid()) @db.Uuid
-  authSubject    String    @unique @map("auth_subject") @db.Text
-  email          String    @unique @db.Text
-  phoneNumber    String?   @map("phone_number") @db.Text
-  accountStatus  String    @default("registered") @map("account_status") @db.Text
-  displayName    String?   @map("display_name") @db.Text
-  createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz
-  updatedAt      DateTime  @updatedAt @map("updated_at") @db.Timestamptz
-  deletedAt      DateTime? @map("deleted_at") @db.Timestamptz
+  id              String    @id @default(uuid()) @db.Uuid
+  authSubject     String    @unique @map("auth_subject") @db.Text
+  email           String    @unique @db.Text
+  passwordHash    String?   @map("password_hash") @db.Text
+  emailVerifiedAt DateTime? @map("email_verified_at") @db.Timestamptz
+  phoneNumber     String?   @map("phone_number") @db.Text
+  accountStatus   String    @default("registered") @map("account_status") @db.Text
+  displayName     String?   @map("display_name") @db.Text
+  createdAt       DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt       DateTime  @updatedAt @map("updated_at") @db.Timestamptz
+  deletedAt       DateTime? @map("deleted_at") @db.Timestamptz
 
-  eligibility       AccountEligibility?
-  profile           Profile?
-  sessions          AppSession[]
-  devices           UserDevice[]
-  notificationPref  NotificationPreference?
-  verificationCases VerificationCase[]
+  eligibility         AccountEligibility?
+  profile             Profile?
+  sessions            AppSession[]
+  devices             UserDevice[]
+  notificationPref    NotificationPreference?
+  verificationCases   VerificationCase[]
+  otpChallenges       OtpChallenge[]
+  passwordResetTokens PasswordResetToken[]
 
   @@map("accounts")
+  @@schema("identity")
+}
+
+model OtpChallenge {
+  id          String    @id @default(uuid()) @db.Uuid
+  accountId   String?   @map("account_id") @db.Uuid
+  email       String    @db.Text
+  purpose     String    @default("email_verification") @db.Text
+  codeHash    String    @map("code_hash") @db.Text
+  attempts    Int       @default(0)
+  maxAttempts Int       @default(5) @map("max_attempts")
+  expiresAt   DateTime  @map("expires_at") @db.Timestamptz
+  consumedAt  DateTime? @map("consumed_at") @db.Timestamptz
+  lastSentAt  DateTime  @default(now()) @map("last_sent_at") @db.Timestamptz
+  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz
+
+  account Account? @relation(fields: [accountId], references: [id], onDelete: Cascade)
+
+  @@index([email, purpose, createdAt])
+  @@index([expiresAt])
+  @@map("otp_challenges")
+  @@schema("identity")
+}
+
+model PasswordResetToken {
+  id         String    @id @default(uuid()) @db.Uuid
+  accountId  String    @map("account_id") @db.Uuid
+  tokenHash  String    @unique @map("token_hash") @db.Text
+  expiresAt  DateTime  @map("expires_at") @db.Timestamptz
+  consumedAt DateTime? @map("consumed_at") @db.Timestamptz
+  createdAt  DateTime  @default(now()) @map("created_at") @db.Timestamptz
+
+  account Account @relation(fields: [accountId], references: [id], onDelete: Cascade)
+
+  @@index([accountId, expiresAt])
+  @@map("password_reset_tokens")
   @@schema("identity")
 }
 
@@ -39,7 +79,11 @@ model AccountEligibility {
   ageStatus         String    @default("not_started") @map("age_status") @db.Text
   studentStatus     String    @default("not_started") @map("student_status") @db.Text
   programmeFamily   String?   @map("programme_family") @db.Text
+  pathwayCode       String?   @map("pathway_code") @db.Text
   discoveryEligible Boolean   @default(false) @map("discovery_eligible")
+  ageVerifiedAt     DateTime? @map("age_verified_at") @db.Timestamptz
+  studentVerifiedAt DateTime? @map("student_verified_at") @db.Timestamptz
+  validUntil        DateTime? @map("valid_until") @db.Timestamptz
   verifiedAt        DateTime? @map("verified_at") @db.Timestamptz
   verifiedBy        String?   @map("verified_by") @db.Text
   reviewNotes       String?   @map("review_notes") @db.Text
@@ -53,29 +97,41 @@ model AccountEligibility {
 }
 
 model VerificationCase {
-  id              String    @id @default(uuid()) @db.Uuid
-  accountId       String    @map("account_id") @db.Uuid
-  status          String    @default("pending") @db.Text
-  submittedAt     DateTime  @default(now()) @map("submitted_at") @db.Timestamptz
-  reviewedAt      DateTime? @map("reviewed_at") @db.Timestamptz
-  reviewerId      String?   @map("reviewer_id") @db.Text
-  rejectionReason String?   @map("rejection_reason") @db.Text
+  id                  String    @id @default(uuid()) @db.Uuid
+  accountId           String    @map("account_id") @db.Uuid
+  checkType           String    @default("student_enrolment") @map("check_type") @db.Text
+  providerCode        String    @default("manual_review") @map("provider_code") @db.Text
+  providerReference   String?   @map("provider_reference") @db.Text
+  status              String    @default("pending") @db.Text
+  reasonCode          String?   @map("reason_code") @db.Text
+  submittedAt         DateTime  @default(now()) @map("submitted_at") @db.Timestamptz
+  reviewedAt          DateTime? @map("reviewed_at") @db.Timestamptz
+  decidedAt           DateTime? @map("decided_at") @db.Timestamptz
+  reviewerId          String?   @map("reviewer_id") @db.Text
+  reviewerPrincipalId String?   @map("reviewer_principal_id") @db.Text
+  rejectionReason     String?   @map("rejection_reason") @db.Text
+  createdAt           DateTime  @default(now()) @map("created_at") @db.Timestamptz
 
   account  Account                    @relation(fields: [accountId], references: [id], onDelete: Cascade)
   evidence VerificationEvidenceRef[]
 
+  @@index([accountId, createdAt])
   @@map("verification_cases")
   @@schema("identity")
 }
 
 model VerificationEvidenceRef {
-  id           String   @id @default(uuid()) @db.Uuid
-  caseId       String   @map("case_id") @db.Uuid
-  evidenceType String   @map("evidence_type") @db.Text
-  s3Key        String   @map("s3_key") @db.Text
-  mimeType     String   @map("mime_type") @db.Text
-  fileSizeBytes Int     @map("file_size_bytes")
-  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz
+  id             String    @id @default(uuid()) @db.Uuid
+  caseId         String    @map("case_id") @db.Uuid
+  evidenceType   String    @map("evidence_type") @db.Text
+  s3Key          String    @map("s3_key") @db.Text
+  mimeType       String    @map("mime_type") @db.Text
+  fileSizeBytes  Int       @map("file_size_bytes")
+  sha256         String?   @db.Text
+  uploadedAt     DateTime  @default(now()) @map("uploaded_at") @db.Timestamptz
+  retentionUntil DateTime? @map("retention_until") @db.Timestamptz
+  deletedAt      DateTime? @map("deleted_at") @db.Timestamptz
+  createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz
 
   verificationCase VerificationCase @relation(fields: [caseId], references: [id], onDelete: Cascade)
 
@@ -84,18 +140,23 @@ model VerificationEvidenceRef {
 }
 
 model AppSession {
-  id               String    @id @default(uuid()) @db.Uuid
-  accountId        String    @map("account_id") @db.Uuid
-  refreshTokenHash String    @unique @map("refresh_token_hash") @db.Text
-  deviceId         String?   @map("device_id") @db.Text
-  userAgent        String?   @map("user_agent") @db.Text
-  ipHash           String?   @map("ip_hash") @db.Text
-  expiresAt        DateTime  @map("expires_at") @db.Timestamptz
-  revokedAt        DateTime? @map("revoked_at") @db.Timestamptz
-  createdAt        DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  id                   String    @id @default(uuid()) @db.Uuid
+  accountId            String    @map("account_id") @db.Uuid
+  refreshTokenHash     String    @unique @map("refresh_token_hash") @db.Text
+  tokenFamilyId        String?   @map("token_family_id") @db.Uuid
+  rotatedFromSessionId String?   @map("rotated_from_session_id") @db.Uuid
+  deviceId             String?   @map("device_id") @db.Text
+  userAgent            String?   @map("user_agent") @db.Text
+  ipHash               String?   @map("ip_hash") @db.Text
+  lastSeenAt           DateTime? @map("last_seen_at") @db.Timestamptz
+  expiresAt            DateTime  @map("expires_at") @db.Timestamptz
+  revokedAt            DateTime? @map("revoked_at") @db.Timestamptz
+  createdAt            DateTime  @default(now()) @map("created_at") @db.Timestamptz
 
   account Account @relation(fields: [accountId], references: [id], onDelete: Cascade)
 
+  @@index([accountId, revokedAt, expiresAt])
+  @@index([tokenFamilyId])
   @@map("app_sessions")
   @@schema("identity")
 }
@@ -105,19 +166,23 @@ model AppSession {
 // ==========================================
 
 model Profile {
-  id              String   @id @default(uuid()) @db.Uuid
-  accountId       String   @unique @map("account_id") @db.Uuid
-  displayName     String   @map("display_name") @db.Text
-  bio             String?  @db.Text
-  programmeFamily String   @map("programme_family") @db.Text
-  termOrYear      String?  @map("term_or_year") @db.Text
-  locationCity    String?  @map("location_city") @db.Text
-  locationState   String?  @map("location_state") @db.Text
-  intention       String?  @db.Text
-  isPublished     Boolean  @default(false) @map("is_published")
-  isPaused        Boolean  @default(false) @map("is_paused")
-  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz
-  updatedAt       DateTime @updatedAt @map("updated_at") @db.Timestamptz
+  id                String    @id @default(uuid()) @db.Uuid
+  accountId         String    @unique @map("account_id") @db.Uuid
+  displayName       String    @map("display_name") @db.Text
+  bio               String?   @db.Text
+  programmeFamily   String    @map("programme_family") @db.Text
+  termOrYear        String?   @map("term_or_year") @db.Text
+  locationCity      String?   @map("location_city") @db.Text
+  locationState     String?   @map("location_state") @db.Text
+  intention         String?   @db.Text
+  profileStatus     String    @default("draft") @map("profile_status") @db.Text
+  ageDisplayMode    String    @default("show_calculated_age") @map("age_display_mode") @db.Text
+  publishedAt       DateTime? @map("published_at") @db.Timestamptz
+  consentAcceptedAt DateTime? @map("consent_accepted_at") @db.Timestamptz
+  isPublished       Boolean   @default(false) @map("is_published")
+  isPaused          Boolean   @default(false) @map("is_paused")
+  createdAt         DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt         DateTime  @updatedAt @map("updated_at") @db.Timestamptz
 
   account       Account                @relation(fields: [accountId], references: [id], onDelete: Cascade)
   photos        ProfilePhoto[]
@@ -130,14 +195,18 @@ model Profile {
 }
 
 model ProfilePhoto {
-  id               String   @id @default(uuid()) @db.Uuid
-  profileId        String   @map("profile_id") @db.Uuid
-  photoUrl         String   @map("photo_url") @db.Text
-  s3Key            String   @map("s3_key") @db.Text
-  displayOrder     Int      @default(0) @map("display_order")
-  isPrimary        Boolean  @default(false) @map("is_primary")
-  moderationStatus String   @default("approved") @map("moderation_status") @db.Text
-  createdAt        DateTime @default(now()) @map("created_at") @db.Timestamptz
+  id               String    @id @default(uuid()) @db.Uuid
+  profileId        String    @map("profile_id") @db.Uuid
+  photoUrl         String?   @map("photo_url") @db.Text
+  s3Key            String    @map("s3_key") @db.Text
+  displayOrder     Int       @default(0) @map("display_order")
+  isPrimary        Boolean   @default(false) @map("is_primary")
+  moderationStatus String    @default("approved") @map("moderation_status") @db.Text
+  mimeType         String?   @map("mime_type") @db.Text
+  widthPx          Int?      @map("width_px")
+  heightPx         Int?      @map("height_px")
+  deletedAt        DateTime? @map("deleted_at") @db.Timestamptz
+  createdAt        DateTime  @default(now()) @map("created_at") @db.Timestamptz
 
   profile Profile @relation(fields: [profileId], references: [id], onDelete: Cascade)
 

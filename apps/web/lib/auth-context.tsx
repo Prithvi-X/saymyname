@@ -2,82 +2,96 @@
 
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import { api, isPrivateIdentifier } from './api';
+import { AccountLifecycleState } from '@saymyname/contracts';
+import { api, sanitizeDisplayName } from './api';
 
-export type AuthState = 'LOADING' | 'UNAUTHENTICATED' | 'VERIFICATION_PENDING' | 'VERIFIED_MEMBER' | 'SUSPENDED';
+export type AuthState =
+  | 'LOADING'
+  | 'UNAUTHENTICATED'
+  | 'VERIFICATION_PENDING'
+  | 'VERIFIED_MEMBER'
+  | 'SUSPENDED';
 
 export interface UserContext {
   id: string;
   email: string;
-  displayName: string;
+  displayName: string | null;
   accountStatus: string;
+  emailVerified?: boolean;
+  hasPassword?: boolean;
+  lifecycleState: AccountLifecycleState;
   eligibility?: {
     ageStatus: string;
     studentStatus: string;
     programmeFamily: string | null;
+    pathwayCode?: string | null;
     discoveryEligible: boolean;
   };
+  profile?: {
+    id: string;
+    displayName: string;
+    profileStatus?: string;
+    isPublished?: boolean;
+    isPaused?: boolean;
+    photos?: Array<{ id: string; photoUrl: string | null; isPrimary: boolean }>;
+  } | null;
 }
 
 interface AuthContextType {
   authState: AuthState;
+  lifecycleState: AccountLifecycleState;
   user: UserContext | null;
   isLoading: boolean;
-  login: (token: string, refreshToken?: string) => Promise<UserContext | null>;
+  refreshUser: () => Promise<UserContext | null>;
   logout: () => Promise<void>;
-  refreshUser: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType>({
   authState: 'LOADING',
+  lifecycleState: AccountLifecycleState.UNAUTHENTICATED,
   user: null,
   isLoading: true,
-  login: async () => null,
+  refreshUser: async () => null,
   logout: async () => {},
-  refreshUser: async () => {},
 });
+
+function deriveAuthState(lifecycle: AccountLifecycleState): AuthState {
+  if (lifecycle === AccountLifecycleState.SUSPENDED) return 'SUSPENDED';
+  if (lifecycle === AccountLifecycleState.ACTIVE_MEMBER) return 'VERIFIED_MEMBER';
+  if (lifecycle === AccountLifecycleState.UNAUTHENTICATED) return 'UNAUTHENTICATED';
+  return 'VERIFICATION_PENDING';
+}
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [authState, setAuthState] = useState<AuthState>('LOADING');
+  const [lifecycleState, setLifecycleState] = useState<AccountLifecycleState>(
+    AccountLifecycleState.UNAUTHENTICATED,
+  );
   const [user, setUser] = useState<UserContext | null>(null);
   const router = useRouter();
 
-  const evaluateState = (u: UserContext): AuthState => {
-    if (u.accountStatus === 'suspended' || u.accountStatus === 'deactivated') {
-      return 'SUSPENDED';
-    }
-    if (u.eligibility?.discoveryEligible) {
-      return 'VERIFIED_MEMBER';
-    }
-    return 'VERIFICATION_PENDING';
-  };
-
-  const refreshUser = useCallback(async () => {
-    const token = api.getToken();
-    if (!token) {
-      setUser(null);
-      setAuthState('UNAUTHENTICATED');
-      return;
-    }
-
+  const refreshUser = useCallback(async (): Promise<UserContext | null> => {
     try {
       const data = await api.getMe();
-      if (data && data.id) {
-        if (data.displayName && isPrivateIdentifier(data.displayName)) {
-          data.displayName = '';
-        }
-        setUser(data);
-        const state = evaluateState(data);
-        setAuthState(state);
-      } else {
-        throw new Error('Invalid user payload');
+      if (!data || !data.id) {
+        throw new Error('Unauthenticated');
       }
+      const cleanName = sanitizeDisplayName(data.displayName);
+      const normalizedUser: UserContext = {
+        ...data,
+        displayName: cleanName || null,
+      };
+      const resolvedLifecycle =
+        data.lifecycleState || AccountLifecycleState.VERIFICATION_PENDING;
+      setUser(normalizedUser);
+      setLifecycleState(resolvedLifecycle);
+      setAuthState(deriveAuthState(resolvedLifecycle));
+      return normalizedUser;
     } catch {
-      // Token expired or invalid
-      api.clearToken();
-      document.cookie = 'smn_auth_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
       setUser(null);
+      setLifecycleState(AccountLifecycleState.UNAUTHENTICATED);
       setAuthState('UNAUTHENTICATED');
+      return null;
     }
   }, []);
 
@@ -85,41 +99,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     refreshUser();
   }, [refreshUser]);
 
-  const login = async (token: string, _refreshToken?: string): Promise<UserContext | null> => {
-    api.setToken(token);
-    // Write cookie for Next.js server middleware
-    document.cookie = `smn_auth_token=${encodeURIComponent(token)}; path=/; max-age=${7 * 24 * 60 * 60}; SameSite=Lax`;
-
-    try {
-      const data = await api.getMe();
-      if (data && data.id) {
-        if (data.displayName && isPrivateIdentifier(data.displayName)) {
-          data.displayName = '';
-        }
-        setUser(data);
-        const state = evaluateState(data);
-        setAuthState(state);
-        return data;
-      }
-      return null;
-    } catch (err) {
-      api.clearToken();
-      document.cookie = 'smn_auth_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
-      setUser(null);
-      setAuthState('UNAUTHENTICATED');
-      throw err;
-    }
-  };
-
   const logout = async () => {
     try {
       await api.logout();
     } catch {
-      // Continue cleanup even if server call fails
+      // Clear local state regardless
     }
-    api.clearToken();
-    document.cookie = 'smn_auth_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
     setUser(null);
+    setLifecycleState(AccountLifecycleState.UNAUTHENTICATED);
     setAuthState('UNAUTHENTICATED');
     router.push('/');
   };
@@ -128,11 +115,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     <AuthContext.Provider
       value={{
         authState,
+        lifecycleState,
         user,
         isLoading: authState === 'LOADING',
-        login,
-        logout,
         refreshUser,
+        logout,
       }}
     >
       {children}

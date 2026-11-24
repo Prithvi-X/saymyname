@@ -2,7 +2,9 @@ import type { Metadata } from 'next';
 import './globals.css';
 import Navbar from '../components/Navbar';
 import BottomNav from '../components/BottomNav';
+import PublicFooter from '../components/PublicFooter';
 import { AuthProvider } from '../lib/auth-context';
+import { getConfiguredSupportEmail } from '../lib/public-config';
 
 export const metadata: Metadata = {
   title: 'SayMyName.in — For verified IIT Madras non-campus BS students',
@@ -62,6 +64,7 @@ export default function RootLayout({
           <main className="app-main-content">
             {children}
           </main>
+          <PublicFooter supportEmail={getConfiguredSupportEmail()} />
           <BottomNav />
         </AuthProvider>
       </body>

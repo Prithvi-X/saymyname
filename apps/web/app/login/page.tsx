@@ -1,284 +1,182 @@
 'use client';
 
-import React, { useState, Suspense } from 'react';
+import React, { Suspense, useState } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
+import { isApprovedIitmBsEmail, normalizeInstitutionalEmail } from '@saymyname/validation';
+import { AccountLifecycleState } from '@saymyname/contracts';
 import { api } from '../../lib/api';
 import { useAuth } from '../../lib/auth-context';
-import { ShieldIcon, LockIcon } from '../../components/icons';
+import { appendSafeReturnUrl, resolveSafeReturnUrl } from '../../lib/return-path';
+import { Button, Input } from '../../components/ui';
+import { LockIcon } from '../../components/icons';
 
-function LoginForm() {
+function LoginFormContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const returnUrl = searchParams.get('returnUrl') || '/discover';
-  const { login } = useAuth();
+  const { refreshUser } = useAuth();
+  const rawReturn = searchParams.get('returnUrl');
 
-  const [step, setStep] = useState<'email' | 'otp'>('email');
   const [email, setEmail] = useState('');
-  const [otp, setOtp] = useState('');
-  const [devOtpHint, setDevOtpHint] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
+  const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [needsEmailOtp, setNeedsEmailOtp] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
 
-  const handleRequestOtp = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setLoading(true);
     setError(null);
+    setNeedsEmailOtp(false);
 
-    const cleanEmail = email.toLowerCase().trim();
-    if (!cleanEmail.endsWith('iitm.ac.in')) {
-      setError('SayMyName Phase 1 is restricted to verified IIT Madras non-campus BS students. Please enter your official @*.study.iitm.ac.in address.');
-      setLoading(false);
+    const cleanEmail = normalizeInstitutionalEmail(email);
+    if (!isApprovedIitmBsEmail(cleanEmail)) {
+      setError(
+        'SayMyName Phase 1 accepts approved IIT Madras non-campus BS study addresses (@study.iitm.ac.in, @ds.study.iitm.ac.in, @es.study.iitm.ac.in) only.',
+      );
       return;
     }
 
-    try {
-      const res = await api.requestLoginOtp(cleanEmail);
-      if (res.syntheticOtp) setDevOtpHint(res.syntheticOtp);
-      setStep('otp');
-    } catch (err: any) {
-      setError(err.message || 'Failed to send login code. Please check your institutional email.');
-    } finally {
-      setLoading(false);
+    if (!password) {
+      setError('Enter your password to sign in.');
+      return;
     }
-  };
 
-  const handleVerifyOtp = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
-    setError(null);
-
+    setIsLoading(true);
     try {
-      const res = await api.verifyOtp({ email: email.toLowerCase().trim(), otp: otp.trim() });
-      if (res.accessToken) {
-        const user = await login(res.accessToken, res.refreshToken);
-        if (user?.eligibility?.discoveryEligible) {
-          router.push(returnUrl);
-        } else if (user?.eligibility?.ageStatus !== 'approved') {
-          router.push('/onboarding');
-        } else if (user?.eligibility?.studentStatus !== 'approved') {
-          router.push('/onboarding');
-        } else {
-          router.push('/discover');
-        }
+      await api.login({ email: cleanEmail, password });
+      const user = await refreshUser();
+
+      if (user?.lifecycleState === AccountLifecycleState.ACTIVE_MEMBER) {
+        router.push(resolveSafeReturnUrl(rawReturn, '/discover'));
+      } else {
+        router.push(appendSafeReturnUrl('/onboarding', rawReturn));
       }
     } catch (err: any) {
-      setError(err.message || 'Invalid or expired code. Please try again.');
+      if (err.code === 'EMAIL_NOT_VERIFIED') {
+        setNeedsEmailOtp(true);
+      }
+      setError(err.message || 'Sign-in failed. Please verify your credentials.');
     } finally {
-      setLoading(false);
+      setIsLoading(false);
     }
   };
 
   return (
-    <div style={{ maxWidth: '440px', margin: '48px auto', padding: '0 20px' }}>
-      <div className="card-surface" style={{ padding: '36px 32px' }}>
-        <div style={{ textAlign: 'center', marginBottom: '28px' }}>
-          <div
-            style={{
-              width: '48px',
-              height: '48px',
-              borderRadius: '50%',
-              backgroundColor: 'var(--color-brand-primary-subtle)',
-              color: 'var(--color-brand-primary)',
-              display: 'inline-flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              marginBottom: '14px',
-            }}
-          >
-            <LockIcon size={22} color="var(--color-brand-primary)" />
+    <div className="min-h-[calc(100vh-140px)] bg-void flex flex-col items-center justify-center px-4 py-12 font-ui">
+      <div className="w-full max-w-[440px] bg-coal border border-edge rounded-[12px] p-7 sm:p-9 shadow-md">
+        <div className="text-center mb-7">
+          <div className="w-11 h-11 rounded-[8px] bg-iron border border-edge text-iris inline-flex items-center justify-center mb-4">
+            <LockIcon size={20} color="currentColor" />
           </div>
-          <h1
-            style={{
-              fontFamily: 'var(--font-display)',
-              fontSize: '26px',
-              fontWeight: 600,
-              margin: '0 0 6px 0',
-              color: 'var(--color-text-primary)',
-            }}
-          >
-            Member Sign In
-          </h1>
-          <p style={{ fontSize: '13.5px', color: 'var(--color-text-secondary)', margin: 0, lineHeight: '20px' }}>
-            Enter your official IIT Madras institutional email to receive a secure login code.
+          <h1 className="text-2xl font-semibold text-chalk mb-1.5">Member Sign In</h1>
+          <p className="text-xs sm:text-sm text-silver">
+            Sign in with your verified IIT Madras BS study email and password.
           </p>
         </div>
 
         {error && (
           <div
             role="alert"
-            style={{
-              padding: '12px 16px',
-              backgroundColor: 'rgba(165, 47, 65, 0.08)',
-              border: '1px solid var(--color-status-danger)',
-              borderRadius: 'var(--radius-md)',
-              color: 'var(--color-status-danger)',
-              fontSize: '13px',
-              marginBottom: '20px',
-              lineHeight: '18px',
-            }}
+            className="mb-5 p-3.5 rounded-[6px] bg-danger-subtle border border-danger/40 text-xs text-danger leading-relaxed"
           >
-            {error}
+            <p>{error}</p>
+            {needsEmailOtp && (
+              <Link
+                href={appendSafeReturnUrl(
+                  `/onboarding?stage=otp&email=${encodeURIComponent(normalizeInstitutionalEmail(email))}`,
+                  rawReturn,
+                )}
+                className="inline-block mt-2 font-semibold text-chalk underline"
+              >
+                Verify institutional email code →
+              </Link>
+            )}
           </div>
         )}
 
-        {step === 'email' ? (
-          <form onSubmit={handleRequestOtp} style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-            <div>
-              <label
-                htmlFor="loginEmail"
-                style={{
-                  display: 'block',
-                  fontSize: '12.5px',
-                  fontWeight: 600,
-                  color: 'var(--color-text-primary)',
-                  marginBottom: '6px',
-                }}
+        <form onSubmit={handleSubmit} className="flex flex-col gap-4" noValidate>
+          <Input
+            label="Institutional BS Email"
+            id="login-email"
+            type="email"
+            autoComplete="email"
+            required
+            placeholder="name@study.iitm.ac.in"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            helperText="Campus @iitm.ac.in and external emails are not eligible for Phase 1."
+          />
+
+          <Input
+            label="Password"
+            id="login-password"
+            type={showPassword ? 'text' : 'password'}
+            autoComplete="current-password"
+            required
+            placeholder="Enter your password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            rightIcon={
+              <button
+                type="button"
+                onClick={() => setShowPassword((prev) => !prev)}
+                className="text-[11px] font-medium text-silver hover:text-chalk px-1"
               >
-                Institutional Student Email
-              </label>
-              <input
-                id="loginEmail"
-                type="email"
-                required
-                autoComplete="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="username@study.iitm.ac.in"
-                className="input-field"
-              />
-              <span style={{ fontSize: '11px', color: 'var(--color-text-muted)', display: 'block', marginTop: '4px' }}>
-                Must be an active @*.study.iitm.ac.in domain address.
-              </span>
-            </div>
+                {showPassword ? 'Hide' : 'Show'}
+              </button>
+            }
+          />
 
-            <button
-              type="submit"
-              disabled={loading}
-              className="btn btn-primary"
-              style={{ width: '100%', padding: '13px', fontSize: '14.5px' }}
+          <div className="flex items-center justify-end">
+            <Link
+              href="/forgot-password"
+              className="text-xs text-iris hover:text-iris-hover font-medium transition-colors"
             >
-              {loading ? 'Sending Verification Code...' : 'Send Login Code'}
-            </button>
-          </form>
-        ) : (
-          <form onSubmit={handleVerifyOtp} style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-            <div>
-              <label
-                htmlFor="loginOtp"
-                style={{
-                  display: 'block',
-                  fontSize: '12.5px',
-                  fontWeight: 600,
-                  color: 'var(--color-text-primary)',
-                  marginBottom: '6px',
-                }}
-              >
-                6-Digit Verification Code
-              </label>
-              <input
-                id="loginOtp"
-                type="text"
-                required
-                maxLength={6}
-                autoFocus
-                autoComplete="one-time-code"
-                value={otp}
-                onChange={(e) => setOtp(e.target.value.replace(/\D/g, ''))}
-                placeholder="123456"
-                className="input-field"
-                style={{ textAlign: 'center', letterSpacing: '4px', fontSize: '20px', fontWeight: 600 }}
-              />
-              <span style={{ fontSize: '11px', color: 'var(--color-text-muted)', display: 'block', marginTop: '4px' }}>
-                Sent to <strong style={{ color: 'var(--color-text-primary)' }}>{email}</strong>.
-              </span>
-            </div>
+              Forgot or need to set password?
+            </Link>
+          </div>
 
-            {devOtpHint && (
-              <div
-                style={{
-                  padding: '10px 14px',
-                  backgroundColor: 'var(--color-brand-primary-subtle)',
-                  borderRadius: 'var(--radius-md)',
-                  color: 'var(--color-brand-primary)',
-                  fontSize: '12px',
-                  textAlign: 'center',
-                }}
-              >
-                Development Test OTP: <strong>{devOtpHint}</strong>
-              </div>
-            )}
-
-            <button
-              type="submit"
-              disabled={loading || otp.length < 6}
-              className="btn btn-primary"
-              style={{ width: '100%', padding: '13px', fontSize: '14.5px' }}
-            >
-              {loading ? 'Verifying Session...' : 'Verify & Enter'}
-            </button>
-
-            <button
-              type="button"
-              onClick={() => {
-                setStep('email');
-                setOtp('');
-                setError(null);
-              }}
-              style={{
-                fontSize: '12.5px',
-                color: 'var(--color-text-secondary)',
-                textAlign: 'center',
-                cursor: 'pointer',
-                background: 'none',
-                border: 'none',
-              }}
-            >
-              ← Use a different institutional email
-            </button>
-          </form>
-        )}
-
-        <div
-          style={{
-            marginTop: '28px',
-            paddingTop: '20px',
-            borderTop: '1px solid var(--color-border-subtle)',
-            textAlign: 'center',
-            fontSize: '13px',
-            color: 'var(--color-text-secondary)',
-          }}
-        >
-          <span>New student? </span>
-          <Link
-            href="/onboarding"
-            style={{ color: 'var(--color-brand-primary)', fontWeight: 600, textDecoration: 'underline' }}
+          <Button
+            type="submit"
+            variant="primary"
+            size="md"
+            isLoading={isLoading}
+            className="w-full mt-1"
           >
-            Register here
+            Sign In
+          </Button>
+        </form>
+
+        <div className="mt-7 pt-5 border-t border-edge text-center text-xs text-silver">
+          New to SayMyName?{' '}
+          <Link
+            href={appendSafeReturnUrl('/onboarding', rawReturn)}
+            className="text-iris hover:text-iris-hover font-semibold"
+          >
+            Create your account →
           </Link>
         </div>
       </div>
 
-      <div
-        style={{
-          marginTop: '20px',
-          textAlign: 'center',
-          fontSize: '11.5px',
-          color: 'var(--color-text-muted)',
-          lineHeight: '17px',
-        }}
-      >
-        <ShieldIcon size={13} color="var(--color-text-muted)" style={{ display: 'inline', verticalAlign: '-2px', marginRight: '4px' }} />
-        SayMyName is an independent platform for verified adult BS students. Not operated by or affiliated with IIT Madras.
-      </div>
+      <p className="mt-6 text-center text-[11px] text-ash max-w-sm leading-relaxed">
+        Independent platform for verified IIT Madras non-campus BS adults (18+). Not operated by
+        or affiliated with IIT Madras.
+      </p>
     </div>
   );
 }
 
 export default function LoginPage() {
   return (
-    <Suspense fallback={<div style={{ padding: '60px', textAlign: 'center' }}>Loading...</div>}>
-      <LoginForm />
+    <Suspense
+      fallback={
+        <div className="min-h-[60vh] bg-void flex items-center justify-center text-sm text-silver">
+          Loading sign-in form...
+        </div>
+      }
+    >
+      <LoginFormContent />
     </Suspense>
   );
 }

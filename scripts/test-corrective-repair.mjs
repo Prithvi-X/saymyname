@@ -10,9 +10,22 @@
  */
 
 import assert from 'node:assert/strict';
+import { PrismaClient } from '@prisma/client';
 
-const WEB_BASE = 'http://localhost:3000';
-const API_BASE = 'http://localhost:4000/api/v1';
+const WEB_BASE = process.env.WEB_BASE || 'http://127.0.0.1:3001';
+const API_BASE = process.env.API_BASE || 'http://127.0.0.1:4000/api/v1';
+const REVIEWER_KEY = process.env.REVIEWER_API_KEY || 'test-reviewer-secret-key-min-16';
+const TEST_PASSWORD = 'Password123!';
+
+if (process.env.DATABASE_URL) {
+  const host = new URL(process.env.DATABASE_URL).hostname;
+  if (!['localhost', '127.0.0.1'].includes(host)) {
+    throw new Error(`SAFETY ABORT: Non-localhost DATABASE_URL host "${host}" rejected.`);
+  }
+}
+
+const prisma = new PrismaClient();
+const createdEmails = [];
 
 const results = [];
 
@@ -92,50 +105,79 @@ async function runTests() {
     recordTest('AUTH-005', 'AUTH', 'Unauthenticated visitor accesses /profile', false, err.message);
   }
 
-  // Set up synthetic test identities for AUTH-006 to AUTH-010
+  // Set up synthetic test identities for AUTH-006 to AUTH-010 (Phase 2 Password + devOtp + ReviewerGuard)
   const unverifiedEmail = `unverified_${Date.now()}@ds.study.iitm.ac.in`;
-  await fetch(`${API_BASE}/identity/register`, {
+  createdEmails.push(unverifiedEmail);
+  const unvRegRes = await fetch(`${API_BASE}/identity/register`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ email: unverifiedEmail, displayName: 'Unverified Student', password: 'Password123!' }),
+    body: JSON.stringify({ email: unverifiedEmail, displayName: 'Unverified Student', password: TEST_PASSWORD }),
   });
+  const unvReg = await unvRegRes.json();
   const unverifiedOtpRes = await fetch(`${API_BASE}/identity/verify-otp`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ email: unverifiedEmail, otp: '123456' }),
+    body: JSON.stringify({ email: unverifiedEmail, otp: unvReg.devOtp }),
   });
   const unverifiedSession = await unverifiedOtpRes.json();
   const unverifiedToken = unverifiedSession.accessToken;
 
-  // Fully verified user setup
+  // Fully verified user setup (submit pending age + student -> approve via ReviewerGuard -> re-login)
   const verifiedEmail = `verified_${Date.now()}@ds.study.iitm.ac.in`;
-  await fetch(`${API_BASE}/identity/register`, {
+  createdEmails.push(verifiedEmail);
+  const verRegRes = await fetch(`${API_BASE}/identity/register`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ email: verifiedEmail, displayName: 'Verified Scholar', password: 'Password123!' }),
+    body: JSON.stringify({ email: verifiedEmail, displayName: 'Verified Scholar', password: TEST_PASSWORD }),
   });
+  const verReg = await verRegRes.json();
   const verifiedOtpRes = await fetch(`${API_BASE}/identity/verify-otp`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ email: verifiedEmail, otp: '123456' }),
+    body: JSON.stringify({ email: verifiedEmail, otp: verReg.devOtp }),
   });
   const verifiedSession = await verifiedOtpRes.json();
   const initialVerifiedToken = verifiedSession.accessToken;
 
-  // Perform Age check (18+)
-  await fetch(`${API_BASE}/identity/age-check`, {
+  // Perform Age check (18+) -> pending manual review
+  const ageRes = await fetch(`${API_BASE}/identity/age-check`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${initialVerifiedToken}` },
     body: JSON.stringify({ dateOfBirth: '2002-05-15' }),
   });
+  const ageJson = await ageRes.json();
 
-  // Perform Student Verification
+  // Perform Student Verification -> pending manual review
   const studentVerifyRes = await fetch(`${API_BASE}/identity/verify-student`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${initialVerifiedToken}` },
-    body: JSON.stringify({ programmeFamily: 'data_science_applications', studentRollNo: '21F1009999' }),
+    body: JSON.stringify({
+      programmeFamily: 'data_science_applications',
+      pathwayCode: 'diploma',
+      studentRollNo: '21F1009999',
+    }),
   });
-  const verifiedUserTokens = await studentVerifyRes.json();
+  const studentVerifyJson = await studentVerifyRes.json();
+
+  for (const cid of [ageJson.caseId, studentVerifyJson.caseId]) {
+    if (!cid) continue;
+    await fetch(`${API_BASE}/verification-cases/${cid}/decision`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-smn-reviewer-key': REVIEWER_KEY,
+        'x-smn-reviewer-id': 'corrective_reviewer',
+      },
+      body: JSON.stringify({ decision: 'approved' }),
+    });
+  }
+
+  const verifiedLoginRes = await fetch(`${API_BASE}/identity/login`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email: verifiedEmail, password: TEST_PASSWORD }),
+  });
+  const verifiedUserTokens = await verifiedLoginRes.json();
   const verifiedToken = verifiedUserTokens.accessToken || initialVerifiedToken;
 
   // AUTH-006: Authenticated but unverified user accesses /discover
@@ -161,15 +203,15 @@ async function runTests() {
     recordTest('AUTH-007', 'AUTH', 'Verified active user accesses /discover', false, err.message);
   }
 
-  // AUTH-008: Suspended account access denial
+  // AUTH-008: Active account status check enforced on me endpoint
   try {
-    // Verified user calls GET /identity/me to verify active state
     const meRes = await fetch(`${API_BASE}/identity/me`, {
       headers: { Authorization: `Bearer ${verifiedToken}` },
     });
     const meData = await meRes.json();
-    const passed = meRes.status === 200 && meData.accountStatus === 'active';
-    recordTest('AUTH-008', 'AUTH', 'Active account status check enforced on me endpoint', passed, `status: ${meData.accountStatus}`);
+    const accountStatus = meData.account?.accountStatus || meData.accountStatus;
+    const passed = meRes.status === 200 && accountStatus === 'active';
+    recordTest('AUTH-008', 'AUTH', 'Active account status check enforced on me endpoint', passed, `status: ${accountStatus}`);
   } catch (err) {
     recordTest('AUTH-008', 'AUTH', 'Suspended account check', false, err.message);
   }
@@ -375,8 +417,9 @@ async function runTests() {
       headers: { Authorization: `Bearer ${verifiedToken}` },
     });
     const me = await meRes.json();
+    const acctId = me.account?.id || me.id;
     // Verify eligibility excludes raw passwords or unapproved private credentials
-    const passed = !me.password && !me.passwordHash && me.id;
+    const passed = !me.password && !me.passwordHash && !me.account?.passwordHash && Boolean(acctId);
     recordTest('DATA-005', 'DATA', 'Identity context strictly excludes password hashes or secrets', passed);
   } catch (err) {
     recordTest('DATA-005', 'DATA', 'Private credential serialization', false, err.message);
@@ -536,10 +579,12 @@ async function runTests() {
 
   // REG-003: Approved IITM subdomains accepted
   try {
+    const esRegEmail = `reg_test_${Date.now()}@es.study.iitm.ac.in`;
+    createdEmails.push(esRegEmail);
     const res = await fetch(`${API_BASE}/identity/register`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email: `reg_test_${Date.now()}@es.study.iitm.ac.in`, displayName: 'ES Student', password: 'Password123!' }),
+      body: JSON.stringify({ email: esRegEmail, displayName: 'ES Student', password: TEST_PASSWORD }),
     });
     const passed = res.status === 200 || res.status === 201;
     recordTest('REG-003', 'REG', 'Official IITM non-campus email domain accepted', passed, `status: ${res.status}`);
@@ -547,25 +592,41 @@ async function runTests() {
     recordTest('REG-003', 'REG', 'IITM email acceptance', false, err.message);
   }
 
-  // REG-004: Incorrect OTP rejected
+  // REG-004: Incorrect OTP / retired 123456 fallback rejected
   try {
+    const wrongOtp = unvReg.devOtp === '123456' ? '000000' : '123456';
     const res = await fetch(`${API_BASE}/identity/verify-otp`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email: unverifiedEmail, otp: '000000' }), // Wrong OTP
+      body: JSON.stringify({ email: unverifiedEmail, otp: wrongOtp }),
     });
     const passed = res.status === 401;
-    recordTest('REG-004', 'REG', 'Incorrect email OTP rejected with 401 Unauthorized', passed, `status: ${res.status}`);
+    recordTest('REG-004', 'REG', 'Incorrect / retired static OTP rejected with 401 Unauthorized', passed, `status: ${res.status}`);
   } catch (err) {
     recordTest('REG-004', 'REG', 'Incorrect OTP rejection', false, err.message);
   }
 
-  // REG-005: Under-18 age check strictly rejected (Doc 01 §3.5)
+  // REG-005: Under-18 age check strictly rejected on dedicated minor test account (Doc 01 §3.5)
   try {
+    const minorEmail = `minor_reg_${Date.now()}@ds.study.iitm.ac.in`;
+    createdEmails.push(minorEmail);
+    const minRegRes = await fetch(`${API_BASE}/identity/register`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: minorEmail, displayName: 'Minor Check', password: TEST_PASSWORD }),
+    });
+    const minReg = await minRegRes.json();
+    const minOtpRes = await fetch(`${API_BASE}/identity/verify-otp`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: minorEmail, otp: minReg.devOtp }),
+    });
+    const minOtp = await minOtpRes.json();
+
     const res = await fetch(`${API_BASE}/identity/age-check`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${unverifiedToken}` },
-      body: JSON.stringify({ dateOfBirth: '2010-06-01' }), // 16 years old
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${minOtp.accessToken}` },
+      body: JSON.stringify({ dateOfBirth: '2010-06-01' }), // under 18
     });
     const passed = res.status === 403;
     recordTest('REG-005', 'REG', 'Under-18 age check strictly rejected with 403 Forbidden', passed, `status: ${res.status}`);
@@ -573,12 +634,12 @@ async function runTests() {
     recordTest('REG-005', 'REG', 'Under-18 rejection', false, err.message);
   }
 
-  // REG-006: Invalid BS programme code rejected
+  // REG-006: Invalid BS programme code rejected (uses non-rejected unverifiedToken)
   try {
     const res = await fetch(`${API_BASE}/identity/verify-student`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${unverifiedToken}` },
-      body: JSON.stringify({ programmeFamily: 'unapproved_btech_track', studentRollNo: '21F1000001' }),
+      body: JSON.stringify({ programmeFamily: 'unapproved_btech_track', pathwayCode: 'degree', studentRollNo: '21F1000001' }),
     });
     const passed = res.status === 400;
     recordTest('REG-006', 'REG', 'Unapproved programme track rejected with 400 Bad Request', passed, `status: ${res.status}`);
@@ -586,17 +647,44 @@ async function runTests() {
     recordTest('REG-006', 'REG', 'Unapproved track rejection', false, err.message);
   }
 
-  // REG-007: Approved BS programme tracks verified
+  // REG-007: Approved BS programme track queued for manual review after 18+ age check (remains pending, not auto-approved)
   try {
+    const esEmail = `es_adult_${Date.now()}@es.study.iitm.ac.in`;
+    createdEmails.push(esEmail);
+    const esRegRes = await fetch(`${API_BASE}/identity/register`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: esEmail, displayName: 'ES Adult Student', password: TEST_PASSWORD }),
+    });
+    const esReg = await esRegRes.json();
+    const esOtpRes = await fetch(`${API_BASE}/identity/verify-otp`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: esEmail, otp: esReg.devOtp }),
+    });
+    const esOtp = await esOtpRes.json();
+
+    const esAgeRes = await fetch(`${API_BASE}/identity/age-check`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${esOtp.accessToken}` },
+      body: JSON.stringify({ dateOfBirth: '2001-09-10' }),
+    });
+    assert.equal(esAgeRes.status, 200);
+
     const res = await fetch(`${API_BASE}/identity/verify-student`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${unverifiedToken}` },
-      body: JSON.stringify({ programmeFamily: 'electronic_systems', studentRollNo: '22F2000001' }),
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${esOtp.accessToken}` },
+      body: JSON.stringify({
+        programmeFamily: 'electronic_systems',
+        pathwayCode: 'foundation',
+        studentRollNo: '22F2000001',
+      }),
     });
-    const passed = res.status === 200 || res.status === 201;
-    recordTest('REG-007', 'REG', 'Approved BS programme track successfully verified', passed, `status: ${res.status}`);
+    const data = await res.json();
+    const passed = (res.status === 200 || res.status === 201) && data.studentStatus === 'pending' && data.discoveryEligible === false;
+    recordTest('REG-007', 'REG', 'Approved BS programme track submitted to pending manual review cleanly', passed, `status: ${res.status}`);
   } catch (err) {
-    recordTest('REG-007', 'REG', 'Approved track verification', false, err.message);
+    recordTest('REG-007', 'REG', 'Approved track submission', false, err.message);
   }
 
   // Summary
@@ -617,6 +705,8 @@ async function runTests() {
     console.log(`\n>>> ${failedCount} CHECKS FAILED <<<`);
   }
 
+  await prisma.account.deleteMany({ where: { email: { in: createdEmails } } }).catch(() => {});
+  await prisma.$disconnect();
   process.exit(failedCount === 0 ? 0 : 1);
 }
 

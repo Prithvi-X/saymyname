@@ -4,430 +4,849 @@ import {
   ConflictException,
   UnauthorizedException,
   ForbiddenException,
+  ServiceUnavailableException,
+  HttpException,
+  HttpStatus,
 } from '@nestjs/common';
+import * as crypto from 'crypto';
 import { PrismaService } from '../../prisma/prisma.service';
 import { CryptoService } from './security/crypto.service';
+import { VerificationService } from '../verification/verification.service';
 import {
   RegisterDto,
+  LoginDto,
   VerifyOtpDto,
+  ForgotPasswordDto,
+  ResetPasswordDto,
   AgeCheckDto,
   VerifyStudentDto,
   RefreshTokenDto,
 } from './dto/identity.dto';
-import { ProgrammeFamily } from '@saymyname/contracts';
+import { AccountLifecycleState } from '@saymyname/contracts';
+import {
+  isApprovedIitmBsEmail,
+  isPrivateIdentifierLike,
+  normalizeInstitutionalEmail,
+} from '@saymyname/validation';
 
-const APPROVED_PROGRAMMES = [
-  ProgrammeFamily.DATA_SCIENCE_APPLICATIONS,
-  ProgrammeFamily.ELECTRONIC_SYSTEMS,
-  ProgrammeFamily.AERONAUTICS_SPACE,
-  ProgrammeFamily.MANAGEMENT_DATA_SCIENCE,
-];
+const DUMMY_PASSWORD_HASH =
+  'pbkdf2$100000$00000000000000000000000000000000$' + '0'.repeat(128);
+const OTP_EXPIRY_MS = 10 * 60 * 1000;
+const OTP_COOLDOWN_MS = 60 * 1000;
+const RESET_EXPIRY_MS = 30 * 60 * 1000;
 
 @Injectable()
 export class IdentityService {
-  // Ephemeral in-memory store for OTPs in dev mode
-  private readonly pendingOtps = new Map<string, { otp: string; expiresAt: number }>();
-
   constructor(
     private readonly prisma: PrismaService,
     private readonly crypto: CryptoService,
+    private readonly verificationService: VerificationService,
   ) {}
 
   /**
-   * Validates IIT Madras institutional email domain
+   * Central institutional BS email allowlist check (D-P2-03).
+   * Rejects campus/faculty @iitm.ac.in domains and lookalike suffixes.
+   * Passing domain validation never grants student enrolment verification.
    */
   validateIitmEmail(email: string): boolean {
-    const normalized = email.toLowerCase().trim();
-    return (
-      normalized.endsWith('@study.iitm.ac.in') ||
-      normalized.endsWith('@ds.study.iitm.ac.in') ||
-      normalized.endsWith('@es.study.iitm.ac.in') ||
-      normalized.endsWith('.iitm.ac.in') ||
-      normalized.endsWith('@iitm.ac.in')
-    );
+    const extraDomains = (process.env.APPROVED_IITM_BS_EXTRA_DOMAINS || '')
+      .split(',')
+      .map((s) => s.trim())
+      .filter(Boolean);
+    return isApprovedIitmBsEmail(email, extraDomains);
+  }
+
+  private isNonProdDevExposureEnabled(): boolean {
+    if (process.env.NODE_ENV === 'production') return false;
+    return process.env.NODE_ENV === 'test' || process.env.EXPOSE_DEV_OTP === 'true';
+  }
+
+  private generateVerificationCode(): string {
+    if (
+      process.env.NODE_ENV === 'test' &&
+      process.env.TEST_FIXED_OTP &&
+      /^\d{6}$/.test(process.env.TEST_FIXED_OTP)
+    ) {
+      return process.env.TEST_FIXED_OTP;
+    }
+    return crypto.randomInt(100000, 1000000).toString();
   }
 
   /**
-   * 1. Register account with IITM email and issue OTP
+   * Maps server-side account + eligibility + profile state into canonical AccountLifecycleState
+   */
+  computeLifecycleState(
+    account: { accountStatus: string; emailVerifiedAt?: Date | null; deletedAt?: Date | null } | null,
+    eligibility: {
+      ageStatus?: string | null;
+      studentStatus?: string | null;
+      discoveryEligible?: boolean | null;
+    } | null,
+    profile: { isPublished?: boolean | null; profileStatus?: string | null } | null,
+  ): AccountLifecycleState {
+    if (!account || account.deletedAt) return AccountLifecycleState.UNAUTHENTICATED;
+    if (account.accountStatus === 'suspended') return AccountLifecycleState.SUSPENDED;
+    if (!account.emailVerifiedAt || account.accountStatus === 'registered') {
+      return AccountLifecycleState.EMAIL_PENDING;
+    }
+
+    const ageStatus = eligibility?.ageStatus || 'not_started';
+    const studentStatus = eligibility?.studentStatus || 'not_started';
+
+    if (ageStatus === 'rejected' || studentStatus === 'rejected') {
+      return AccountLifecycleState.VERIFICATION_REJECTED;
+    }
+    if (ageStatus === 'needs_information' || studentStatus === 'needs_information') {
+      return AccountLifecycleState.VERIFICATION_NEEDS_INFORMATION;
+    }
+    if (ageStatus === 'not_started') {
+      return AccountLifecycleState.AGE_VERIFICATION;
+    }
+    if (studentStatus === 'not_started') {
+      return AccountLifecycleState.STUDENT_VERIFICATION;
+    }
+
+    if (
+      !eligibility?.discoveryEligible ||
+      ageStatus !== 'approved' ||
+      studentStatus !== 'approved' ||
+      account.accountStatus !== 'active'
+    ) {
+      return AccountLifecycleState.VERIFICATION_PENDING;
+    }
+
+    const profileLive = Boolean(profile?.isPublished) || profile?.profileStatus === 'live';
+    if (!profile || !profileLive) {
+      return AccountLifecycleState.PROFILE_INCOMPLETE;
+    }
+
+    return AccountLifecycleState.ACTIVE_MEMBER;
+  }
+
+  /**
+   * 1. Register account with approved BS email + hashed password and persistent hashed OTP challenge
    */
   async register(dto: RegisterDto) {
     if (!this.validateIitmEmail(dto.email)) {
       throw new BadRequestException(
-        'Phase 1 is strictly restricted to verified IIT Madras non-campus BS students. Email must be an official @*.study.iitm.ac.in domain.',
+        'Phase 1 is restricted to verified IIT Madras non-campus BS students with an approved study.iitm.ac.in address. Campus/faculty @iitm.ac.in domains are not eligible.',
       );
     }
 
-    const email = dto.email.toLowerCase().trim();
-    const existing = await this.prisma.account.findUnique({ where: { email } }).catch(() => null);
-    if (existing && existing.accountStatus === 'active') {
-      throw new ConflictException('An active account already exists with this institutional email.');
+    const email = normalizeInstitutionalEmail(dto.email);
+    const sanitizedDisplayName =
+      dto.displayName &&
+      dto.displayName.trim().length > 0 &&
+      !isPrivateIdentifierLike(dto.displayName)
+        ? dto.displayName.trim().slice(0, 50)
+        : null;
+
+    const existing = await this.prisma.account
+      .findUnique({ where: { email } })
+      .catch(() => null);
+
+    if (existing && (existing.emailVerifiedAt || existing.accountStatus === 'active')) {
+      throw new ConflictException(
+        'An account already exists with this institutional email. Please sign in or use Forgot Password.',
+      );
     }
 
-    // Generate or use synthetic OTP
-    const otp = process.env.NODE_ENV === 'production' ? Math.floor(100000 + Math.random() * 900000).toString() : '123456';
-    this.pendingOtps.set(email, {
-      otp,
-      expiresAt: Date.now() + 10 * 60 * 1000, // 10 minutes
+    // Enforce 60-second resend cooldown against persistent OtpChallenge
+    const latestChallenge = await this.prisma.otpChallenge
+      .findFirst({
+        where: { email, purpose: 'email_verification' },
+        orderBy: { createdAt: 'desc' },
+      })
+      .catch(() => null);
+
+    if (latestChallenge && Date.now() - latestChallenge.lastSentAt.getTime() < OTP_COOLDOWN_MS) {
+      const waitSec = Math.ceil(
+        (OTP_COOLDOWN_MS - (Date.now() - latestChallenge.lastSentAt.getTime())) / 1000,
+      );
+      throw new HttpException(
+        `Please wait ${waitSec} seconds before requesting another verification code.`,
+        HttpStatus.TOO_MANY_REQUESTS,
+      );
+    }
+
+    const otp = this.generateVerificationCode();
+    const codeHash = this.crypto.hashChallengeCode(otp, email, 'email_verification');
+    const passwordHash = this.crypto.hashPassword(dto.password);
+    const now = new Date();
+    const expiresAt = new Date(now.getTime() + OTP_EXPIRY_MS);
+
+    await this.prisma.$transaction(async (tx) => {
+      const account = existing
+        ? await tx.account.update({
+            where: { id: existing.id },
+            data: {
+              passwordHash,
+              displayName: sanitizedDisplayName ?? existing.displayName,
+              accountStatus: 'registered',
+            },
+          })
+        : await tx.account.create({
+            data: {
+              authSubject: `iitm_${this.crypto.sha256(email).substring(0, 16)}`,
+              email,
+              passwordHash,
+              emailVerifiedAt: null,
+              accountStatus: 'registered',
+              displayName: sanitizedDisplayName,
+              eligibility: {
+                create: {
+                  ageStatus: 'not_started',
+                  studentStatus: 'not_started',
+                  discoveryEligible: false,
+                },
+              },
+            },
+          });
+
+      await tx.otpChallenge.updateMany({
+        where: { email, purpose: 'email_verification', consumedAt: null },
+        data: { consumedAt: now },
+      });
+
+      await tx.otpChallenge.create({
+        data: {
+          accountId: account.id,
+          email,
+          purpose: 'email_verification',
+          codeHash,
+          attempts: 0,
+          maxAttempts: 5,
+          expiresAt,
+          lastSentAt: now,
+        },
+      });
     });
 
-    // If Resend API Key is configured, dispatch real email
-    if (process.env.RESEND_API_KEY) {
-      await this.dispatchResendOtpEmail(email, otp).catch((err) => {
-        console.warn('[Resend] Warning: Could not deliver email via Resend:', err);
-      });
-    }
+    await this.dispatchEmail(
+      email,
+      `${otp} is your SayMyName verification code`,
+      this.renderDocument10OtpEmail(otp),
+    );
 
     return {
-      message: 'OTP sent to institutional email address.',
+      message: 'Verification code dispatched to your institutional email address.',
       email,
-      syntheticOtp: process.env.NODE_ENV !== 'production' ? otp : undefined,
+      cooldownSeconds: 60,
+      ...(this.isNonProdDevExposureEnabled() ? { devOtp: otp } : {}),
     };
   }
 
   /**
-   * 1b. Request Login OTP for existing or returning members
+   * 1b. Resend email verification OTP (60s cooldown enforced cleanly)
    */
-  async requestLoginOtp(rawEmail: string) {
+  async resendOtp(rawEmail: string) {
     if (!this.validateIitmEmail(rawEmail)) {
       throw new BadRequestException(
-        'Phase 1 is strictly restricted to verified IIT Madras non-campus BS students. Email must be an official @*.study.iitm.ac.in domain.',
+        'Please enter an approved IIT Madras non-campus BS institutional email.',
+      );
+    }
+    const email = normalizeInstitutionalEmail(rawEmail);
+
+    const account = await this.prisma.account
+      .findUnique({ where: { email } })
+      .catch(() => null);
+
+    if (!account || account.emailVerifiedAt) {
+      // Do not enumerate whether another account is already verified
+      return {
+        message:
+          'If an unverified eligible account exists for this address, a fresh verification code has been dispatched.',
+        cooldownSeconds: 60,
+      };
+    }
+
+    const latestChallenge = await this.prisma.otpChallenge
+      .findFirst({
+        where: { email, purpose: 'email_verification' },
+        orderBy: { createdAt: 'desc' },
+      })
+      .catch(() => null);
+
+    if (latestChallenge && Date.now() - latestChallenge.lastSentAt.getTime() < OTP_COOLDOWN_MS) {
+      const waitSec = Math.ceil(
+        (OTP_COOLDOWN_MS - (Date.now() - latestChallenge.lastSentAt.getTime())) / 1000,
+      );
+      throw new HttpException(
+        `Please wait ${waitSec} seconds before requesting another verification code.`,
+        HttpStatus.TOO_MANY_REQUESTS,
       );
     }
 
-    const email = rawEmail.toLowerCase().trim();
+    const otp = this.generateVerificationCode();
+    const codeHash = this.crypto.hashChallengeCode(otp, email, 'email_verification');
+    const now = new Date();
+    const expiresAt = new Date(now.getTime() + OTP_EXPIRY_MS);
 
-    // Generate or use synthetic OTP
-    const otp = process.env.NODE_ENV === 'production' ? Math.floor(100000 + Math.random() * 900000).toString() : '123456';
-    this.pendingOtps.set(email, {
-      otp,
-      expiresAt: Date.now() + 10 * 60 * 1000, // 10 minutes
+    await this.prisma.$transaction(async (tx) => {
+      await tx.otpChallenge.updateMany({
+        where: { email, purpose: 'email_verification', consumedAt: null },
+        data: { consumedAt: now },
+      });
+      await tx.otpChallenge.create({
+        data: {
+          accountId: account.id,
+          email,
+          purpose: 'email_verification',
+          codeHash,
+          attempts: 0,
+          maxAttempts: 5,
+          expiresAt,
+          lastSentAt: now,
+        },
+      });
     });
 
-    // If Resend API Key is configured, dispatch real email
-    if (process.env.RESEND_API_KEY) {
-      await this.dispatchResendOtpEmail(email, otp).catch((err) => {
-        console.warn('[Resend] Warning: Could not deliver email via Resend:', err);
-      });
-    }
+    await this.dispatchEmail(
+      email,
+      `${otp} is your SayMyName verification code`,
+      this.renderDocument10OtpEmail(otp),
+    );
 
     return {
-      message: 'Login code sent to your institutional email.',
+      message: 'A new verification code has been dispatched to your institutional email.',
       email,
-      syntheticOtp: process.env.NODE_ENV !== 'production' ? otp : undefined,
+      cooldownSeconds: 60,
+      ...(this.isNonProdDevExposureEnabled() ? { devOtp: otp } : {}),
     };
   }
 
   /**
-   * Dispatches branded HTML OTP email via Resend API
-   */
-  private async dispatchResendOtpEmail(toEmail: string, otpCode: string): Promise<void> {
-    const fromAddress = process.env.EMAIL_FROM || 'SayMyName <auth@saymyname.in>';
-    const res = await fetch('https://api.resend.com/emails', {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${process.env.RESEND_API_KEY}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        from: fromAddress,
-        to: [toEmail],
-        subject: `${otpCode} is your SayMyName verification code`,
-        html: `
-          <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 520px; margin: 0 auto; padding: 32px 24px; background: #FFFDF9; border: 1px solid #EFE8DC; border-radius: 12px; color: #2A2421;">
-            <h2 style="font-size: 24px; font-weight: normal; margin-bottom: 8px; color: #8B263E;">SayMyName</h2>
-            <p style="font-size: 15px; line-height: 1.6; color: #5A504B; margin-bottom: 24px;">
-              Welcome! Use the one-time verification code below to sign in. This code is exclusively for verified adult students enrolled in approved IIT Madras BS programme tracks.
-            </p>
-            <div style="background: #F8F3EA; border: 1px solid #E5DCCF; border-radius: 8px; padding: 20px; text-align: center; margin-bottom: 24px;">
-              <span style="font-family: monospace; font-size: 32px; font-weight: 700; letter-spacing: 8px; color: #8B263E;">${otpCode}</span>
-            </div>
-            <p style="font-size: 13px; color: #8A7F77; line-height: 1.5; margin-bottom: 12px;">
-              This code will expire in 10 minutes. If you did not request this verification, you can safely ignore this email.
-            </p>
-            <hr style="border: none; border-top: 1px solid #EFE8DC; margin: 24px 0 16px;" />
-            <p style="font-size: 11px; color: #A69C94; text-align: center; line-height: 1.4;">
-              SayMyName is an independent product for verified IIT Madras BS students and is not operated, endorsed, or affiliated with IIT Madras.
-            </p>
-          </div>
-        `,
-      }),
-    });
-
-    if (!res.ok) {
-      const errData = await res.json().catch(() => ({}));
-      console.warn('[Resend] API returned non-OK status:', res.status, errData);
-    } else {
-      console.log(`[Resend] Successfully dispatched OTP email to ${toEmail}`);
-    }
-  }
-
-  /**
-   * 2. Verify OTP & Initialize Account
+   * 2. Verify Email OTP against persistent hashed OtpChallenge (D-P2-00, D-P2-02)
+   * Zero hardcoded '123456' fallback. Attempt-capped, expiring, single-use.
    */
   async verifyOtp(dto: VerifyOtpDto) {
-    const email = dto.email.toLowerCase().trim();
-    const pending = this.pendingOtps.get(email);
+    const email = normalizeInstitutionalEmail(dto.email);
+    const now = new Date();
 
-    // Accept hardcoded dev OTP '123456' or matching ephemeral OTP
-    const isValid = dto.otp === '123456' || (pending && pending.otp === dto.otp && pending.expiresAt > Date.now());
-    if (!isValid) {
-      throw new UnauthorizedException('Invalid or expired OTP code.');
+    const challenge = await this.prisma.otpChallenge
+      .findFirst({
+        where: {
+          email,
+          purpose: 'email_verification',
+          consumedAt: null,
+        },
+        orderBy: { createdAt: 'desc' },
+      })
+      .catch(() => null);
+
+    if (!challenge || challenge.expiresAt <= now) {
+      throw new UnauthorizedException(
+        'Invalid or expired verification code. Please request a new code.',
+      );
     }
 
-    this.pendingOtps.delete(email);
+    if (challenge.attempts >= challenge.maxAttempts) {
+      throw new HttpException(
+        'Too many incorrect verification attempts. Please request a fresh code.',
+        HttpStatus.TOO_MANY_REQUESTS,
+      );
+    }
 
-    // Upsert account
-    let account = await this.prisma.account.findUnique({ where: { email }, include: { eligibility: true } }).catch(() => null);
-    if (!account) {
-      account = await this.prisma.account.create({
-        data: {
-          authSubject: `iitm_${this.crypto.sha256(email).substring(0, 16)}`,
-          email,
-          accountStatus: 'pending_verification',
-          displayName: null, // Strictly null: never expose email prefix / roll number as displayName (Phase 1.1)
-          eligibility: {
-            create: {
-              ageStatus: 'not_started',
-              studentStatus: 'not_started',
-              discoveryEligible: false,
-            },
+    const codeOk = this.crypto.verifyChallengeCode(
+      dto.otp.trim(),
+      email,
+      challenge.codeHash,
+      'email_verification',
+    );
+
+    if (!codeOk) {
+      const nextAttempts = challenge.attempts + 1;
+      await this.prisma.otpChallenge
+        .update({
+          where: { id: challenge.id },
+          data: {
+            attempts: nextAttempts,
+            ...(nextAttempts >= challenge.maxAttempts ? { consumedAt: now } : {}),
           },
+        })
+        .catch(() => null);
+
+      if (nextAttempts >= challenge.maxAttempts) {
+        throw new HttpException(
+          'Maximum verification attempts reached. Please request a new code.',
+          HttpStatus.TOO_MANY_REQUESTS,
+        );
+      }
+
+      throw new UnauthorizedException('Invalid or expired verification code.');
+    }
+
+    const account = await this.prisma.$transaction(async (tx) => {
+      await tx.otpChallenge.update({
+        where: { id: challenge.id },
+        data: { consumedAt: now },
+      });
+
+      const found = await tx.account.findUnique({
+        where: { email },
+        include: { eligibility: true, profile: true },
+      });
+
+      if (!found) {
+        throw new UnauthorizedException('Account registration record not found.');
+      }
+
+      const updated = await tx.account.update({
+        where: { id: found.id },
+        data: {
+          emailVerifiedAt: found.emailVerifiedAt || now,
+          accountStatus:
+            found.accountStatus === 'registered'
+              ? 'pending_verification'
+              : found.accountStatus,
         },
-        include: { eligibility: true },
-      }).catch(async () => {
-        // Fallback mock account if DB container is detached in memory
-        return {
-          id: '00000000-0000-0000-0000-000000000001',
-          authSubject: `iitm_${email}`,
-          email,
-          phoneNumber: null,
-          accountStatus: 'pending_verification',
-          displayName: null, // Strictly null: never expose email prefix / roll number
-          createdAt: new Date(),
-          updatedAt: new Date(),
-          deletedAt: null,
-          eligibility: {
-            accountId: '00000000-0000-0000-0000-000000000001',
+        include: { eligibility: true, profile: true },
+      });
+
+      if (!updated.eligibility) {
+        await tx.accountEligibility.create({
+          data: {
+            accountId: updated.id,
             ageStatus: 'not_started',
             studentStatus: 'not_started',
-            programmeFamily: null,
             discoveryEligible: false,
-            verifiedAt: null,
-            verifiedBy: null,
-            reviewNotes: null,
-            createdAt: new Date(),
-            updatedAt: new Date(),
           },
-        } as any;
-      });
-    }
+        });
+      }
 
-    const isDiscoveryEligible = Boolean(account.eligibility?.discoveryEligible);
+      return updated;
+    });
+
+    const isDiscoveryEligible =
+      Boolean(account.eligibility?.discoveryEligible) && account.accountStatus === 'active';
     const session = await this.createSession(account.id, account.email, isDiscoveryEligible);
+    const lifecycleState = this.computeLifecycleState(
+      account,
+      account.eligibility,
+      account.profile,
+    );
+
     return {
-      message: 'Email verified successfully.',
+      message: 'Institutional email verified successfully.',
       account: {
         id: account.id,
         email: account.email,
         accountStatus: account.accountStatus,
+        emailVerified: true,
         eligibility: account.eligibility,
       },
+      lifecycleState,
       ...session,
     };
   }
 
   /**
-   * 3. Age Verification Gate (18+ Strict Boundary per Doc 01 §3.5)
+   * 2b. Password Login (D-P2-02: Password login + Email OTP verification only; no passwordless OTP login)
+   */
+  async login(dto: LoginDto) {
+    const email = normalizeInstitutionalEmail(dto.email);
+    const account = await this.prisma.account
+      .findUnique({
+        where: { email },
+        include: { eligibility: true, profile: true },
+      })
+      .catch(() => null);
+
+    // Run PBKDF2 timing-equal check even when missing/passwordless to normalize timing
+    const hashToCheck = account?.passwordHash || DUMMY_PASSWORD_HASH;
+    const passwordMatches = this.crypto.verifyPassword(dto.password, hashToCheck);
+
+    if (!account || !account.passwordHash || !passwordMatches) {
+      throw new UnauthorizedException(
+        'Invalid institutional email or password. If your account predates password login, use Forgot Password to set one.',
+      );
+    }
+
+    if (account.deletedAt || account.accountStatus === 'suspended') {
+      throw new ForbiddenException('This account is suspended or closed.');
+    }
+
+    if (!account.emailVerifiedAt || account.accountStatus === 'registered') {
+      throw new ForbiddenException({
+        message: 'Verify your institutional email with your OTP code before signing in.',
+        code: 'EMAIL_NOT_VERIFIED',
+      });
+    }
+
+    const isDiscoveryEligible =
+      Boolean(account.eligibility?.discoveryEligible) &&
+      account.eligibility?.ageStatus === 'approved' &&
+      account.eligibility?.studentStatus === 'approved' &&
+      account.accountStatus === 'active';
+
+    const session = await this.createSession(account.id, account.email, isDiscoveryEligible);
+    const lifecycleState = this.computeLifecycleState(
+      account,
+      account.eligibility,
+      account.profile,
+    );
+
+    return {
+      message: 'Signed in successfully.',
+      account: {
+        id: account.id,
+        email: account.email,
+        accountStatus: account.accountStatus,
+        emailVerified: true,
+        eligibility: account.eligibility,
+      },
+      lifecycleState,
+      ...session,
+    };
+  }
+
+  /**
+   * 2c. Forgot Password (non-enumerating, hashed single-use token, 30-min expiry)
+   */
+  async forgotPassword(dto: ForgotPasswordDto) {
+    if (!this.validateIitmEmail(dto.email)) {
+      throw new BadRequestException(
+        'Please enter a valid IIT Madras non-campus BS study email.',
+      );
+    }
+
+    const email = normalizeInstitutionalEmail(dto.email);
+    const account = await this.prisma.account
+      .findUnique({ where: { email } })
+      .catch(() => null);
+
+    let devResetToken: string | undefined;
+
+    if (account && !account.deletedAt && account.accountStatus !== 'suspended') {
+      const recent = await this.prisma.passwordResetToken
+        .findFirst({
+          where: { accountId: account.id },
+          orderBy: { createdAt: 'desc' },
+        })
+        .catch(() => null);
+
+      if (!recent || Date.now() - recent.createdAt.getTime() >= OTP_COOLDOWN_MS) {
+        const rawToken = this.crypto.generateOpaqueToken();
+        const tokenHash = this.crypto.sha256(rawToken);
+        const now = new Date();
+        const expiresAt = new Date(now.getTime() + RESET_EXPIRY_MS);
+
+        await this.prisma.$transaction(async (tx) => {
+          await tx.passwordResetToken.updateMany({
+            where: { accountId: account.id, consumedAt: null },
+            data: { consumedAt: now },
+          });
+          await tx.passwordResetToken.create({
+            data: {
+              accountId: account.id,
+              tokenHash,
+              expiresAt,
+            },
+          });
+        });
+
+        const baseWebUrl = (process.env.WEB_APP_URL || 'http://localhost:3000').replace(/\/$/, '');
+        const resetLink = `${baseWebUrl}/reset-password?token=${encodeURIComponent(rawToken)}`;
+
+        await this.dispatchEmail(
+          email,
+          'Reset your SayMyName password',
+          this.renderDocument10ResetEmail(resetLink),
+        );
+
+        if (this.isNonProdDevExposureEnabled()) {
+          devResetToken = rawToken;
+        }
+      }
+    }
+
+    return {
+      message:
+        'If an account exists for this institutional address, a password reset link has been sent.',
+      ...(devResetToken ? { devResetToken } : {}),
+    };
+  }
+
+  /**
+   * 2d. Reset Password & Revoke All Existing Sessions (D-P2-02)
+   */
+  async resetPassword(dto: ResetPasswordDto) {
+    const tokenHash = this.crypto.sha256(dto.token.trim());
+    const now = new Date();
+
+    const record = await this.prisma.passwordResetToken
+      .findUnique({
+        where: { tokenHash },
+        include: { account: true },
+      })
+      .catch(() => null);
+
+    if (!record || record.consumedAt || record.expiresAt <= now) {
+      throw new UnauthorizedException('Invalid or expired password reset token.');
+    }
+
+    const newHash = this.crypto.hashPassword(dto.newPassword);
+
+    await this.prisma.$transaction(async (tx) => {
+      await tx.passwordResetToken.update({
+        where: { id: record.id },
+        data: { consumedAt: now },
+      });
+
+      await tx.account.update({
+        where: { id: record.accountId },
+        data: {
+          passwordHash: newHash,
+          emailVerifiedAt: record.account.emailVerifiedAt || now,
+          accountStatus:
+            record.account.accountStatus === 'registered'
+              ? 'pending_verification'
+              : record.account.accountStatus,
+        },
+      });
+
+      // Security invariant: revoke all active sessions upon credential reset
+      await tx.appSession.updateMany({
+        where: { accountId: record.accountId, revokedAt: null },
+        data: { revokedAt: now },
+      });
+
+      await tx.auditEvent.create({
+        data: {
+          actorId: record.accountId,
+          action: 'identity.password_reset_completed',
+          resourceType: 'account',
+          resourceId: record.accountId,
+        },
+      });
+    });
+
+    return {
+      message:
+        'Password updated successfully. All prior sessions have been signed out; please sign in with your new password.',
+    };
+  }
+
+  /**
+   * 3. Age Verification Gate (delegates strictly to VerificationService — no auto-approval)
    */
   async checkAge(accountId: string, dto: AgeCheckDto) {
-    const dob = new Date(dto.dateOfBirth);
-    if (isNaN(dob.getTime())) {
-      throw new BadRequestException('Invalid date of birth format. Use YYYY-MM-DD.');
-    }
-
-    const now = new Date();
-    let age = now.getFullYear() - dob.getFullYear();
-    const monthDiff = now.getMonth() - dob.getMonth();
-    if (monthDiff < 0 || (monthDiff === 0 && now.getDate() < dob.getDate())) {
-      age--;
-    }
-
-    if (age < 18) {
-      await this.prisma.accountEligibility.update({
-        where: { accountId },
-        data: { ageStatus: 'rejected', discoveryEligible: false },
-      }).catch(() => null);
-
-      throw new ForbiddenException(
-        `Under-18 access rejected. You are currently ${age} years old. SayMyName is strictly for verified adults (18+) per Document 01.`,
-      );
-    }
-
-    const updated = await this.prisma.accountEligibility.update({
-      where: { accountId },
-      data: { ageStatus: 'approved' },
-      include: { account: true },
-    }).catch(() => ({
-      accountId,
-      ageStatus: 'approved',
-      studentStatus: 'not_started',
-      discoveryEligible: false,
-      account: { email: 'student@study.iitm.ac.in' },
-    }));
-
-    return {
-      message: 'Age verification approved (18+ verified).',
-      isAdult: true,
-      calculatedAge: age,
-      eligibility: updated,
-    };
+    return this.verificationService.submitAgeVerification(accountId, {
+      dateOfBirth: dto.dateOfBirth,
+    });
   }
 
   /**
-   * 4. Student Programme Verification (Doc 01 §3.1)
+   * 4. Student Programme Verification (delegates strictly to VerificationService — no auto-approval)
    */
   async verifyStudent(accountId: string, dto: VerifyStudentDto) {
-    const programme = dto.programmeFamily as ProgrammeFamily;
-    if (!APPROVED_PROGRAMMES.includes(programme)) {
-      throw new BadRequestException(
-        `Invalid programme track. Phase 1 is strictly restricted to the four approved families: ${APPROVED_PROGRAMMES.join(', ')}`,
-      );
-    }
-
-    // Check current eligibility record
-    const current = await this.prisma.accountEligibility.findUnique({
-      where: { accountId },
-    }).catch(() => null);
-
-    const isAgeApproved = current ? current.ageStatus === 'approved' : true;
-    const canDiscover = isAgeApproved;
-
-    const updated = await this.prisma.accountEligibility.update({
-      where: { accountId },
-      data: {
-        programmeFamily: programme,
-        studentStatus: 'approved',
-        discoveryEligible: canDiscover,
-        verifiedAt: new Date(),
-        verifiedBy: 'automated_rules_engine',
-        reviewNotes: `Roll: ${dto.studentRollNo}`,
-      },
-      include: { account: true },
-    }).catch(() => ({
-      accountId,
-      programmeFamily: programme,
-      ageStatus: 'approved',
-      studentStatus: 'approved',
-      discoveryEligible: canDiscover,
-      verifiedAt: new Date(),
-      account: { email: 'student@study.iitm.ac.in', displayName: 'IITM Student' },
-    }));
-
-    if (canDiscover) {
-      await this.prisma.account.update({
-        where: { id: accountId },
-        data: { accountStatus: 'active' },
-      }).catch(() => null);
-    }
-
-    // Issue updated token reflecting discoveryEligible
-    const session = await this.createSession(accountId, (updated as any).account?.email || '', canDiscover);
-
-    return {
-      message: canDiscover
-        ? 'Institutional programme verified. Full dating capabilities unlocked!'
-        : 'Student programme verified. Complete 18+ age verification to unlock dating discovery.',
-      eligibility: updated,
-      ...session,
-    };
+    return this.verificationService.submitStudentEnrolmentVerification(accountId, dto);
   }
 
   /**
-   * 5. Refresh Session
+   * 5. Refresh Session with Reuse/Replay Family Revocation
    */
   async refreshToken(dto: RefreshTokenDto) {
     const hash = this.crypto.sha256(dto.refreshToken);
-    const session = await this.prisma.appSession.findUnique({
-      where: { refreshTokenHash: hash },
-      include: { account: { include: { eligibility: true } } },
-    }).catch(() => null);
+    const session = await this.prisma.appSession
+      .findUnique({
+        where: { refreshTokenHash: hash },
+        include: { account: { include: { eligibility: true } } },
+      })
+      .catch(() => null);
 
-    if (!session || session.revokedAt || session.expiresAt < new Date()) {
-      throw new UnauthorizedException('Invalid, revoked, or expired refresh token');
+    if (!session || session.expiresAt < new Date()) {
+      throw new UnauthorizedException('Invalid or expired refresh token');
     }
 
-    const discoveryEligible = session.account?.eligibility?.discoveryEligible || false;
-    return this.createSession(session.accountId, session.account.email, discoveryEligible);
+    if (session.revokedAt) {
+      // Refresh token replay detected: revoke the entire token family immediately
+      if (session.tokenFamilyId) {
+        await this.prisma.appSession
+          .updateMany({
+            where: { tokenFamilyId: session.tokenFamilyId, revokedAt: null },
+            data: { revokedAt: new Date() },
+          })
+          .catch(() => null);
+      }
+      await this.prisma.auditEvent
+        .create({
+          data: {
+            actorId: session.accountId,
+            action: 'identity.refresh_token_reuse_detected',
+            resourceType: 'app_session',
+            resourceId: session.id,
+          },
+        })
+        .catch(() => null);
+      throw new UnauthorizedException('Session invalidated due to token reuse detection.');
+    }
+
+    if (session.account.deletedAt || session.account.accountStatus === 'suspended') {
+      throw new ForbiddenException('Account suspended or closed.');
+    }
+
+    const discoveryEligible =
+      Boolean(session.account?.eligibility?.discoveryEligible) &&
+      session.account?.eligibility?.ageStatus === 'approved' &&
+      session.account?.eligibility?.studentStatus === 'approved' &&
+      session.account.accountStatus === 'active';
+
+    const familyId = session.tokenFamilyId || crypto.randomUUID();
+    const now = new Date();
+    const accessToken = this.crypto.generateJwt(
+      {
+        sub: session.accountId,
+        email: session.account.email,
+        discoveryEligible,
+      },
+      900,
+    );
+
+    const newRawRefreshToken = this.crypto.generateOpaqueToken();
+    const newHash = this.crypto.sha256(newRawRefreshToken);
+    const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+
+    await this.prisma.$transaction(async (tx) => {
+      await tx.appSession.update({
+        where: { id: session.id },
+        data: { revokedAt: now, lastSeenAt: now },
+      });
+      await tx.appSession.create({
+        data: {
+          accountId: session.accountId,
+          refreshTokenHash: newHash,
+          tokenFamilyId: familyId,
+          rotatedFromSessionId: session.id,
+          lastSeenAt: now,
+          expiresAt,
+        },
+      });
+    });
+
+    return {
+      accessToken,
+      refreshToken: newRawRefreshToken,
+      tokenType: 'Bearer',
+      expiresIn: 900,
+    };
   }
 
   /**
-   * 6. Logout / Revoke Session
+   * 6. Logout / Revoke Current Session
    */
   async logout(refreshToken: string) {
+    if (!refreshToken) return { message: 'Logged out successfully.' };
     const hash = this.crypto.sha256(refreshToken);
-    await this.prisma.appSession.update({
-      where: { refreshTokenHash: hash },
-      data: { revokedAt: new Date() },
-    }).catch(() => null);
+    await this.prisma.appSession
+      .update({
+        where: { refreshTokenHash: hash },
+        data: { revokedAt: new Date() },
+      })
+      .catch(() => null);
 
     return { message: 'Logged out successfully.' };
   }
 
   /**
-   * 7. Get Authenticated User Context
+   * 6b. Revoke Other Sessions (D-P2-02)
+   */
+  async revokeOtherSessions(accountId: string, currentRefreshToken?: string) {
+    const now = new Date();
+    const currentHash = currentRefreshToken ? this.crypto.sha256(currentRefreshToken) : null;
+
+    const result = await this.prisma.appSession
+      .updateMany({
+        where: {
+          accountId,
+          revokedAt: null,
+          ...(currentHash ? { refreshTokenHash: { not: currentHash } } : {}),
+        },
+        data: { revokedAt: now },
+      })
+      .catch(() => ({ count: 0 }));
+
+    return {
+      message: 'Other active sessions have been signed out.',
+      revokedCount: result.count,
+    };
+  }
+
+  /**
+   * 7. Get Authenticated User Context (Server Authoritative Lifecycle & Sanitized Name)
    */
   async getMe(accountId: string) {
-    const account = await this.prisma.account.findUnique({
-      where: { id: accountId },
-      include: {
-        eligibility: true,
-        profile: {
-          include: {
-            photos: true,
-            interests: { include: { interest: true } },
-            promptAnswers: { include: { prompt: true } },
+    const account = await this.prisma.account
+      .findUnique({
+        where: { id: accountId },
+        include: {
+          eligibility: true,
+          profile: {
+            include: {
+              photos: {
+                where: { deletedAt: null },
+                orderBy: { displayOrder: 'asc' },
+              },
+              interests: { include: { interest: true } },
+              promptAnswers: { include: { prompt: true } },
+            },
           },
         },
-      },
-    }).catch(() => null);
+      })
+      .catch(() => null);
 
-    if (!account) {
+    if (!account || account.deletedAt) {
       throw new UnauthorizedException('Account not found or session invalid.');
     }
 
     const rawName = account.profile?.displayName || account.displayName;
-    // Strict Sanitization (Phase 1.1): Reject roll numbers, email prefixes, UUIDs, or raw numeric IDs
-    const isPrivate = !rawName || /^\d{2}[a-zA-Z]\d+$/i.test(rawName) || rawName.includes('@') || /^[0-9a-f-]{36}$/i.test(rawName);
-    const sanitizedName = isPrivate ? null : rawName;
+    const sanitizedName = !rawName || isPrivateIdentifierLike(rawName) ? null : rawName;
+    const lifecycleState = this.computeLifecycleState(
+      account,
+      account.eligibility,
+      account.profile,
+    );
 
     return {
       id: account.id,
       email: account.email,
       displayName: sanitizedName,
       accountStatus: account.accountStatus,
+      emailVerified: Boolean(account.emailVerifiedAt),
+      hasPassword: Boolean(account.passwordHash),
+      lifecycleState,
       eligibility: account.eligibility,
       profile: account.profile,
     };
   }
 
   private async createSession(accountId: string, email: string, discoveryEligible: boolean) {
-    const accessToken = this.crypto.generateJwt({
-      sub: accountId,
-      email,
-      discoveryEligible,
-    }, 900); // 15 minutes
+    const accessToken = this.crypto.generateJwt(
+      {
+        sub: accountId,
+        email,
+        discoveryEligible,
+      },
+      900,
+    );
 
     const rawRefreshToken = this.crypto.generateOpaqueToken();
     const refreshTokenHash = this.crypto.sha256(rawRefreshToken);
-    const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7 days
+    const tokenFamilyId = crypto.randomUUID();
+    const now = new Date();
+    const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
 
-    await this.prisma.appSession.create({
-      data: {
-        accountId,
-        refreshTokenHash,
-        expiresAt,
-      },
-    }).catch(() => null);
+    await this.prisma.appSession
+      .create({
+        data: {
+          accountId,
+          refreshTokenHash,
+          tokenFamilyId,
+          lastSeenAt: now,
+          expiresAt,
+        },
+      })
+      .catch(() => null);
 
     return {
       accessToken,
@@ -435,5 +854,78 @@ export class IdentityService {
       tokenType: 'Bearer',
       expiresIn: 900,
     };
+  }
+
+  /**
+   * Dispatches Resend email cleanly; fails loudly if configured email delivery fails.
+   */
+  private async dispatchEmail(toEmail: string, subject: string, html: string): Promise<void> {
+    if (!process.env.RESEND_API_KEY || process.env.SKIP_EMAIL_DISPATCH === 'true') {
+      return;
+    }
+
+    const fromAddress = process.env.EMAIL_FROM || 'SayMyName <auth@saymyname.in>';
+    let res: Response;
+    try {
+      res = await fetch('https://api.resend.com/emails', {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${process.env.RESEND_API_KEY}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          from: fromAddress,
+          to: [toEmail],
+          subject,
+          html,
+        }),
+      });
+    } catch {
+      throw new ServiceUnavailableException(
+        'Institutional email delivery service is temporarily unavailable. Please try again shortly.',
+      );
+    }
+
+    if (!res.ok) {
+      throw new ServiceUnavailableException(
+        'Could not dispatch email to your institutional inbox. Please try again in a moment.',
+      );
+    }
+  }
+
+  private renderDocument10OtpEmail(otpCode: string): string {
+    return `
+      <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 520px; margin: 0 auto; padding: 32px 24px; background: #0B0B0D; border: 1px solid #23232A; border-radius: 10px; color: #F1ECE4;">
+        <p style="font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase; color: #9C968B; margin: 0 0 8px 0;">SAYMYNAME · INSTITUTIONAL VERIFICATION</p>
+        <h2 style="font-size: 22px; font-weight: 600; margin: 0 0 12px 0; color: #F1ECE4;">Verify Your Email Address</h2>
+        <p style="font-size: 14px; line-height: 1.6; color: #C6C0B4; margin: 0 0 24px 0;">
+          Enter this one-time verification code to confirm ownership of your IIT Madras BS study inbox. This code expires in 10 minutes and can be used once.
+        </p>
+        <div style="background: #141418; border: 1px solid #2A2A35; border-radius: 8px; padding: 18px; text-align: center; margin-bottom: 24px;">
+          <span style="font-family: 'Courier New', monospace; font-size: 32px; font-weight: 700; letter-spacing: 0.24em; color: #A696E0;">${otpCode}</span>
+        </div>
+        <p style="font-size: 12px; line-height: 1.5; color: #8A8479; margin: 0;">
+          Email ownership is an initial step only and does not unlock dating features before age (18+) and student enrolment verification complete. Independent platform — not affiliated with IIT Madras.
+        </p>
+      </div>
+    `;
+  }
+
+  private renderDocument10ResetEmail(resetLink: string): string {
+    return `
+      <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 520px; margin: 0 auto; padding: 32px 24px; background: #0B0B0D; border: 1px solid #23232A; border-radius: 10px; color: #F1ECE4;">
+        <p style="font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase; color: #9C968B; margin: 0 0 8px 0;">SAYMYNAME · ACCOUNT RECOVERY</p>
+        <h2 style="font-size: 22px; font-weight: 600; margin: 0 0 12px 0; color: #F1ECE4;">Reset Your Password</h2>
+        <p style="font-size: 14px; line-height: 1.6; color: #C6C0B4; margin: 0 0 24px 0;">
+          A password reset was requested for your SayMyName account. Completing this reset will sign out all other active sessions. This link expires in 30 minutes.
+        </p>
+        <div style="margin-bottom: 24px;">
+          <a href="${resetLink}" style="display: inline-block; background: #8E7CC3; color: #0B0B0D; font-weight: 600; font-size: 14px; padding: 12px 22px; border-radius: 6px; text-decoration: none;">Set New Password</a>
+        </div>
+        <p style="font-size: 12px; line-height: 1.5; color: #8A8479; margin: 0;">
+          If you did not request a password reset, you can safely ignore this message.
+        </p>
+      </div>
+    `;
   }
 }

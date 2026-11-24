@@ -1,8 +1,10 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { AccountLifecycleState } from '@saymyname/contracts';
+import { useAuth } from '../../lib/auth-context';
 import {
   HeartIcon,
   XIcon,
@@ -26,6 +28,16 @@ interface PendingLike {
 
 export default function LikesPage() {
   const router = useRouter();
+  const { isLoading: authLoading, lifecycleState } = useAuth();
+
+  useEffect(() => {
+    if (authLoading) return;
+    if (lifecycleState === AccountLifecycleState.UNAUTHENTICATED) {
+      router.replace('/login?returnUrl=/likes');
+    } else if (lifecycleState !== AccountLifecycleState.ACTIVE_MEMBER) {
+      router.replace('/onboarding');
+    }
+  }, [authLoading, lifecycleState, router]);
 
   const [likes, setLikes] = useState<PendingLike[]>([]);
 

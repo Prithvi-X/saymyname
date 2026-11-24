@@ -1,34 +1,54 @@
-import { IsEmail, IsNotEmpty, IsOptional, IsString, MinLength } from 'class-validator';
-import { ApiProperty } from '@nestjs/swagger';
+import {
+  IsEmail,
+  IsIn,
+  IsInt,
+  IsNotEmpty,
+  IsOptional,
+  IsString,
+  Matches,
+  Max,
+  MaxLength,
+  Min,
+  MinLength,
+} from 'class-validator';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 export class RegisterDto {
   @ApiProperty({
     example: 'student@study.iitm.ac.in',
-    description: 'IIT Madras student institutional email',
+    description: 'Approved IIT Madras non-campus BS student institutional email',
   })
   @IsEmail()
   @IsNotEmpty()
   email: string;
 
-  @ApiProperty({ example: 'Arun Kumar', description: 'User display name' })
-  @IsString()
-  @IsNotEmpty()
-  displayName: string;
-
-  @ApiProperty({ example: 'SecurePassword123!', minLength: 8 })
+  @ApiProperty({ example: 'StrongPassphrase123!', minLength: 8, maxLength: 128 })
   @IsString()
   @MinLength(8)
+  @MaxLength(128)
   password: string;
+
+  @ApiPropertyOptional({
+    example: 'Aarav',
+    description: 'Optional preferred display name (never an institutional roll number)',
+  })
+  @IsOptional()
+  @IsString()
+  @MaxLength(50)
+  displayName?: string;
 }
 
-export class RequestLoginOtpDto {
-  @ApiProperty({
-    example: 'student@study.iitm.ac.in',
-    description: 'IIT Madras student institutional email',
-  })
+export class LoginDto {
+  @ApiProperty({ example: 'student@study.iitm.ac.in' })
   @IsEmail()
   @IsNotEmpty()
   email: string;
+
+  @ApiProperty({ example: 'StrongPassphrase123!' })
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(128)
+  password: string;
 }
 
 export class VerifyOtpDto {
@@ -37,16 +57,44 @@ export class VerifyOtpDto {
   @IsNotEmpty()
   email: string;
 
-  @ApiProperty({ example: '123456', description: '6-digit OTP' })
+  @ApiProperty({ example: '482910', description: '6-digit email verification code' })
+  @IsString()
+  @Matches(/^\d{6}$/, { message: 'OTP must be a 6-digit numeric code.' })
+  otp: string;
+}
+
+export class ResendOtpDto {
+  @ApiProperty({ example: 'student@study.iitm.ac.in' })
+  @IsEmail()
+  @IsNotEmpty()
+  email: string;
+}
+
+export class ForgotPasswordDto {
+  @ApiProperty({ example: 'student@study.iitm.ac.in' })
+  @IsEmail()
+  @IsNotEmpty()
+  email: string;
+}
+
+export class ResetPasswordDto {
+  @ApiProperty({ description: 'Single-use password reset token' })
   @IsString()
   @IsNotEmpty()
-  otp: string;
+  @MaxLength(128)
+  token: string;
+
+  @ApiProperty({ example: 'NewStrongPassphrase123!', minLength: 8, maxLength: 128 })
+  @IsString()
+  @MinLength(8)
+  @MaxLength(128)
+  newPassword: string;
 }
 
 export class AgeCheckDto {
   @ApiProperty({
     example: '2004-05-15',
-    description: 'Date of birth in YYYY-MM-DD format (must be 18+)',
+    description: 'Date of birth in YYYY-MM-DD format (strict 18+ screen)',
   })
   @IsString()
   @IsNotEmpty()
@@ -68,19 +116,54 @@ export class VerifyStudentDto {
   @IsNotEmpty()
   programmeFamily: string;
 
-  @ApiProperty({ example: '21f1000123', description: 'Student Roll / Registration Number' })
-  @IsString()
-  @IsNotEmpty()
-  studentRollNo: string;
-
   @ApiProperty({
-    example: 'evidence/student-id-sample.pdf',
-    description: 'Evidence reference key',
-    required: false,
+    example: 'diploma',
+    enum: ['foundation', 'diploma', 'degree'],
+    description: 'Current academic level inside the BS programme',
+  })
+  @IsString()
+  @IsIn(['foundation', 'diploma', 'degree'])
+  pathwayCode: 'foundation' | 'diploma' | 'degree';
+
+  @ApiPropertyOptional({
+    example: '21f1000123',
+    description: 'Optional institutional student reference (never shown publicly)',
   })
   @IsOptional()
   @IsString()
-  idDocumentRef?: string;
+  @MaxLength(64)
+  studentRollNo?: string;
+
+  @ApiPropertyOptional({ description: 'Private R2 non-gov-ID enrolment proof object key' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(256)
+  evidenceObjectKey?: string;
+
+  @ApiPropertyOptional({
+    enum: ['student_enrolment_letter', 'iitm_portal_screenshot', 'term_fee_receipt'],
+  })
+  @IsOptional()
+  @IsString()
+  evidenceType?: string;
+
+  @ApiPropertyOptional({ example: 'application/pdf' })
+  @IsOptional()
+  @IsString()
+  evidenceMimeType?: string;
+
+  @ApiPropertyOptional({ example: 102400 })
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  @Max(5 * 1024 * 1024)
+  evidenceSizeBytes?: number;
+
+  @ApiPropertyOptional({ description: 'SHA-256 checksum of evidence object' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(64)
+  evidenceSha256?: string;
 }
 
 export class RefreshTokenDto {
@@ -88,4 +171,11 @@ export class RefreshTokenDto {
   @IsString()
   @IsNotEmpty()
   refreshToken: string;
+}
+
+export class RevokeOtherSessionsDto {
+  @ApiPropertyOptional({ description: 'Optional current refresh token to keep active' })
+  @IsOptional()
+  @IsString()
+  currentRefreshToken?: string;
 }
