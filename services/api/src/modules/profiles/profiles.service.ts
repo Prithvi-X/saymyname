@@ -1,6 +1,9 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
-import { UpdateProfileDto, AddPhotoDto, UpdatePreferencesDto } from './dto/profile.dto';
+import { UpdateProfileDto, AddPhotoDto, UpdatePreferencesDto, PresignPhotoDto } from './dto/profile.dto';
+import * as crypto from 'crypto';
+
+const ALLOWED_IMAGE_MIMES = ['image/jpeg', 'image/png', 'image/webp', 'image/heic'];
 
 @Injectable()
 export class ProfilesService {
@@ -95,6 +98,39 @@ export class ProfilesService {
       bio: dto.bio,
       locationCity: dto.locationCity,
     }));
+  }
+
+  async presignPhoto(accountId: string, dto: PresignPhotoDto) {
+    if (!ALLOWED_IMAGE_MIMES.includes(dto.mimeType.toLowerCase())) {
+      throw new BadRequestException(`Unsupported photo format: ${dto.mimeType}. Allowed formats: JPEG, PNG, WebP, HEIC`);
+    }
+
+    const photoId = crypto.randomUUID();
+    const ext = dto.filename.split('.').pop() || 'jpg';
+    const s3Key = `photos/${accountId}/${photoId}.${ext}`;
+
+    let uploadUrl: string;
+    let photoUrl: string;
+
+    if (process.env.R2_ACCOUNT_ID && process.env.R2_BUCKET_NAME) {
+      uploadUrl = `https://${process.env.R2_ACCOUNT_ID}.r2.cloudflarestorage.com/${process.env.R2_BUCKET_NAME}/${s3Key}`;
+      photoUrl = `https://${process.env.R2_CUSTOM_DOMAIN || 'media.saymyname.in'}/${s3Key}`;
+    } else if (process.env.S3_BUCKET_NAME) {
+      const region = process.env.S3_REGION || 'ap-south-1';
+      uploadUrl = `https://${process.env.S3_BUCKET_NAME}.s3.${region}.amazonaws.com/${s3Key}`;
+      photoUrl = `https://${process.env.S3_BUCKET_NAME}.s3.${region}.amazonaws.com/${s3Key}`;
+    } else {
+      uploadUrl = `https://storage.saymyname.in/mock-s3-upload/${s3Key}`;
+      photoUrl = `https://images.unsplash.com/photo-1534528741775-53994a69daeb`;
+    }
+
+    return {
+      uploadUrl,
+      photoUrl,
+      photoId,
+      s3Key,
+      expiresInSeconds: 300,
+    };
   }
 
   async addPhoto(accountId: string, dto: AddPhotoDto) {

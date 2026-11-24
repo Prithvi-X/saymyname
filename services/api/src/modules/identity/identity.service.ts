@@ -70,11 +70,62 @@ export class IdentityService {
       expiresAt: Date.now() + 10 * 60 * 1000, // 10 minutes
     });
 
+    // If Resend API Key is configured, dispatch real email
+    if (process.env.RESEND_API_KEY) {
+      await this.dispatchResendOtpEmail(email, otp).catch((err) => {
+        console.warn('[Resend] Warning: Could not deliver email via Resend:', err);
+      });
+    }
+
     return {
       message: 'OTP sent to institutional email address.',
       email,
       syntheticOtp: process.env.NODE_ENV !== 'production' ? otp : undefined,
     };
+  }
+
+  /**
+   * Dispatches branded HTML OTP email via Resend API
+   */
+  private async dispatchResendOtpEmail(toEmail: string, otpCode: string): Promise<void> {
+    const fromAddress = process.env.EMAIL_FROM || 'SayMyName <auth@saymyname.in>';
+    const res = await fetch('https://api.resend.com/emails', {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${process.env.RESEND_API_KEY}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        from: fromAddress,
+        to: [toEmail],
+        subject: `${otpCode} is your SayMyName verification code`,
+        html: `
+          <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 520px; margin: 0 auto; padding: 32px 24px; background: #FFFDF9; border: 1px solid #EFE8DC; border-radius: 12px; color: #2A2421;">
+            <h2 style="font-size: 24px; font-weight: normal; margin-bottom: 8px; color: #8B263E;">SayMyName</h2>
+            <p style="font-size: 15px; line-height: 1.6; color: #5A504B; margin-bottom: 24px;">
+              Welcome! Use the one-time verification code below to sign in. This code is exclusively for verified adult students enrolled in approved IIT Madras BS programme tracks.
+            </p>
+            <div style="background: #F8F3EA; border: 1px solid #E5DCCF; border-radius: 8px; padding: 20px; text-align: center; margin-bottom: 24px;">
+              <span style="font-family: monospace; font-size: 32px; font-weight: 700; letter-spacing: 8px; color: #8B263E;">${otpCode}</span>
+            </div>
+            <p style="font-size: 13px; color: #8A7F77; line-height: 1.5; margin-bottom: 12px;">
+              This code will expire in 10 minutes. If you did not request this verification, you can safely ignore this email.
+            </p>
+            <hr style="border: none; border-top: 1px solid #EFE8DC; margin: 24px 0 16px;" />
+            <p style="font-size: 11px; color: #A69C94; text-align: center; line-height: 1.4;">
+              SayMyName is an independent product for verified IIT Madras BS students and is not operated, endorsed, or affiliated with IIT Madras.
+            </p>
+          </div>
+        `,
+      }),
+    });
+
+    if (!res.ok) {
+      const errData = await res.json().catch(() => ({}));
+      console.warn('[Resend] API returned non-OK status:', res.status, errData);
+    } else {
+      console.log(`[Resend] Successfully dispatched OTP email to ${toEmail}`);
+    }
   }
 
   /**

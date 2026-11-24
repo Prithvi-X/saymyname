@@ -1,7 +1,7 @@
 import { Controller, Get, Put, Post, Delete, Body, Param, UseGuards, Req } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth, ApiResponse } from '@nestjs/swagger';
 import { ProfilesService } from './profiles.service';
-import { UpdateProfileDto, AddPhotoDto, UpdatePreferencesDto } from './dto/profile.dto';
+import { UpdateProfileDto, AddPhotoDto, UpdatePreferencesDto, PresignPhotoDto } from './dto/profile.dto';
 import { JwtAuthGuard, AuthenticatedRequest } from '../identity/guards/jwt-auth.guard';
 
 @ApiTags('Profiles & Settings')
@@ -22,6 +22,12 @@ export class ProfilesController {
   @ApiOperation({ summary: 'Update profile bio, display name and details' })
   updateProfile(@Req() req: AuthenticatedRequest, @Body() dto: UpdateProfileDto) {
     return this.profilesService.updateProfile(req.user.sub, dto);
+  }
+
+  @Post('me/photos/presign')
+  @ApiOperation({ summary: 'Pre-sign a Cloudflare R2 / S3 photo upload URL' })
+  presignPhoto(@Req() req: AuthenticatedRequest, @Body() dto: PresignPhotoDto) {
+    return this.profilesService.presignPhoto(req.user.sub, dto);
   }
 
   @Post('me/photos')

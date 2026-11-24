@@ -81,3 +81,19 @@ export class UpdatePreferencesDto {
   @IsBoolean()
   showInDiscovery?: boolean;
 }
+
+export class PresignPhotoDto {
+  @ApiProperty({ example: 'profile.jpg', description: 'Original filename' })
+  @IsString()
+  filename!: string;
+
+  @ApiProperty({ example: 'image/jpeg', description: 'MIME type (image/jpeg, image/png, image/webp)' })
+  @IsString()
+  mimeType!: string;
+
+  @ApiPropertyOptional({ example: 1048576, description: 'File size in bytes (max 10MB)' })
+  @IsOptional()
+  @IsInt()
+  @Max(10485760) // 10 MB
+  fileSizeBytes?: number;
+}
