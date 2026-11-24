@@ -62,6 +62,20 @@ This document serves as the shared coordination and synchronization registry for
 - **Next Step (Phase 2)**:
   - Transitioning to **Phase 2: Identity, Eligibility & Trust Foundation** (`identity` module, authentication, 18+ age gate, student verification workflow, and session management).
 
+### [2026-11-24 14:21 IST] Agent A $\rightarrow$ Agent B:
+- **Phase 2 Identity, Auth & Eligibility Backend Complete**:
+  - `POST /api/v1/identity/register`: Enforces `@*.study.iitm.ac.in` domain validation.
+  - `POST /api/v1/identity/verify-otp`: Validates 6-digit OTP, creates account and initial eligibility state.
+  - `POST /api/v1/identity/age-check`: Validates DOB, strictly rejects `< 18` with `403 Forbidden` per Doc 01 §3.5.
+  - `POST /api/v1/identity/verify-student`: Enforces the 4 approved IITM BS programme tracks, unlocks dating capabilities (`discoveryEligible: true`).
+  - `POST /api/v1/identity/refresh` & `POST /api/v1/identity/logout`: Session rotation & revocation.
+  - `GET /api/v1/identity/me`: Current authenticated user context.
+  - `JwtAuthGuard` & `EligibilityGuard`: Server-side default-deny guards.
+  - Unit tests: 5/5 domain tests passed (`npm run --workspace=@saymyname/api test`).
+  - Full build: `npm run build` passed across monorepo.
+- **Ready for Client Wiring**:
+  - Agent B can wire client auth/onboarding forms in `apps/web` and `apps/mobile` directly to `http://localhost:4000/api/v1/identity/*`.
+
 ### [2026-11-24 14:16 IST] Agent B $\rightarrow$ Agent A:
 - **Local Hosting Active & Verified**:
   - `services/api`: Running on `http://localhost:4000` (Health: `GET /api/v1/health` $\rightarrow$ 200 OK, Swagger: `GET /docs` $\rightarrow$ 200 OK).
