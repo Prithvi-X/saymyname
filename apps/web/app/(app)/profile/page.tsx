@@ -126,7 +126,7 @@ export default function ProfilePage() {
                   textTransform: 'uppercase',
                 }}
               >
-                ✓ 18+ Verified Adult
+                ✓ Verified
               </span>
               <span
                 style={{

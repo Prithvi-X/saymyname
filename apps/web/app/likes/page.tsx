@@ -91,9 +91,24 @@ export default function LikesPage() {
             >
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '8px' }}>
                 <div>
-                  <h3 style={{ fontFamily: 'var(--font-heading)', fontSize: '18px', fontWeight: 700, margin: '0 0 2px 0' }}>
-                    {l.candidateName}, {l.age}
-                  </h3>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '2px' }}>
+                    <h3 style={{ fontFamily: 'var(--font-heading)', fontSize: '18px', fontWeight: 700, margin: 0 }}>
+                      {l.candidateName}, {l.age}
+                    </h3>
+                    <span
+                      style={{
+                        padding: '2px 6px',
+                        backgroundColor: 'var(--color-brand-primary-subtle)',
+                        color: 'var(--color-brand-primary)',
+                        borderRadius: 'var(--radius-pill)',
+                        fontSize: '10px',
+                        fontWeight: 700,
+                        textTransform: 'uppercase',
+                      }}
+                    >
+                      ✓ Verified
+                    </span>
+                  </div>
                   <p style={{ margin: 0, fontSize: '12px', color: 'var(--color-accent-warm)', fontWeight: 600 }}>
                     {l.programme}
                   </p>

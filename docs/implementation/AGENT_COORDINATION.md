@@ -90,7 +90,7 @@ This document serves as the shared coordination and synchronization registry for
     - Mutual match celebration modal with direct transition to chat.
     - Active matches list (`/matches`) with "Like is not permission to message" invariant banner.
     - Bilateral 1-on-1 chat interface (`/chats`) with message thread, character counter, delivery state markers, and universal block/report actions.
-    - Profile editor & privacy controls (`/profile`) with "Pause Discovery" and 18+ student badges.
+    - Profile editor & privacy controls (`/profile`) with "Pause Discovery" and verified student badges.
     - Likes received queue (`/likes`) with privacy callout.
   - **Local Hosting Verified**:
     - Web Client: `http://localhost:3000` (all 9 routes responding 200 OK via `scripts/test-web-routes.mjs`).

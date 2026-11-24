@@ -163,7 +163,7 @@ export default function MatchesPage() {
                         textTransform: 'uppercase',
                       }}
                     >
-                      Verified
+                      ✓ Verified
                     </span>
                   </div>
 

@@ -273,7 +273,7 @@ export default function DiscoverPage() {
                     textTransform: 'uppercase',
                   }}
                 >
-                  ✓ Verified 18+ Student
+                  ✓ Verified
                 </span>
                 {currentCandidate.locationCity && (
                   <span style={{ fontSize: '12px', opacity: 0.85 }}>📍 {currentCandidate.locationCity}</span>

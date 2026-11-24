@@ -283,11 +283,26 @@ function ChatsContent() {
                     {activeMatch.candidate.displayName.charAt(0)}
                   </div>
                   <div>
-                    <h3 style={{ fontSize: '16px', fontWeight: 700, margin: 0, color: 'var(--color-text-primary)' }}>
-                      {activeMatch.candidate.displayName}, {activeMatch.candidate.age}
-                    </h3>
-                    <p style={{ margin: 0, fontSize: '11px', color: 'var(--color-accent-warm)', fontWeight: 600 }}>
-                      BS in {activeMatch.candidate.programmeFamily.replace('_', ' ')} • Verified
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <h3 style={{ fontSize: '16px', fontWeight: 700, margin: 0, color: 'var(--color-text-primary)' }}>
+                        {activeMatch.candidate.displayName}, {activeMatch.candidate.age}
+                      </h3>
+                      <span
+                        style={{
+                          padding: '2px 6px',
+                          backgroundColor: 'var(--color-brand-primary-subtle)',
+                          color: 'var(--color-brand-primary)',
+                          borderRadius: 'var(--radius-pill)',
+                          fontSize: '10px',
+                          fontWeight: 700,
+                          textTransform: 'uppercase',
+                        }}
+                      >
+                        ✓ Verified
+                      </span>
+                    </div>
+                    <p style={{ margin: '2px 0 0 0', fontSize: '11px', color: 'var(--color-accent-warm)', fontWeight: 600 }}>
+                      BS in {activeMatch.candidate.programmeFamily.replace('_', ' ')}
                     </p>
                   </div>
                 </div>
