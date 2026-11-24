@@ -36,10 +36,12 @@ export class ProfilesService {
         throw new NotFoundException('Account not found');
       }
 
+      const safeName = (account.displayName && !/^\d{2}[a-zA-Z]\d+$/i.test(account.displayName) && !account.displayName.includes('@')) ? account.displayName : 'Member';
+
       profile = await this.prisma.profile.create({
         data: {
           accountId,
-          displayName: account.displayName || 'IITM Student',
+          displayName: safeName,
           programmeFamily: account.eligibility?.programmeFamily || 'data_science_applications',
           isPublished: true,
           preferences: {
@@ -60,7 +62,7 @@ export class ProfilesService {
       }).catch(() => ({
         id: 'mock-profile-id',
         accountId,
-        displayName: account.displayName || 'IITM Student',
+        displayName: safeName,
         programmeFamily: account.eligibility?.programmeFamily || 'data_science_applications',
         bio: 'Remote BS student.',
         isPublished: true,
@@ -76,7 +78,21 @@ export class ProfilesService {
   }
 
   async updateProfile(accountId: string, dto: UpdateProfileDto) {
+    if (dto.displayName) {
+      const trimmed = dto.displayName.trim();
+      if (/^\d{2}[a-zA-Z]\d+$/i.test(trimmed) || trimmed.includes('@') || /^[0-9a-f-]{36}$/i.test(trimmed)) {
+        throw new BadRequestException('Display name cannot be an email address, UUID, or institutional student roll number.');
+      }
+    }
+
     const profile = await this.getProfile(accountId);
+
+    if (dto.displayName) {
+      await this.prisma.account.update({
+        where: { id: accountId },
+        data: { displayName: dto.displayName.trim() },
+      }).catch(() => null);
+    }
 
     return this.prisma.profile.update({
       where: { id: profile.id },

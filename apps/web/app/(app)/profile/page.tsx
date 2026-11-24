@@ -3,8 +3,13 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useAuth } from '../../../lib/auth-context';
+import { api, sanitizeDisplayName } from '../../../lib/api';
 import {
-  CheckIcon,
+  Button,
+  Input,
+  Badge,
+} from '../../../components/ui';
+import {
   ShieldIcon,
   LockIcon,
   InfoIcon,
@@ -12,12 +17,12 @@ import {
   UserIcon,
 } from '../../../components/icons';
 
-const PROGRAMME_OPTIONS = [
-  { value: 'data_science_applications', label: 'BS in Data Science and Applications' },
-  { value: 'electronic_systems', label: 'BS in Electronic Systems' },
-  { value: 'aeronautics_space', label: 'BS in Aeronautics and Space Technology' },
-  { value: 'management_data_science', label: 'BS in Management and Data Science' },
-];
+const PROGRAMME_LABELS: Record<string, string> = {
+  data_science_applications: 'BS in Data Science and Applications',
+  electronic_systems: 'BS in Electronic Systems',
+  aeronautics_space: 'BS in Aeronautics and Space Technology',
+  management_data_science: 'BS in Management and Data Science',
+};
 
 const AVAILABLE_INTERESTS = [
   '☕ Filter Coffee',
@@ -37,40 +42,61 @@ const AVAILABLE_INTERESTS = [
 ];
 
 export default function ProfilePage() {
-  const { user, logout } = useAuth();
+  const { user, logout, refreshUser } = useAuth();
 
   // Tab State: 'public' | 'private'
   const [activeTab, setActiveTab] = useState<'public' | 'private'>('public');
 
   // Public Profile State (Synchronized to authenticated member context)
-  const [displayName, setDisplayName] = useState(user?.displayName || '');
+  const initialCleanName = sanitizeDisplayName(user?.displayName);
+  const [displayName, setDisplayName] = useState(initialCleanName);
   const [age] = useState(22);
-  const [programmeFamily, setProgrammeFamily] = useState(user?.eligibility?.programmeFamily || 'data_science_applications');
+  const [programmeFamily, setProgrammeFamily] = useState(
+    user?.eligibility?.programmeFamily || 'data_science_applications'
+  );
   const [currentTerm, setCurrentTerm] = useState('Foundation Level');
   const [locationCity, setLocationCity] = useState('');
   const [bio, setBio] = useState('');
   const [photoUrl, setPhotoUrl] = useState('');
-  const [selectedInterests, setSelectedInterests] = useState<string[]>([]);
+  const [imageError, setImageError] = useState(false);
+  const [selectedInterests, setSelectedInterests] = useState<string[]>([
+    '☕ Filter Coffee',
+    '📊 Machine Learning',
+  ]);
   const [promptQuestion, setPromptQuestion] = useState('My ideal offline conversation is over...');
   const [promptAnswer, setPromptAnswer] = useState('');
 
+  // Form & Network Feedback State
+  const [isSaving, setIsSaving] = useState(false);
+  const [saveFeedback, setSaveFeedback] = useState<string | null>(null);
+  const [saveError, setSaveError] = useState<string | null>(null);
+
   // Private Settings State
   const [isDiscoveryPaused, setIsDiscoveryPaused] = useState(false);
-  const [saveFeedback, setSaveFeedback] = useState<string | null>(null);
 
   useEffect(() => {
     if (user) {
-      if (user.displayName) setDisplayName(user.displayName);
+      const clean = sanitizeDisplayName(user.displayName);
+      if (clean) setDisplayName(clean);
       if (user.eligibility?.programmeFamily) setProgrammeFamily(user.eligibility.programmeFamily);
       if ((user as any).profile) {
         const p = (user as any).profile;
         if (p.bio) setBio(p.bio);
         if (p.locationCity) setLocationCity(p.locationCity);
         if (p.termOrYear) setCurrentTerm(p.termOrYear);
-        if (Array.isArray(p.photos) && p.photos[0]?.photoUrl) setPhotoUrl(p.photos[0].photoUrl);
+        if (Array.isArray(p.photos) && p.photos[0]?.photoUrl) {
+          setPhotoUrl(p.photos[0].photoUrl);
+          setImageError(false);
+        }
       }
     }
   }, [user]);
+
+  // Reset image error state whenever user changes photo URL
+  const handlePhotoUrlChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setPhotoUrl(e.target.value);
+    setImageError(false);
+  };
 
   const toggleInterest = (interest: string) => {
     if (selectedInterests.includes(interest)) {
@@ -82,10 +108,27 @@ export default function ProfilePage() {
     }
   };
 
-  const handleSave = (e: React.FormEvent) => {
+  const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
-    setSaveFeedback('Public profile successfully updated.');
-    setTimeout(() => setSaveFeedback(null), 3000);
+    setSaveError(null);
+    setSaveFeedback(null);
+    setIsSaving(true);
+
+    try {
+      await api.updateProfile({
+        displayName: displayName.trim(),
+        bio: bio.trim(),
+        termOrYear: currentTerm.trim(),
+        locationCity: locationCity.trim(),
+      });
+      await refreshUser();
+      setSaveFeedback('Profile changes successfully updated and saved.');
+      setTimeout(() => setSaveFeedback(null), 3500);
+    } catch (err: any) {
+      setSaveError(err.message || 'Failed to update profile. Please try again.');
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const handleLogout = async () => {
@@ -98,30 +141,24 @@ export default function ProfilePage() {
   const maskedRoll = (user as any)?.eligibility?.reviewNotes || 'Verified Active Enrolment';
 
   const selectedProgrammeLabel =
-    PROGRAMME_OPTIONS.find((p) => p.value === programmeFamily)?.label || 'BS in Data Science and Applications';
+    PROGRAMME_LABELS[programmeFamily] || 'BS in Data Science and Applications';
+
+  // Sanitized display name for preview
+  const previewName = sanitizeDisplayName(displayName);
 
   return (
-    <div style={{ maxWidth: '1080px', margin: '0 auto', padding: '28px 16px 64px 16px' }}>
+    <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8 font-ui">
       {/* Editorial Header */}
-      <div style={{ marginBottom: '28px' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
-          <span className="index-stamp" style={{ color: 'var(--color-brand-primary)' }}>
+      <div className="mb-8">
+        <div className="flex items-center gap-2 mb-1.5">
+          <span className="text-xs font-mono font-semibold uppercase tracking-wider text-iris">
             STUDENT PROFILE • PHASE 1
           </span>
         </div>
-        <h1
-          style={{
-            fontFamily: 'var(--font-display)',
-            fontSize: '32px',
-            fontWeight: 600,
-            margin: '0 0 6px 0',
-            color: 'var(--color-text-primary)',
-            letterSpacing: '-0.02em',
-          }}
-        >
+        <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-chalk m-0">
           Profile & Account Settings
         </h1>
-        <p style={{ fontSize: '14px', color: 'var(--color-text-secondary)', margin: 0, maxWidth: '640px' }}>
+        <p className="text-sm text-silver mt-1.5 max-w-2xl leading-relaxed">
           Manage your verified presence seen by peers in daily discovery, and review your confidential student verification vault.
         </p>
       </div>
@@ -130,36 +167,19 @@ export default function ProfilePage() {
       <div
         role="tablist"
         aria-label="Profile Sections"
-        style={{
-          display: 'flex',
-          gap: '4px',
-          borderBottom: '1px solid var(--color-border-default)',
-          marginBottom: '28px',
-        }}
+        className="flex items-center gap-2 border-b border-edge mb-8 overflow-x-auto"
       >
         <button
           role="tab"
           aria-selected={activeTab === 'public'}
           onClick={() => setActiveTab('public')}
-          style={{
-            padding: '12px 20px',
-            fontSize: '14px',
-            fontWeight: activeTab === 'public' ? 600 : 500,
-            color: activeTab === 'public' ? 'var(--color-brand-primary)' : 'var(--color-text-secondary)',
-            borderBottom: activeTab === 'public' ? '2px solid var(--color-brand-primary)' : '2px solid transparent',
-            marginBottom: '-1px',
-            background: 'none',
-            borderTop: 'none',
-            borderLeft: 'none',
-            borderRight: 'none',
-            cursor: 'pointer',
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: '8px',
-            transition: 'color var(--duration-fast)',
-          }}
+          className={`h-11 px-4 inline-flex items-center gap-2 text-sm font-medium transition-colors select-none focus-visible:outline-2 focus-visible:outline-iris ${
+            activeTab === 'public'
+              ? 'text-chalk border-b-2 border-iris font-semibold'
+              : 'text-ash hover:text-silver'
+          }`}
         >
-          <UserIcon size={16} color={activeTab === 'public' ? 'var(--color-brand-primary)' : 'var(--color-text-secondary)'} />
+          <UserIcon size={16} color={activeTab === 'public' ? 'var(--smn-accent-iris, #8580C4)' : 'currentColor'} />
           <span>Public Profile & Discovery Card</span>
         </button>
 
@@ -167,25 +187,13 @@ export default function ProfilePage() {
           role="tab"
           aria-selected={activeTab === 'private'}
           onClick={() => setActiveTab('private')}
-          style={{
-            padding: '12px 20px',
-            fontSize: '14px',
-            fontWeight: activeTab === 'private' ? 600 : 500,
-            color: activeTab === 'private' ? 'var(--color-brand-primary)' : 'var(--color-text-secondary)',
-            borderBottom: activeTab === 'private' ? '2px solid var(--color-brand-primary)' : '2px solid transparent',
-            marginBottom: '-1px',
-            background: 'none',
-            borderTop: 'none',
-            borderLeft: 'none',
-            borderRight: 'none',
-            cursor: 'pointer',
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: '8px',
-            transition: 'color var(--duration-fast)',
-          }}
+          className={`h-11 px-4 inline-flex items-center gap-2 text-sm font-medium transition-colors select-none focus-visible:outline-2 focus-visible:outline-iris ${
+            activeTab === 'private'
+              ? 'text-chalk border-b-2 border-iris font-semibold'
+              : 'text-ash hover:text-silver'
+          }`}
         >
-          <LockIcon size={16} color={activeTab === 'private' ? 'var(--color-brand-primary)' : 'var(--color-text-secondary)'} />
+          <LockIcon size={16} color={activeTab === 'private' ? 'var(--smn-accent-iris, #8580C4)' : 'currentColor'} />
           <span>Confidential Verification & Privacy</span>
         </button>
       </div>
@@ -193,190 +201,154 @@ export default function ProfilePage() {
       {saveFeedback && (
         <div
           role="status"
-          style={{
-            padding: '12px 18px',
-            backgroundColor: 'var(--color-surface)',
-            border: '1px solid var(--color-status-success)',
-            color: 'var(--color-status-success)',
-            borderRadius: 'var(--radius-md)',
-            fontSize: '13px',
-            fontWeight: 500,
-            marginBottom: '24px',
-            textAlign: 'center',
-            boxShadow: 'var(--elevation-1)',
-            animation: 'fadeIn 140ms ease-out',
-          }}
+          className="p-3.5 mb-6 bg-[#10241A] border border-success/40 text-success rounded-[6px] text-sm font-medium text-center shadow-sm flex items-center justify-center gap-2"
         >
-          ✓ {saveFeedback}
+          <svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={3}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+          </svg>
+          <span>{saveFeedback}</span>
+        </div>
+      )}
+
+      {saveError && (
+        <div
+          role="alert"
+          className="p-3.5 mb-6 bg-[#2E1417] border border-danger/40 text-danger rounded-[6px] text-sm font-medium text-center shadow-sm flex items-center justify-center gap-2"
+        >
+          <svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+            <circle cx="12" cy="12" r="10" />
+            <line x1="12" y1="8" x2="12" y2="12" />
+            <line x1="12" y1="16" x2="12.01" y2="16" />
+          </svg>
+          <span>{saveError}</span>
         </div>
       )}
 
       {/* TAB 1: PUBLIC PROFILE & DISCOVERY CARD */}
       {activeTab === 'public' && (
-        <div
-          style={{
-            display: 'grid',
-            gridTemplateColumns: 'minmax(0, 1.15fr) minmax(320px, 0.85fr)',
-            gap: '32px',
-            alignItems: 'start',
-          }}
-          className="desktop-split-grid"
-        >
-          {/* Left Column: Profile Form */}
-          <form onSubmit={handleSave} style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+          {/* Left Column: Profile Form (7 cols on desktop) */}
+          <form onSubmit={handleSave} className="lg:col-span-7 flex flex-col gap-6">
             {/* Basic Info Card */}
-            <div className="card-surface" style={{ padding: '28px' }}>
-              <h2
-                style={{
-                  fontFamily: 'var(--font-display)',
-                  fontSize: '20px',
-                  fontWeight: 600,
-                  margin: '0 0 20px 0',
-                  color: 'var(--color-text-primary)',
-                }}
-              >
+            <div className="bg-coal border border-edge rounded-[12px] p-6 sm:p-7 flex flex-col gap-5">
+              <h2 className="text-lg font-semibold text-chalk m-0 tracking-tight">
                 Essential Profile Details
               </h2>
 
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '16px' }}>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label className="label-editorial" htmlFor="displayName">
-                    Display Name
-                  </label>
-                  <input
+                  <Input
+                    label="Public Display Name"
                     id="displayName"
                     type="text"
                     value={displayName}
                     onChange={(e) => setDisplayName(e.target.value)}
-                    className="input-editorial"
+                    placeholder="e.g. Ananya Sharma"
+                    helperText="How peers see you. Institutional roll numbers are strictly prohibited."
                     required
                   />
                 </div>
 
                 <div>
-                  <label className="label-editorial" htmlFor="verifiedAge">
+                  <label className="text-xs font-medium text-silver select-none tracking-wide block mb-1.5">
                     Age (Verified)
                   </label>
-                  <input
-                    id="verifiedAge"
-                    type="text"
-                    value={`${age} years`}
-                    disabled
-                    className="input-editorial"
-                    style={{ backgroundColor: 'var(--color-surface-subtle)', color: 'var(--color-text-secondary)', cursor: 'not-allowed' }}
-                    title="Age is verified upon registration and cannot be modified."
-                  />
+                  <div className="w-full h-12 bg-iron text-silver rounded-[4px] border border-edge/60 px-3.5 flex items-center justify-between text-sm select-none">
+                    <span>{age} years</span>
+                    <Badge variant="verified" size="sm">Verified</Badge>
+                  </div>
+                  <p className="text-xs text-ash mt-1.5">
+                    Age is verified via government ID and cannot be altered.
+                  </p>
                 </div>
               </div>
 
-              <div style={{ marginBottom: '16px' }}>
-                <label className="label-editorial" htmlFor="programmeFamily">
-                  Academic Programme Track
+              {/* Verified Programme Information (Immutable per Document 01) */}
+              <div>
+                <label className="text-xs font-medium text-silver select-none tracking-wide block mb-1.5">
+                  Academic Programme Track (Verified)
                 </label>
-                <select
-                  id="programmeFamily"
-                  value={programmeFamily}
-                  onChange={(e) => setProgrammeFamily(e.target.value)}
-                  className="input-editorial"
-                  style={{ cursor: 'pointer' }}
-                >
-                  {PROGRAMME_OPTIONS.map((opt) => (
-                    <option key={opt.value} value={opt.value}>
-                      {opt.label}
-                    </option>
-                  ))}
-                </select>
+                <div className="w-full h-12 bg-iron text-chalk rounded-[4px] border border-edge/60 px-3.5 flex items-center justify-between text-sm select-none">
+                  <span className="font-medium truncate">{selectedProgrammeLabel}</span>
+                  <Badge variant="programme" size="sm">Verified Track</Badge>
+                </div>
+                <p className="text-xs text-ash mt-1.5">
+                  Programme track is cryptographically verified from your IITM record and is immutable.
+                </p>
               </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '16px' }}>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label className="label-editorial" htmlFor="currentTerm">
-                    Academic Level / Term
-                  </label>
-                  <input
+                  <Input
+                    label="Academic Level / Term"
                     id="currentTerm"
                     type="text"
                     value={currentTerm}
                     onChange={(e) => setCurrentTerm(e.target.value)}
                     placeholder="e.g. Foundation Level, Term 4"
-                    className="input-editorial"
+                    helperText="Optional context for remote study peers."
                   />
                 </div>
 
                 <div>
-                  <label className="label-editorial" htmlFor="locationCity">
-                    Location (City / State)
-                  </label>
-                  <input
+                  <Input
+                    label="Location (City / State)"
                     id="locationCity"
                     type="text"
                     value={locationCity}
                     onChange={(e) => setLocationCity(e.target.value)}
                     placeholder="e.g. Bengaluru, Karnataka"
-                    className="input-editorial"
+                    helperText="City/region level only. No exact GPS is ever used."
                   />
                 </div>
               </div>
 
               <div>
-                <label className="label-editorial" htmlFor="portraitUrl">
-                  Primary Portrait Photo (URL)
-                </label>
-                <input
+                <Input
+                  label="Primary Portrait Photo (URL)"
                   id="portraitUrl"
                   type="url"
                   value={photoUrl}
-                  onChange={(e) => setPhotoUrl(e.target.value)}
+                  onChange={handlePhotoUrlChange}
                   placeholder="https://..."
-                  className="input-editorial"
+                  helperText="Natural portraits representing yourself. If URL is unreachable, an elegant monogram is rendered."
                 />
-                <span style={{ fontSize: '11px', color: 'var(--color-text-muted)', display: 'block', marginTop: '4px' }}>
-                  Natural, respectful portraits representing yourself work best. Avoid group photos or cartoon avatars.
-                </span>
               </div>
             </div>
 
             {/* Bio & Passions Card */}
-            <div className="card-surface" style={{ padding: '28px' }}>
-              <h2
-                style={{
-                  fontFamily: 'var(--font-display)',
-                  fontSize: '20px',
-                  fontWeight: 600,
-                  margin: '0 0 20px 0',
-                  color: 'var(--color-text-primary)',
-                }}
-              >
+            <div className="bg-coal border border-edge rounded-[12px] p-6 sm:p-7 flex flex-col gap-5">
+              <h2 className="text-lg font-semibold text-chalk m-0 tracking-tight">
                 Bio & Intellectual Passions
               </h2>
 
-              <div style={{ marginBottom: '20px' }}>
-                <label className="label-editorial" htmlFor="bioText">
-                  Personal Bio (Max 500 characters)
+              <div>
+                <label htmlFor="bioText" className="text-xs font-medium text-silver select-none tracking-wide block mb-1.5">
+                  Personal Biography (Max 500 characters)
                 </label>
                 <textarea
                   id="bioText"
                   value={bio}
                   onChange={(e) => setBio(e.target.value.slice(0, 500))}
-                  rows={3}
-                  className="input-editorial"
-                  style={{ resize: 'vertical' }}
+                  rows={4}
+                  placeholder="Share your intellectual rhythm, remote study habits, or offline interests..."
+                  className="w-full min-h-[110px] p-3.5 bg-iron text-chalk placeholder-ash/70 rounded-[4px] border border-edge hover:border-[#45505E] focus:border-iris focus:ring-1 focus:ring-iris font-ui text-sm resize-y outline-none transition-colors"
                 />
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '4px' }}>
-                  <span style={{ fontSize: '11px', color: 'var(--color-text-muted)' }}>
-                    Share your intellectual rhythm, remote study habits, or offline interests.
+                <div className="flex justify-between items-center mt-1.5">
+                  <span className="text-xs text-ash">
+                    Share your remote study habits or offline interests.
                   </span>
-                  <span style={{ fontSize: '11px', color: 'var(--color-text-secondary)', fontWeight: 500 }}>
+                  <span className="text-xs text-silver font-mono font-medium">
                     {500 - bio.length} chars left
                   </span>
                 </div>
               </div>
 
               <div>
-                <label className="label-editorial">
+                <label className="text-xs font-medium text-silver select-none tracking-wide block mb-2">
                   Interests & Academic Passions (Select up to 5 • {selectedInterests.length}/5 selected)
                 </label>
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+                <div className="flex flex-wrap gap-2">
                   {AVAILABLE_INTERESTS.map((interest) => {
                     const isSelected = selectedInterests.includes(interest);
                     return (
@@ -384,23 +356,11 @@ export default function ProfilePage() {
                         type="button"
                         key={interest}
                         onClick={() => toggleInterest(interest)}
-                        className="badge-tag"
-                        style={{
-                          padding: '6px 12px',
-                          borderRadius: 'var(--radius-pill)',
-                          border: isSelected
-                            ? '1.5px solid var(--color-brand-primary)'
-                            : '1px solid var(--color-border-default)',
-                          backgroundColor: isSelected
-                            ? 'var(--color-brand-primary-subtle)'
-                            : 'var(--color-surface)',
-                          color: isSelected
-                            ? 'var(--color-brand-primary)'
-                            : 'var(--color-text-secondary)',
-                          fontWeight: isSelected ? 600 : 500,
-                          cursor: 'pointer',
-                          transition: 'all var(--duration-fast) var(--ease-editorial)',
-                        }}
+                        className={`text-xs px-2.5 py-1.5 rounded-[4px] font-ui transition-colors border select-none ${
+                          isSelected
+                            ? 'bg-[#1C1C2E] text-iris border-iris font-semibold'
+                            : 'bg-iron text-silver border-edge hover:border-[#4B5665]'
+                        }`}
                       >
                         {interest} {isSelected && '✓'}
                       </button>
@@ -410,30 +370,21 @@ export default function ProfilePage() {
               </div>
             </div>
 
-            {/* Conversation Prompt Card */}
-            <div className="card-surface" style={{ padding: '28px' }}>
-              <h2
-                style={{
-                  fontFamily: 'var(--font-display)',
-                  fontSize: '20px',
-                  fontWeight: 600,
-                  margin: '0 0 20px 0',
-                  color: 'var(--color-text-primary)',
-                }}
-              >
+            {/* Conversation Starter Prompt */}
+            <div className="bg-coal border border-edge rounded-[12px] p-6 sm:p-7 flex flex-col gap-5">
+              <h2 className="text-lg font-semibold text-chalk m-0 tracking-tight">
                 Conversation Starter Prompt
               </h2>
 
-              <div style={{ marginBottom: '16px' }}>
-                <label className="label-editorial" htmlFor="promptQuestion">
+              <div>
+                <label htmlFor="promptQuestion" className="text-xs font-medium text-silver select-none tracking-wide block mb-1.5">
                   Prompt Question
                 </label>
                 <select
                   id="promptQuestion"
                   value={promptQuestion}
                   onChange={(e) => setPromptQuestion(e.target.value)}
-                  className="input-editorial"
-                  style={{ cursor: 'pointer' }}
+                  className="w-full h-12 bg-iron text-chalk rounded-[4px] border border-edge px-3.5 text-sm outline-none focus:border-iris cursor-pointer font-ui"
                 >
                   <option value="My ideal offline conversation is over...">My ideal offline conversation is over...</option>
                   <option value="A technical subject I could discuss endlessly is...">A technical subject I could discuss endlessly is...</option>
@@ -443,190 +394,130 @@ export default function ProfilePage() {
               </div>
 
               <div>
-                <label className="label-editorial" htmlFor="promptAnswer">
-                  Your Thoughtful Answer
+                <label htmlFor="promptAnswer" className="text-xs font-medium text-silver select-none tracking-wide block mb-1.5">
+                  Your Answer
                 </label>
                 <textarea
                   id="promptAnswer"
                   value={promptAnswer}
                   onChange={(e) => setPromptAnswer(e.target.value.slice(0, 240))}
                   rows={2}
-                  className="input-editorial"
+                  className="w-full min-h-[72px] p-3.5 bg-iron text-chalk placeholder-ash/70 rounded-[4px] border border-edge hover:border-[#45505E] focus:border-iris focus:ring-1 focus:ring-iris font-ui text-sm resize-y outline-none transition-colors"
                   placeholder="Give prospective matches something meaningful to connect on..."
                 />
               </div>
             </div>
 
-            <button
-              type="submit"
-              className="btn btn-primary"
-              style={{
-                padding: '14px 28px',
-                fontSize: '15px',
-                alignSelf: 'flex-start',
-              }}
-            >
-              Save Profile Changes
-            </button>
+            <div>
+              <Button
+                type="submit"
+                variant="primary"
+                size="md"
+                isLoading={isSaving}
+              >
+                Save Profile Changes
+              </Button>
+            </div>
           </form>
 
-          {/* Right Column: Live Discovery Card Preview */}
-          <div style={{ position: 'sticky', top: '88px' }}>
-            <div style={{ marginBottom: '12px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-              <span className="index-stamp" style={{ color: 'var(--color-text-muted)' }}>
+          {/* Right Column: Live Discovery Card Preview (5 cols on desktop) */}
+          <div className="lg:col-span-5 lg:sticky lg:top-24 flex flex-col gap-3">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-mono font-semibold uppercase tracking-wider text-ash">
                 LIVE PREVIEW • HOW PEERS SEE YOU
               </span>
-              <span
-                style={{
-                  fontSize: '11px',
-                  color: 'var(--color-brand-primary)',
-                  fontWeight: 600,
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: '4px',
-                }}
-              >
-                <CheckIcon size={12} color="var(--color-brand-primary)" />
-                Verified View
-              </span>
+              <Badge variant="verified" size="sm">Verified View</Badge>
             </div>
 
             {/* Candidate Card Mirror */}
-            <div className="card-surface" style={{ overflow: 'hidden', boxShadow: 'var(--elevation-2)' }}>
-              {/* Photo Stage */}
-              <div
-                style={{
-                  height: '380px',
-                  position: 'relative',
-                  backgroundColor: '#2C2624',
-                  overflow: 'hidden',
-                }}
-              >
-                <img
-                  src={photoUrl}
-                  alt={displayName}
-                  onError={(e) => {
-                    // Fallback to stylized monogram if invalid photo URL
-                    (e.target as HTMLElement).style.display = 'none';
-                  }}
-                  style={{
-                    width: '100%',
-                    height: '100%',
-                    objectFit: 'cover',
-                    display: 'block',
-                  }}
-                />
-
-                {/* Scrim */}
-                <div
-                  style={{
-                    position: 'absolute',
-                    inset: 0,
-                    background:
-                      'linear-gradient(to top, rgba(20, 18, 17, 0.92) 0%, rgba(20, 18, 17, 0.35) 45%, rgba(0, 0, 0, 0) 75%)',
-                    pointerEvents: 'none',
-                  }}
-                />
-
-                {/* Badge Overlay */}
-                <div style={{ position: 'absolute', bottom: '18px', left: '20px', right: '20px', color: '#FFFFFF' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
-                    <span className="badge-verified">
-                      <CheckIcon size={12} color="var(--color-brand-primary)" />
-                      <span>Verified</span>
+            <div className="bg-coal border border-edge rounded-[12px] overflow-hidden shadow-xl">
+              {/* Photo Stage with Resilient Fallback */}
+              <div className="h-96 relative bg-iron overflow-hidden flex items-center justify-center">
+                {photoUrl && !imageError ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={photoUrl}
+                    alt={`${previewName || 'Member'}'s profile portrait`}
+                    onError={() => setImageError(true)}
+                    className="w-full h-full object-cover object-center block"
+                  />
+                ) : (
+                  /* Stylized Architectural Monogram Placeholder (Document 10: MASS & CUT) */
+                  <div className="w-full h-full flex flex-col items-center justify-center bg-gradient-to-b from-iron to-coal p-6 text-center select-none">
+                    <div className="w-20 h-20 rounded-[8px] bg-slate border border-edge flex items-center justify-center text-chalk text-2xl font-bold mb-3 shadow-inner">
+                      {previewName ? previewName.charAt(0).toUpperCase() : 'M'}
+                    </div>
+                    <span className="text-xs text-silver font-medium">
+                      {photoUrl ? 'Image unreachable • Monogram fallback' : 'No photo uploaded'}
                     </span>
+                    <span className="text-[11px] text-ash mt-1">
+                      Add a public portrait URL on the left to preview
+                    </span>
+                  </div>
+                )}
+
+                {/* Scrim Overlay */}
+                <div className="absolute inset-0 bg-gradient-to-t from-stage/95 via-stage/40 to-transparent pointer-events-none" />
+
+                {/* Badge Overlay & Identity */}
+                <div className="absolute bottom-4 left-5 right-5 text-chalk">
+                  <div className="flex items-center gap-2 mb-2 flex-wrap">
+                    <Badge variant="verified" size="sm">Verified</Badge>
 
                     {locationCity && (
-                      <span
-                        style={{
-                          display: 'inline-flex',
-                          alignItems: 'center',
-                          gap: '4px',
-                          fontSize: '11px',
-                          padding: '3px 10px',
-                          borderRadius: 'var(--radius-pill)',
-                          backgroundColor: 'rgba(255, 255, 255, 0.18)',
-                          backdropFilter: 'blur(8px)',
-                          color: '#FFFFFF',
-                        }}
-                      >
-                        <PinIcon size={12} color="#FFFFFF" />
+                      <span className="inline-flex items-center gap-1 text-[11px] px-2 py-0.5 rounded-[4px] bg-coal/80 backdrop-blur-xs text-silver border border-edge/80">
+                        <PinIcon size={11} color="currentColor" />
                         <span>{locationCity}</span>
                       </span>
                     )}
                   </div>
 
-                  <h3
-                    style={{
-                      fontFamily: 'var(--font-display)',
-                      fontSize: '28px',
-                      fontWeight: 600,
-                      margin: '0 0 2px 0',
-                      color: '#FFFFFF',
-                      letterSpacing: '-0.02em',
-                    }}
-                  >
-                    {displayName}, {age}
+                  <h3 className="text-2xl font-bold text-chalk m-0 tracking-tight">
+                    {previewName ? `${previewName}, ${age}` : `Add your display name, ${age}`}
                   </h3>
 
-                  <p style={{ margin: 0, fontSize: '13px', fontWeight: 500, color: 'rgba(255, 255, 255, 0.9)' }}>
+                  <p className="m-0 text-xs font-medium text-silver/90 mt-1">
                     {selectedProgrammeLabel} {currentTerm ? `• ${currentTerm}` : ''}
                   </p>
                 </div>
               </div>
 
               {/* Bio & Details Section */}
-              <div style={{ padding: '20px 22px' }}>
-                <p
-                  style={{
-                    fontSize: '14px',
-                    lineHeight: '22px',
-                    color: 'var(--color-text-primary)',
-                    margin: '0 0 16px 0',
-                  }}
-                >
-                  {bio}
+              <div className="p-5 flex flex-col gap-4">
+                <p className="text-sm text-silver leading-relaxed m-0">
+                  {bio || <span className="italic text-ash">No personal biography written yet.</span>}
                 </p>
 
-                {/* Interest Pills */}
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginBottom: '18px' }}>
-                  {selectedInterests.map((interest) => (
-                    <span
-                      key={interest}
-                      className="badge-interest"
-                      style={{ fontSize: '11.5px', padding: '4px 10px' }}
-                    >
-                      {interest}
-                    </span>
-                  ))}
-                </div>
+                {/* Interest Tags */}
+                {selectedInterests.length > 0 && (
+                  <div className="flex flex-wrap gap-1.5">
+                    {selectedInterests.map((interest) => (
+                      <Badge key={interest} variant="neutral" size="sm">
+                        {interest}
+                      </Badge>
+                    ))}
+                  </div>
+                )}
 
                 {/* Prompt Quote Card */}
                 {promptAnswer && (
-                  <div className="quote-card">
-                    <span className="quote-label">{promptQuestion}</span>
-                    <p className="quote-text">{promptAnswer}</p>
+                  <div className="p-3.5 bg-iron border-l-2 border-iris rounded-r-[6px] flex flex-col gap-1">
+                    <span className="text-[11px] font-semibold text-iris uppercase tracking-wide">
+                      {promptQuestion}
+                    </span>
+                    <p className="text-xs text-silver m-0 leading-relaxed italic">
+                      &ldquo;{promptAnswer}&rdquo;
+                    </p>
                   </div>
                 )}
               </div>
             </div>
 
             {/* Privacy Clarification Note */}
-            <div
-              style={{
-                marginTop: '14px',
-                padding: '12px 14px',
-                backgroundColor: 'var(--color-surface)',
-                border: '1px solid var(--color-border-subtle)',
-                borderRadius: 'var(--radius-md)',
-                display: 'flex',
-                gap: '10px',
-                alignItems: 'flex-start',
-              }}
-            >
-              <InfoIcon size={16} color="var(--color-accent-warm)" style={{ flexShrink: 0, marginTop: '2px' }} />
-              <p style={{ margin: 0, fontSize: '12px', color: 'var(--color-text-secondary)', lineHeight: '17px' }}>
-                <strong>Strict Privacy Guarantee:</strong> Your institutional email, student roll number, and exact date of birth are never rendered to prospective matches.
+            <div className="p-3.5 bg-coal border border-edge/80 rounded-[8px] flex items-start gap-2.5">
+              <InfoIcon size={16} color="var(--smn-accent-iris, #8580C4)" className="shrink-0 mt-0.5" />
+              <p className="m-0 text-xs text-silver leading-relaxed">
+                <strong className="text-chalk font-semibold">Strict Privacy Invariant:</strong> Your institutional email, student roll number, and exact date of birth are never exposed to prospective matches.
               </p>
             </div>
           </div>
@@ -635,181 +526,133 @@ export default function ProfilePage() {
 
       {/* TAB 2: CONFIDENTIAL VERIFICATION & PRIVACY */}
       {activeTab === 'private' && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '24px', maxWidth: '720px' }}>
+        <div className="flex flex-col gap-6 max-w-2xl">
           {/* Institutional Verification Card */}
-          <div className="card-surface" style={{ padding: '32px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '14px', marginBottom: '22px' }}>
-              <div
-                style={{
-                  width: '44px',
-                  height: '44px',
-                  borderRadius: '50%',
-                  backgroundColor: 'var(--color-brand-primary-subtle)',
-                  color: 'var(--color-brand-primary)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                }}
-              >
-                <ShieldIcon size={22} color="var(--color-brand-primary)" />
+          <div className="bg-coal border border-edge rounded-[12px] p-6 sm:p-8">
+            <div className="flex items-center gap-3.5 mb-6">
+              <div className="w-11 h-11 rounded-[8px] bg-iron border border-edge flex items-center justify-center text-iris">
+                <ShieldIcon size={22} color="currentColor" />
               </div>
 
               <div>
-                <h2
-                  style={{
-                    fontFamily: 'var(--font-display)',
-                    fontSize: '22px',
-                    fontWeight: 600,
-                    margin: '0 0 2px 0',
-                    color: 'var(--color-text-primary)',
-                  }}
-                >
+                <h2 className="text-xl font-semibold text-chalk m-0 tracking-tight">
                   Student Verification Vault
                 </h2>
-                <p style={{ margin: 0, fontSize: '13px', color: 'var(--color-text-secondary)' }}>
+                <p className="m-0 text-xs text-silver mt-0.5">
                   Cryptographically secured enrolment records under Document 01 §3.5
                 </p>
               </div>
             </div>
 
             {/* Data Invariants List */}
-            <div
-              style={{
-                display: 'flex',
-                flexDirection: 'column',
-                gap: '14px',
-                backgroundColor: 'var(--color-surface-subtle)',
-                padding: '20px 24px',
-                borderRadius: 'var(--radius-md)',
-                border: '1px solid var(--color-border-subtle)',
-                marginBottom: '24px',
-              }}
-            >
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '13px' }}>
-                <span style={{ color: 'var(--color-text-secondary)' }}>Enrolment Status:</span>
-                <span style={{ fontWeight: 600, color: 'var(--color-status-success)', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
-                  <CheckIcon size={13} color="var(--color-status-success)" />
-                  Active BS Student
+            <div className="flex flex-col gap-3.5 bg-iron/70 p-5 rounded-[8px] border border-edge/80 mb-6">
+              <div className="flex justify-between items-center text-xs">
+                <span className="text-silver">Enrolment Status:</span>
+                <span className="font-semibold text-success flex items-center gap-1.5">
+                  <Badge variant="verified" size="sm">Active BS Student</Badge>
                 </span>
               </div>
 
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '13px' }}>
-                <span style={{ color: 'var(--color-text-secondary)' }}>Programme Family:</span>
-                <span style={{ fontWeight: 600, color: 'var(--color-text-primary)' }}>
+              <div className="flex justify-between items-center text-xs">
+                <span className="text-silver">Programme Family:</span>
+                <span className="font-semibold text-chalk">
                   {selectedProgrammeLabel}
                 </span>
               </div>
 
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '13px' }}>
-                <span style={{ color: 'var(--color-text-secondary)' }}>Masked Institutional Email:</span>
-                <span style={{ fontWeight: 600, color: 'var(--color-text-primary)', fontFamily: 'monospace' }}>
+              <div className="flex justify-between items-center text-xs">
+                <span className="text-silver">Masked Institutional Email:</span>
+                <span className="font-semibold text-chalk font-mono">
                   {maskedEmail}
                 </span>
               </div>
 
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '13px' }}>
-                <span style={{ color: 'var(--color-text-secondary)' }}>Masked Student Roll No:</span>
-                <span style={{ fontWeight: 600, color: 'var(--color-text-primary)', fontFamily: 'monospace' }}>
+              <div className="flex justify-between items-center text-xs">
+                <span className="text-silver">Masked Student Roll No:</span>
+                <span className="font-semibold text-chalk font-mono">
                   {maskedRoll}
                 </span>
               </div>
 
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '13px' }}>
-                <span style={{ color: 'var(--color-text-secondary)' }}>Adult Age Eligibility:</span>
-                <span style={{ fontWeight: 600, color: 'var(--color-status-success)' }}>
+              <div className="flex justify-between items-center text-xs">
+                <span className="text-silver">Adult Age Eligibility:</span>
+                <span className="font-semibold text-success">
                   18+ Verified (DPDP Compliant)
                 </span>
               </div>
             </div>
 
-            <p style={{ margin: 0, fontSize: '12px', color: 'var(--color-text-muted)', lineHeight: '18px' }}>
-              <strong>Institutional Boundary Notice:</strong> SayMyName is an independent platform for verified learners and is not owned, operated, or endorsed by IIT Madras. Your academic records are verified solely to preserve a safe, adult, peer-exclusive community.
+            <p className="m-0 text-xs text-ash leading-relaxed">
+              <strong className="text-silver font-semibold">Institutional Boundary Notice:</strong> SayMyName is an independent platform for verified learners and is not owned, operated, or endorsed by IIT Madras. Academic records are verified solely to preserve a safe, adult, peer-exclusive community.
             </p>
           </div>
 
           {/* Discovery Controls Card */}
-          <div className="card-surface" style={{ padding: '32px' }}>
-            <h2
-              style={{
-                fontFamily: 'var(--font-display)',
-                fontSize: '20px',
-                fontWeight: 600,
-                margin: '0 0 16px 0',
-                color: 'var(--color-text-primary)',
-              }}
-            >
+          <div className="bg-coal border border-edge rounded-[12px] p-6 sm:p-8">
+            <h2 className="text-lg font-semibold text-chalk m-0 mb-4 tracking-tight">
               Discovery & Cadence Controls
             </h2>
 
-            <div
-              style={{
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center',
-                paddingBottom: '20px',
-                borderBottom: '1px solid var(--color-border-subtle)',
-              }}
-            >
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 pb-5 border-b border-edge">
               <div>
-                <h3 style={{ fontSize: '14px', fontWeight: 600, margin: '0 0 4px 0', color: 'var(--color-text-primary)' }}>
+                <h3 className="text-sm font-semibold text-chalk m-0 mb-1">
                   Pause Discovery
                 </h3>
-                <p style={{ margin: 0, fontSize: '12px', color: 'var(--color-text-secondary)', maxWidth: '440px', lineHeight: '18px' }}>
+                <p className="m-0 text-xs text-silver max-w-md leading-relaxed">
                   Take a calm pause from new daily candidate batches. Existing mutual matches, conversations, and calls remain intact.
                 </p>
               </div>
 
-              <button
+              <Button
                 type="button"
+                variant={isDiscoveryPaused ? 'warm' : 'secondary'}
+                size="sm"
                 onClick={() => setIsDiscoveryPaused(!isDiscoveryPaused)}
-                className={isDiscoveryPaused ? 'btn btn-subtle' : 'btn btn-secondary'}
-                style={{ padding: '8px 18px', fontSize: '13px' }}
               >
                 {isDiscoveryPaused ? '✓ Discovery Paused' : 'Active in Discovery'}
-              </button>
+              </Button>
             </div>
 
             {/* Invariant Highlights */}
-            <div style={{ paddingTop: '20px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
-              <div style={{ display: 'flex', gap: '8px', alignItems: 'baseline' }}>
-                <span style={{ color: 'var(--color-brand-primary)', fontWeight: 600 }}>•</span>
-                <span style={{ fontSize: '12.5px', color: 'var(--color-text-secondary)', lineHeight: '18px' }}>
-                  <strong>Bilateral Consent:</strong> A Like is never permission to message. Private messaging unlocks only upon mutual match.
+            <div className="pt-5 flex flex-col gap-2.5">
+              <div className="flex gap-2 items-baseline text-xs text-silver leading-relaxed">
+                <span className="text-iris font-bold">•</span>
+                <span>
+                  <strong className="text-chalk">Bilateral Consent:</strong> A Like is never permission to message. Private messaging unlocks only upon mutual match.
                 </span>
               </div>
-              <div style={{ display: 'flex', gap: '8px', alignItems: 'baseline' }}>
-                <span style={{ color: 'var(--color-brand-primary)', fontWeight: 600 }}>•</span>
-                <span style={{ fontSize: '12.5px', color: 'var(--color-text-secondary)', lineHeight: '18px' }}>
-                  <strong>Zero Surveillance:</strong> Relationship Mode requires mutual activation, allows unilateral exit at any time, and never tracks live GPS locations.
+              <div className="flex gap-2 items-baseline text-xs text-silver leading-relaxed">
+                <span className="text-iris font-bold">•</span>
+                <span>
+                  <strong className="text-chalk">Zero Surveillance:</strong> Relationship Mode requires mutual activation, allows unilateral exit at any time, and never tracks live GPS locations.
                 </span>
               </div>
-              <div style={{ display: 'flex', gap: '8px', alignItems: 'baseline' }}>
-                <span style={{ color: 'var(--color-brand-primary)', fontWeight: 600 }}>•</span>
-                <span style={{ fontSize: '12.5px', color: 'var(--color-text-secondary)', lineHeight: '18px' }}>
-                  <strong>Private Correspondence:</strong> Audio calls are unrecorded by default. Private messages are never indexed for third-party advertising or public AI model training.
+              <div className="flex gap-2 items-baseline text-xs text-silver leading-relaxed">
+                <span className="text-iris font-bold">•</span>
+                <span>
+                  <strong className="text-chalk">Private Correspondence:</strong> Audio calls are unrecorded by default. Private messages are never indexed for third-party advertising or public AI model training.
                 </span>
               </div>
             </div>
           </div>
 
           {/* Account Actions & Logout */}
-          <div className="card-surface" style={{ padding: '28px', display: 'flex', gap: '16px', alignItems: 'center' }}>
-            <Link
-              href="/safety"
-              className="btn btn-secondary"
-              style={{ flex: 1, padding: '12px 20px', fontSize: '13.5px', justifyContent: 'center' }}
-            >
-              <ShieldIcon size={16} color="var(--color-brand-primary)" />
-              <span>Safety Commitments</span>
+          <div className="bg-coal border border-edge rounded-[12px] p-6 flex flex-col sm:flex-row gap-4 items-center">
+            <Link href="/safety" className="w-full sm:w-1/2">
+              <Button variant="secondary" size="md" className="w-full">
+                <ShieldIcon size={16} color="currentColor" />
+                <span>Safety Commitments</span>
+              </Button>
             </Link>
 
-            <button
+            <Button
+              variant="destructive"
+              size="md"
               onClick={handleLogout}
-              className="btn btn-danger"
-              style={{ flex: 1, padding: '12px 20px', fontSize: '13.5px', justifyContent: 'center' }}
+              className="w-full sm:w-1/2"
             >
-              Log Out of Account
-            </button>
+              Sign Out of Account
+            </Button>
           </div>
         </div>
       )}

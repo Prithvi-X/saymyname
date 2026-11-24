@@ -12,12 +12,46 @@
 import { ProgrammeFamily } from '@saymyname/contracts';
 
 /**
+ * Detects whether a string is a private identifier (student roll number, email, UUID, or raw numeric ID)
+ * Strictly conforms to Document 01 §3.5 and Phase 1.1 privacy requirements
+ */
+export function isPrivateIdentifier(value?: string | null): boolean {
+  if (!value) return true;
+  const trimmed = value.trim();
+  if (!trimmed) return true;
+  // Match IITM student roll numbers: 2 digits + letter + digits (e.g. 26f1001842, 21f1000123)
+  if (/^\d{2}[a-zA-Z]\d+$/i.test(trimmed)) return true;
+  // Match UUIDs
+  if (/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(trimmed)) return true;
+  // Match email addresses
+  if (trimmed.includes('@')) return true;
+  // Match purely numeric strings
+  if (/^\d+$/.test(trimmed)) return true;
+  return false;
+}
+
+/**
+ * Returns clean display name or empty string if value is a private identifier
+ */
+export function sanitizeDisplayName(value?: string | null): string {
+  if (!value || isPrivateIdentifier(value)) {
+    return '';
+  }
+  return value.trim();
+}
+
+/**
  * Dynamically resolves the API base URL:
  * - On localhost/127.0.0.1: automatically points to http://localhost:4000/api/v1
  * - On local WiFi/LAN IP: automatically points to http://<lan-ip>:4000/api/v1
  * - In production/custom deployment: uses NEXT_PUBLIC_API_URL or relative /api/v1
  */
+let cachedWorkingBaseUrl: string | null = null;
+
 export function getApiBaseUrl(): string {
+  if (cachedWorkingBaseUrl) {
+    return cachedWorkingBaseUrl;
+  }
   if (typeof window !== 'undefined') {
     const { hostname } = window.location;
     if (hostname === 'localhost' || hostname === '127.0.0.1') {
@@ -136,29 +170,46 @@ class ApiClient {
     }
 
     const baseUrl = getApiBaseUrl();
-    let res: Response;
+    let res: Response | null = null;
     try {
       res = await fetch(`${baseUrl}${endpoint}`, {
         ...options,
         headers,
       });
     } catch (networkError: any) {
-      if (
-        networkError?.message?.includes('Failed to fetch') ||
-        networkError?.message?.includes('NetworkError') ||
-        networkError?.name === 'TypeError'
-      ) {
-        let domain = baseUrl;
+      // Automatic live failover: If primary endpoint suffers DNS/network failure (e.g. unconfigured api.saymyname.in),
+      // seamlessly retry with the live Render cloud backend directly
+      const liveRenderFallback = 'https://saymyname-ri9e.onrender.com/api/v1';
+      if (baseUrl !== liveRenderFallback) {
         try {
-          domain = new URL(baseUrl).hostname;
-        } catch {}
-        throw new Error(
-          `Unable to connect to the SayMyName API at ${baseUrl}. ` +
-          `If you are testing locally, please open http://localhost:3000 (and ensure the backend is running on port 4000). ` +
-          `If testing an online deployment, ensure the DNS record for "${domain}" is active in your Cloudflare dashboard.`
-        );
+          res = await fetch(`${liveRenderFallback}${endpoint}`, {
+            ...options,
+            headers,
+          });
+          cachedWorkingBaseUrl = liveRenderFallback;
+        } catch {
+          // Both failed, proceed to error display
+        }
       }
-      throw networkError;
+
+      if (!res) {
+        if (
+          networkError?.message?.includes('Failed to fetch') ||
+          networkError?.message?.includes('NetworkError') ||
+          networkError?.name === 'TypeError'
+        ) {
+          let domain = baseUrl;
+          try {
+            domain = new URL(baseUrl).hostname;
+          } catch {}
+          throw new Error(
+            `Unable to connect to the SayMyName API at ${baseUrl}. ` +
+            `If you are testing locally, please open http://localhost:3000 (and ensure the backend is running on port 4000). ` +
+            `If testing an online deployment, ensure the DNS record for "${domain}" is active in your Cloudflare dashboard.`
+          );
+        }
+        throw networkError;
+      }
     }
 
     if (res.status === 401) {
@@ -227,6 +278,37 @@ class ApiClient {
     return this.request<{ id: string; email: string; displayName: string; accountStatus: string; eligibility: any; profile?: any }>(
       '/identity/me',
     );
+  }
+
+  async getProfile() {
+    return this.request<{
+      id: string;
+      accountId: string;
+      displayName: string;
+      programmeFamily: string;
+      bio?: string;
+      termOrYear?: string;
+      locationCity?: string;
+      locationState?: string;
+      intention?: string;
+      photos: { id: string; photoUrl: string; displayOrder: number }[];
+      interests: { interest: { name: string } }[];
+      promptAnswers: { prompt: { promptText: string }; answerText: string }[];
+    }>('/profiles/me');
+  }
+
+  async updateProfile(payload: {
+    displayName?: string;
+    bio?: string;
+    termOrYear?: string;
+    locationCity?: string;
+    locationState?: string;
+    intention?: string;
+  }) {
+    return this.request('/profiles/me', {
+      method: 'PUT',
+      body: JSON.stringify(payload),
+    });
   }
 
   async logout() {

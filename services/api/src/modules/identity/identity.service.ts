@@ -151,7 +151,7 @@ export class IdentityService {
           authSubject: `iitm_${this.crypto.sha256(email).substring(0, 16)}`,
           email,
           accountStatus: 'pending_verification',
-          displayName: email.split('@')[0],
+          displayName: null, // Strictly null: never expose email prefix / roll number as displayName (Phase 1.1)
           eligibility: {
             create: {
               ageStatus: 'not_started',
@@ -169,7 +169,7 @@ export class IdentityService {
           email,
           phoneNumber: null,
           accountStatus: 'pending_verification',
-          displayName: email.split('@')[0],
+          displayName: null, // Strictly null: never expose email prefix / roll number
           createdAt: new Date(),
           updatedAt: new Date(),
           deletedAt: null,
@@ -361,10 +361,15 @@ export class IdentityService {
       throw new UnauthorizedException('Account not found or session invalid.');
     }
 
+    const rawName = account.profile?.displayName || account.displayName;
+    // Strict Sanitization (Phase 1.1): Reject roll numbers, email prefixes, UUIDs, or raw numeric IDs
+    const isPrivate = !rawName || /^\d{2}[a-zA-Z]\d+$/i.test(rawName) || rawName.includes('@') || /^[0-9a-f-]{36}$/i.test(rawName);
+    const sanitizedName = isPrivate ? null : rawName;
+
     return {
       id: account.id,
       email: account.email,
-      displayName: account.displayName,
+      displayName: sanitizedName,
       accountStatus: account.accountStatus,
       eligibility: account.eligibility,
       profile: account.profile,

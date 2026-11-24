@@ -39,7 +39,7 @@ export default function RootLayout({
       <body>
         <AuthProvider>
           <Navbar />
-          <main style={{ minHeight: 'calc(100vh - 140px)', paddingBottom: '70px' }}>
+          <main className="app-main-content">
             {children}
           </main>
           <BottomNav />

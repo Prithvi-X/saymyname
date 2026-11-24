@@ -15,6 +15,7 @@ import {
 /**
  * SayMyName Mobile Bottom Navigation Bar (Document 10)
  * - Fixed architectural bar with Coal #12161B surface and Edge #343D48 top separator
+ * - Strictly hidden on desktop viewports (768px and above) via .nav-mobile-bar
  * - Strictly hidden for unauthenticated visitors
  * - Rectangular interaction touch targets with Iris accent indicator
  */
@@ -37,22 +38,7 @@ export default function BottomNav() {
 
   return (
     <nav
-      className="nav-mobile-bar"
-      style={{
-        position: 'fixed',
-        bottom: 0,
-        left: 0,
-        right: 0,
-        height: '62px',
-        backgroundColor: 'var(--smn-surface-base, #12161B)',
-        borderTop: '1px solid var(--smn-border-subtle, #343D48)',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-around',
-        zIndex: 90,
-        boxShadow: '0 -2px 12px rgba(0, 0, 0, 0.4)',
-        paddingBottom: 'env(safe-area-inset-bottom, 0px)',
-      }}
+      className="nav-mobile-bar fixed bottom-0 left-0 right-0 h-[62px] bg-coal border-t border-edge items-center justify-around z-40 shadow-lg font-ui pb-[env(safe-area-inset-bottom,0px)]"
       aria-label="Mobile Navigation Bar"
     >
       {tabs.map((tab) => {
@@ -62,38 +48,20 @@ export default function BottomNav() {
           <Link
             key={tab.href}
             href={tab.href}
-            style={{
-              display: 'flex',
-              flexDirection: 'column',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: '3px',
-              color: isActive ? 'var(--smn-text-primary, #F0F1EE)' : 'var(--smn-text-tertiary, #8B949E)',
-              fontSize: '11px',
-              fontWeight: isActive ? 600 : 500,
-              minWidth: '56px',
-              minHeight: '48px',
-              position: 'relative',
-              transition: 'color 120ms ease-out',
-            }}
+            className={`flex flex-col items-center justify-center gap-0.5 text-[11px] min-w-[56px] min-h-[48px] relative transition-colors duration-120 select-none ${
+              isActive
+                ? 'text-chalk font-semibold'
+                : 'text-ash hover:text-silver'
+            }`}
           >
             <Icon
               size={19}
-              color={isActive ? 'var(--smn-accent-iris, #8580C4)' : 'var(--smn-text-tertiary, #8B949E)'}
+              color={isActive ? 'var(--smn-accent-iris, #8580C4)' : 'currentColor'}
               strokeWidth={isActive ? 2.2 : 1.75}
             />
             <span>{tab.label}</span>
             {isActive && (
-              <span
-                style={{
-                  position: 'absolute',
-                  bottom: '2px',
-                  width: '16px',
-                  height: '2px',
-                  borderRadius: '1px',
-                  backgroundColor: 'var(--smn-accent-iris, #8580C4)',
-                }}
-              />
+              <span className="absolute bottom-1 w-4 h-0.5 rounded-full bg-iris" />
             )}
           </Link>
         );

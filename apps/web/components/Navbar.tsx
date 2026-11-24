@@ -4,8 +4,9 @@ import React from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useAuth } from '../lib/auth-context';
+import { sanitizeDisplayName } from '../lib/api';
 import { Logo } from './brand/Logo';
-import { Badge } from './ui/Badge';
+import { Badge, Button, Avatar } from './ui';
 import {
   CompassIcon,
   HeartIcon,
@@ -18,14 +19,18 @@ import {
 /**
  * SayMyName Navigation Bar (Document 10)
  * - Mineral Night Surfaces: Coal #12161B with Edge #343D48 bottom separator
- * - Logo Lockup: The Interval Symbol + Grotesk Wordmark
+ * - Logo Lockup: The Interval Symbol + Grotesk Wordmark (Strictly preserved)
  * - Navigation: Rectangular architectural tabs (6px radius), strictly NO pills
- * - Strict auth segregation: Visitors see only public informational routes
+ * - Desktop: Renders top navigation tabs; strictly hidden on mobile (< 768px)
+ * - Identity: Displays compact Avatar initials + clean display name + compact Verified badge
+ * - Security: Never exposes student roll numbers, email prefixes, or account UUIDs
  */
 export default function Navbar() {
   const pathname = usePathname();
   const { authState, user, logout } = useAuth();
   const isVerifiedMember = authState === 'VERIFIED_MEMBER';
+
+  const cleanDisplayName = sanitizeDisplayName(user?.displayName);
 
   const memberNavItems = [
     { label: 'Discover', href: '/discover', icon: CompassIcon },
@@ -36,30 +41,15 @@ export default function Navbar() {
   ];
 
   return (
-    <header
-      style={{
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        padding: '0 28px',
-        height: '66px',
-        backgroundColor: 'var(--smn-surface-base, #12161B)',
-        borderBottom: '1px solid var(--smn-border-subtle, #343D48)',
-        position: 'sticky',
-        top: 0,
-        zIndex: 100,
-        boxShadow: 'var(--elevation-1)',
-      }}
-    >
-      {/* Brand Logo & Main Navigation Tabs */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: '32px' }}>
+    <header className="flex items-center justify-between px-4 sm:px-7 h-[66px] bg-coal border-b border-edge sticky top-0 z-50 shadow-sm font-ui select-none">
+      {/* Brand Logo & Desktop Navigation Tabs */}
+      <div className="flex items-center gap-6 lg:gap-8">
         <Logo size="md" symbolConcept="A" />
 
-        {/* Navigation Tabs: Member Tabs IF Authenticated, Public Links IF Visitor */}
+        {/* Navigation Tabs: Member Tabs IF Authenticated, Public Links IF Visitor (Desktop only) */}
         {isVerifiedMember ? (
           <nav
-            className="nav-desktop-tabs"
-            style={{ display: 'flex', alignItems: 'center', gap: '4px' }}
+            className="hidden md:flex items-center gap-1"
             aria-label="Member Navigation"
           >
             {memberNavItems.map((tab) => {
@@ -69,19 +59,11 @@ export default function Navbar() {
                 <Link
                   key={tab.href}
                   href={tab.href}
-                  style={{
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: '7px',
-                    padding: '8px 14px',
-                    borderRadius: '6px',
-                    fontSize: '13.5px',
-                    fontWeight: isActive ? 600 : 500,
-                    color: isActive ? 'var(--smn-text-primary, #F0F1EE)' : 'var(--smn-text-secondary, #B6BDC4)',
-                    backgroundColor: isActive ? 'var(--smn-surface-active, #252D37)' : 'transparent',
-                    border: isActive ? '1px solid var(--smn-border-subtle, #343D48)' : '1px solid transparent',
-                    transition: 'all 120ms ease-out',
-                  }}
+                  className={`inline-flex items-center gap-2 px-3.5 py-2 rounded-[6px] text-xs lg:text-sm font-medium transition-colors duration-120 ${
+                    isActive
+                      ? 'bg-slate text-chalk border border-edge font-semibold shadow-xs'
+                      : 'text-silver hover:text-chalk hover:bg-iron/60 border border-transparent'
+                  }`}
                 >
                   <Icon
                     size={16}
@@ -95,33 +77,26 @@ export default function Navbar() {
           </nav>
         ) : (
           <nav
-            className="nav-desktop-tabs"
-            style={{ display: 'flex', alignItems: 'center', gap: '6px' }}
+            className="hidden md:flex items-center gap-2"
             aria-label="Public Navigation"
           >
             <Link
               href="/eligibility"
-              style={{
-                fontSize: '13.5px',
-                fontWeight: pathname === '/eligibility' ? 600 : 500,
-                color: pathname === '/eligibility' ? 'var(--smn-text-primary, #F0F1EE)' : 'var(--smn-text-secondary, #B6BDC4)',
-                backgroundColor: pathname === '/eligibility' ? 'var(--smn-surface-raised, #1A2027)' : 'transparent',
-                padding: '7px 12px',
-                borderRadius: '6px',
-              }}
+              className={`text-xs lg:text-sm font-medium px-3 py-1.5 rounded-[6px] transition-colors ${
+                pathname === '/eligibility'
+                  ? 'text-chalk bg-iron font-semibold'
+                  : 'text-silver hover:text-chalk'
+              }`}
             >
               Eligibility Guide
             </Link>
             <Link
               href="/safety"
-              style={{
-                fontSize: '13.5px',
-                fontWeight: pathname === '/safety' ? 600 : 500,
-                color: pathname === '/safety' ? 'var(--smn-text-primary, #F0F1EE)' : 'var(--smn-text-secondary, #B6BDC4)',
-                backgroundColor: pathname === '/safety' ? 'var(--smn-surface-raised, #1A2027)' : 'transparent',
-                padding: '7px 12px',
-                borderRadius: '6px',
-              }}
+              className={`text-xs lg:text-sm font-medium px-3 py-1.5 rounded-[6px] transition-colors ${
+                pathname === '/safety'
+                  ? 'text-chalk bg-iron font-semibold'
+                  : 'text-silver hover:text-chalk'
+              }`}
             >
               Safety & Consent
             </Link>
@@ -130,77 +105,64 @@ export default function Navbar() {
       </div>
 
       {/* Right Controls: Member Profile/Status OR Visitor CTA */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+      <div className="flex items-center gap-3">
         {isVerifiedMember ? (
           <>
             <Link
               href="/safety"
-              style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '6px',
-                fontSize: '13px',
-                fontWeight: 500,
-                color: 'var(--smn-text-secondary, #B6BDC4)',
-                padding: '6px 12px',
-                borderRadius: '6px',
-              }}
+              className="hidden lg:inline-flex items-center gap-1.5 text-xs text-silver hover:text-chalk px-2.5 py-1.5 rounded-[6px] transition-colors"
               title="Safety and Consent Commitments"
             >
-              <ShieldIcon size={15} color="var(--smn-text-secondary, #B6BDC4)" />
-              <span className="nav-desktop-tabs">Safety</span>
+              <ShieldIcon size={15} color="currentColor" />
+              <span>Safety</span>
             </Link>
 
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-              <div style={{ display: 'inline-flex', alignItems: 'center', gap: '8px' }}>
-                <Badge variant="verified">Verified</Badge>
-                <span className="nav-desktop-tabs" style={{ fontSize: '13px', fontWeight: 600, color: 'var(--smn-text-primary)' }}>
-                  {user?.displayName || 'Member'}
+            {/* Member Identity & Compact Verified Indicator */}
+            <div className="flex items-center gap-2.5">
+              <Link href="/profile" className="flex items-center gap-2 group focus-visible:outline-2 focus-visible:outline-iris rounded-[6px]">
+                <Avatar size="sm" name={cleanDisplayName || 'Member'} verified={false} />
+                <span className="hidden sm:inline text-xs lg:text-sm font-semibold text-chalk group-hover:text-silver transition-colors max-w-[130px] truncate">
+                  {cleanDisplayName || 'Member'}
                 </span>
-              </div>
+                <Badge variant="verified" size="sm">Verified</Badge>
+              </Link>
 
-              <button
+              <Button
+                variant="secondary"
+                size="sm"
                 onClick={() => logout()}
-                className="btn btn-secondary"
-                style={{ padding: '6px 14px', fontSize: '12px' }}
                 title="Log out of session"
               >
                 Sign Out
-              </button>
+              </Button>
             </div>
           </>
         ) : authState === 'VERIFICATION_PENDING' ? (
-          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-            <Link
-              href="/onboarding"
-              className="badge-tag"
-              style={{ color: 'var(--smn-accent-ember, #E18A62)', fontWeight: 600, fontSize: '12px', padding: '6px 12px' }}
-            >
-              Complete Verification →
+          <div className="flex items-center gap-3">
+            <Link href="/onboarding">
+              <Badge variant="warning" size="md">
+                Complete Verification →
+              </Badge>
             </Link>
-            <button
+            <Button
+              variant="secondary"
+              size="sm"
               onClick={() => logout()}
-              className="btn btn-secondary"
-              style={{ padding: '6px 12px', fontSize: '12px' }}
             >
               Sign Out
-            </button>
+            </Button>
           </div>
         ) : (
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-            <Link
-              href="/login"
-              className="btn btn-secondary"
-              style={{ padding: '7px 18px', fontSize: '13px' }}
-            >
-              Sign In
+          <div className="flex items-center gap-2.5">
+            <Link href="/login">
+              <Button variant="secondary" size="sm">
+                Sign In
+              </Button>
             </Link>
-            <Link
-              href="/onboarding"
-              className="btn btn-primary"
-              style={{ padding: '7px 18px', fontSize: '13px' }}
-            >
-              Register
+            <Link href="/onboarding">
+              <Button variant="primary" size="sm">
+                Register
+              </Button>
             </Link>
           </div>
         )}

@@ -2,7 +2,7 @@
 
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import { api } from './api';
+import { api, isPrivateIdentifier } from './api';
 
 export type AuthState = 'LOADING' | 'UNAUTHENTICATED' | 'VERIFICATION_PENDING' | 'VERIFIED_MEMBER' | 'SUSPENDED';
 
@@ -63,6 +63,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       const data = await api.getMe();
       if (data && data.id) {
+        if (data.displayName && isPrivateIdentifier(data.displayName)) {
+          data.displayName = '';
+        }
         setUser(data);
         const state = evaluateState(data);
         setAuthState(state);
@@ -90,6 +93,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       const data = await api.getMe();
       if (data && data.id) {
+        if (data.displayName && isPrivateIdentifier(data.displayName)) {
+          data.displayName = '';
+        }
         setUser(data);
         const state = evaluateState(data);
         setAuthState(state);

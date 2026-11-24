@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
+import { notFound } from 'next/navigation';
 import { Logo, Wordmark, Symbol } from '../../components/brand';
 import {
   Button,
@@ -15,6 +16,11 @@ import {
 } from '../../components/ui';
 
 export default function DesignSystemPage() {
+  // Phase 1.1: Guard preview route - only accessible in development or when explicitly enabled
+  if (typeof window === 'undefined' && process.env.NODE_ENV === 'production' && !process.env.NEXT_PUBLIC_ALLOW_DESIGN_SYSTEM) {
+    notFound();
+  }
+
   const [selectedConcept, setSelectedConcept] = useState<'A' | 'B' | 'C'>('A');
   const [activeTab, setActiveTab] = useState('all');
   const [isDialogOpen, setIsDialogOpen] = useState(false);

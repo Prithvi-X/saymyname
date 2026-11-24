@@ -58,20 +58,25 @@ export class DatingService {
       take: 20,
     }).catch(() => []);
 
-    const candidates = dbProfiles.map((p) => ({
-      accountId: p.accountId,
-      displayName: p.displayName,
-      age: 22,
-      programmeFamily: p.programmeFamily,
-      termOrYear: p.termOrYear,
-      locationCity: p.locationCity,
-      locationState: p.locationState,
-      bio: p.bio,
-      intention: p.intention,
-      interests: p.interests.map((i) => i.interest.name),
-      photos: p.photos,
-      promptAnswers: p.promptAnswers.map((pa) => ({ promptText: pa.prompt.promptText, answerText: pa.answerText })),
-    }));
+    const candidates = dbProfiles.map((p) => {
+      const isPrivate = !p.displayName || /^\d{2}[a-zA-Z]\d+$/i.test(p.displayName) || p.displayName.includes('@') || /^[0-9a-f-]{36}$/i.test(p.displayName);
+      const safeDisplayName = isPrivate ? 'Member' : p.displayName;
+      return {
+        profileId: p.id,
+        accountId: p.accountId,
+        displayName: safeDisplayName,
+        age: 22,
+        programmeFamily: p.programmeFamily,
+        termOrYear: p.termOrYear,
+        locationCity: p.locationCity,
+        locationState: p.locationState,
+        bio: p.bio,
+        intention: p.intention,
+        interests: p.interests.map((i) => i.interest.name),
+        photos: p.photos,
+        promptAnswers: p.promptAnswers.map((pa) => ({ promptText: pa.prompt.promptText, answerText: pa.answerText })),
+      };
+    });
 
     return { candidates, count: candidates.length };
   }
