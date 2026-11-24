@@ -14,7 +14,7 @@ import { TogetherModule } from './modules/together/together.module';
   imports: [
     ConfigModule.forRoot({
       isGlobal: true,
-      envFilePath: ['.env.local', '.env'],
+      envFilePath: ['.env.local', 'services/api/.env.local', '.env'],
     }),
     PrismaModule,
     HealthModule,

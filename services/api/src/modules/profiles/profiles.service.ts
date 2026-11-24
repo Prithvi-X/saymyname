@@ -2,6 +2,8 @@ import { Injectable, NotFoundException, BadRequestException } from '@nestjs/comm
 import { PrismaService } from '../../prisma/prisma.service';
 import { UpdateProfileDto, AddPhotoDto, UpdatePreferencesDto, PresignPhotoDto } from './dto/profile.dto';
 import * as crypto from 'crypto';
+import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
+import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 
 const ALLOWED_IMAGE_MIMES = ['image/jpeg', 'image/png', 'image/webp', 'image/heic'];
 
@@ -112,9 +114,36 @@ export class ProfilesService {
     let uploadUrl: string;
     let photoUrl: string;
 
-    if (process.env.R2_ACCOUNT_ID && process.env.R2_BUCKET_NAME) {
-      uploadUrl = `https://${process.env.R2_ACCOUNT_ID}.r2.cloudflarestorage.com/${process.env.R2_BUCKET_NAME}/${s3Key}`;
-      photoUrl = `https://${process.env.R2_CUSTOM_DOMAIN || 'media.saymyname.in'}/${s3Key}`;
+    if (
+      process.env.R2_ACCOUNT_ID &&
+      process.env.R2_BUCKET_NAME &&
+      process.env.R2_ACCESS_KEY_ID &&
+      process.env.R2_SECRET_ACCESS_KEY
+    ) {
+      try {
+        const s3 = new S3Client({
+          region: 'auto',
+          endpoint: `https://${process.env.R2_ACCOUNT_ID}.r2.cloudflarestorage.com`,
+          credentials: {
+            accessKeyId: process.env.R2_ACCESS_KEY_ID,
+            secretAccessKey: process.env.R2_SECRET_ACCESS_KEY,
+          },
+        });
+        uploadUrl = await getSignedUrl(
+          s3,
+          new PutObjectCommand({
+            Bucket: process.env.R2_BUCKET_NAME,
+            Key: s3Key,
+            ContentType: dto.mimeType,
+          }),
+          { expiresIn: 300 },
+        );
+        photoUrl = `https://${process.env.R2_CUSTOM_DOMAIN || 'media.saymyname.in'}/${s3Key}`;
+      } catch (err) {
+        console.warn('[R2] Failed to generate presigned upload URL, falling back to mock URL:', err);
+        uploadUrl = `https://storage.saymyname.in/mock-s3-upload/${s3Key}`;
+        photoUrl = `https://images.unsplash.com/photo-1534528741775-53994a69daeb`;
+      }
     } else if (process.env.S3_BUCKET_NAME) {
       const region = process.env.S3_REGION || 'ap-south-1';
       uploadUrl = `https://${process.env.S3_BUCKET_NAME}.s3.${region}.amazonaws.com/${s3Key}`;

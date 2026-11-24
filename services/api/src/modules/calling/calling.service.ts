@@ -16,6 +16,8 @@ import {
 } from '@saymyname/contracts';
 import { VoiceNotePresignDto, CallInviteDto, CallRespondDto, SendVoiceNoteDto } from './dto/calling.dto';
 import * as crypto from 'crypto';
+import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
+import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 
 interface MockCallSession {
   id: string;
@@ -73,7 +75,40 @@ export class CallingService {
     const mediaRefId = crypto.randomUUID();
     const ext = dto.filename.split('.').pop() || 'm4a';
     const s3Key = `voice_notes/${userId}/${mediaRefId}.${ext}`;
-    const uploadUrl = `https://storage.saymyname.in/mock-s3-upload/${s3Key}?signed=${this.cryptoService.sha256(mediaRefId)}`;
+
+    let uploadUrl: string;
+
+    if (
+      process.env.R2_ACCOUNT_ID &&
+      process.env.R2_BUCKET_NAME &&
+      process.env.R2_ACCESS_KEY_ID &&
+      process.env.R2_SECRET_ACCESS_KEY
+    ) {
+      try {
+        const s3 = new S3Client({
+          region: 'auto',
+          endpoint: `https://${process.env.R2_ACCOUNT_ID}.r2.cloudflarestorage.com`,
+          credentials: {
+            accessKeyId: process.env.R2_ACCESS_KEY_ID,
+            secretAccessKey: process.env.R2_SECRET_ACCESS_KEY,
+          },
+        });
+        uploadUrl = await getSignedUrl(
+          s3,
+          new PutObjectCommand({
+            Bucket: process.env.R2_BUCKET_NAME,
+            Key: s3Key,
+            ContentType: dto.mimeType,
+          }),
+          { expiresIn: 300 },
+        );
+      } catch (err) {
+        console.warn('[R2] Failed to generate presigned voice note URL, using fallback:', err);
+        uploadUrl = `https://storage.saymyname.in/mock-s3-upload/${s3Key}?signed=${this.cryptoService.sha256(mediaRefId)}`;
+      }
+    } else {
+      uploadUrl = `https://storage.saymyname.in/mock-s3-upload/${s3Key}?signed=${this.cryptoService.sha256(mediaRefId)}`;
+    }
 
     return {
       uploadUrl,
