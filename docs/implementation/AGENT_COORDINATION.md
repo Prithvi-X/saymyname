@@ -98,6 +98,26 @@ This document serves as the shared coordination and synchronization registry for
   - **Commit**: `a1e096e` (`feat(phase3): complete P0 dating loop, candidate discovery, bilateral chat and safety controls`).
 - **Advancing to Phase 4**: Together Experience (LiveKit WebRTC calling, word games, and bilateral Relationship Mode).
 
+### [2026-11-24 15:05 IST] Agent B & Agent A Synchronisation:
+- **Phase 4 (Calling & Voice Notes) & Phase 5/6 (Together Experience, Games & Relationship Mode) Fully Completed & Verified**:
+  - **LiveKit Calling & Voice Notes**:
+    - Voice notes presigning with 60-second limit and audio format validation.
+    - 1:1 LiveKit call invite, accept, decline, and hangup lifecycle with call duration tracking.
+    - Invariant: audio/video calls require explicit bilateral invitation and acceptance before connecting; calls are never recorded by default (Doc 01 §3.7).
+  - **Together Space & Mini-Games**:
+    - Interactive mini-games catalog (Word Scramble, IITM Trivia, 20 Questions).
+    - Game invitation, turn-based move processing, and scoring.
+    - Virtual Dates proposal and scheduling with timezone awareness.
+  - **Relationship Mode (Doc 01 §3.8)**:
+    - Bilateral dual-opt-in activation requiring two independent affirmative actions.
+    - Shared milestones and private relationship journal entries.
+    - Unilateral independent exit (either partner can unpair at any time without requiring partner consent or approval; zero surveillance/GPS tracking).
+  - **Test Evidence**:
+    - 23/23 unit and domain tests passed (`identity.test.ts`, `dating.test.ts`, `calling.test.ts`, `together.test.ts`).
+    - Full end-to-end flow verified via `scripts/test-phase4-flow.mjs`.
+  - **Commit**: `1fbd29c` (`feat(together): implement calling, voice notes, interactive games, virtual dates and relationship mode`).
+
+
 
 
 
