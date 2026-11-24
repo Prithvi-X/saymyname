@@ -1,0 +1,620 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+  schemas  = ["identity", "profiles", "dating", "messaging", "together", "safety", "platform"]
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+// ==========================================
+// 1. IDENTITY & ELIGIBILITY SCHEMA
+// ==========================================
+
+model Account {
+  id             String    @id @default(uuid()) @db.Uuid
+  authSubject    String    @unique @map("auth_subject") @db.Text
+  email          String    @unique @db.Text
+  phoneNumber    String?   @map("phone_number") @db.Text
+  accountStatus  String    @default("registered") @map("account_status") @db.Text
+  displayName    String?   @map("display_name") @db.Text
+  createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt      DateTime  @updatedAt @map("updated_at") @db.Timestamptz
+  deletedAt      DateTime? @map("deleted_at") @db.Timestamptz
+
+  eligibility       AccountEligibility?
+  profile           Profile?
+  sessions          AppSession[]
+  devices           UserDevice[]
+  notificationPref  NotificationPreference?
+  verificationCases VerificationCase[]
+
+  @@map("accounts")
+  @@schema("identity")
+}
+
+model AccountEligibility {
+  accountId         String    @id @map("account_id") @db.Uuid
+  ageStatus         String    @default("not_started") @map("age_status") @db.Text
+  studentStatus     String    @default("not_started") @map("student_status") @db.Text
+  programmeFamily   String?   @map("programme_family") @db.Text
+  discoveryEligible Boolean   @default(false) @map("discovery_eligible")
+  verifiedAt        DateTime? @map("verified_at") @db.Timestamptz
+  verifiedBy        String?   @map("verified_by") @db.Text
+  reviewNotes       String?   @map("review_notes") @db.Text
+  createdAt         DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt         DateTime  @updatedAt @map("updated_at") @db.Timestamptz
+
+  account Account @relation(fields: [accountId], references: [id], onDelete: Cascade)
+
+  @@map("account_eligibility")
+  @@schema("identity")
+}
+
+model VerificationCase {
+  id              String    @id @default(uuid()) @db.Uuid
+  accountId       String    @map("account_id") @db.Uuid
+  status          String    @default("pending") @db.Text
+  submittedAt     DateTime  @default(now()) @map("submitted_at") @db.Timestamptz
+  reviewedAt      DateTime? @map("reviewed_at") @db.Timestamptz
+  reviewerId      String?   @map("reviewer_id") @db.Text
+  rejectionReason String?   @map("rejection_reason") @db.Text
+
+  account  Account                    @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  evidence VerificationEvidenceRef[]
+
+  @@map("verification_cases")
+  @@schema("identity")
+}
+
+model VerificationEvidenceRef {
+  id           String   @id @default(uuid()) @db.Uuid
+  caseId       String   @map("case_id") @db.Uuid
+  evidenceType String   @map("evidence_type") @db.Text
+  s3Key        String   @map("s3_key") @db.Text
+  mimeType     String   @map("mime_type") @db.Text
+  fileSizeBytes Int     @map("file_size_bytes")
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  verificationCase VerificationCase @relation(fields: [caseId], references: [id], onDelete: Cascade)
+
+  @@map("verification_evidence_refs")
+  @@schema("identity")
+}
+
+model AppSession {
+  id               String    @id @default(uuid()) @db.Uuid
+  accountId        String    @map("account_id") @db.Uuid
+  refreshTokenHash String    @unique @map("refresh_token_hash") @db.Text
+  deviceId         String?   @map("device_id") @db.Text
+  userAgent        String?   @map("user_agent") @db.Text
+  ipHash           String?   @map("ip_hash") @db.Text
+  expiresAt        DateTime  @map("expires_at") @db.Timestamptz
+  revokedAt        DateTime? @map("revoked_at") @db.Timestamptz
+  createdAt        DateTime  @default(now()) @map("created_at") @db.Timestamptz
+
+  account Account @relation(fields: [accountId], references: [id], onDelete: Cascade)
+
+  @@map("app_sessions")
+  @@schema("identity")
+}
+
+// ==========================================
+// 2. PROFILES SCHEMA
+// ==========================================
+
+model Profile {
+  id              String   @id @default(uuid()) @db.Uuid
+  accountId       String   @unique @map("account_id") @db.Uuid
+  displayName     String   @map("display_name") @db.Text
+  bio             String?  @db.Text
+  programmeFamily String   @map("programme_family") @db.Text
+  termOrYear      String?  @map("term_or_year") @db.Text
+  locationCity    String?  @map("location_city") @db.Text
+  locationState   String?  @map("location_state") @db.Text
+  intention       String?  @db.Text
+  isPublished     Boolean  @default(false) @map("is_published")
+  isPaused        Boolean  @default(false) @map("is_paused")
+  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt       DateTime @updatedAt @map("updated_at") @db.Timestamptz
+
+  account       Account                @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  photos        ProfilePhoto[]
+  interests     ProfileInterest[]
+  promptAnswers ProfilePromptAnswer[]
+  preferences   PreferenceSetting?
+
+  @@map("profiles")
+  @@schema("profiles")
+}
+
+model ProfilePhoto {
+  id               String   @id @default(uuid()) @db.Uuid
+  profileId        String   @map("profile_id") @db.Uuid
+  photoUrl         String   @map("photo_url") @db.Text
+  s3Key            String   @map("s3_key") @db.Text
+  displayOrder     Int      @default(0) @map("display_order")
+  isPrimary        Boolean  @default(false) @map("is_primary")
+  moderationStatus String   @default("approved") @map("moderation_status") @db.Text
+  createdAt        DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  profile Profile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+
+  @@map("profile_photos")
+  @@schema("profiles")
+}
+
+model Interest {
+  id        String   @id @default(uuid()) @db.Uuid
+  name      String   @unique @db.Text
+  category  String   @db.Text
+  icon      String?  @db.Text
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  profiles ProfileInterest[]
+
+  @@map("interests")
+  @@schema("profiles")
+}
+
+model ProfileInterest {
+  profileId  String @map("profile_id") @db.Uuid
+  interestId String @map("interest_id") @db.Uuid
+
+  profile  Profile  @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  interest Interest @relation(fields: [interestId], references: [id], onDelete: Cascade)
+
+  @@id([profileId, interestId])
+  @@map("profile_interests")
+  @@schema("profiles")
+}
+
+model ProfilePrompt {
+  id         String  @id @default(uuid()) @db.Uuid
+  promptText String  @map("prompt_text") @db.Text
+  category   String  @db.Text
+  isActive   Boolean @default(true) @map("is_active")
+
+  answers ProfilePromptAnswer[]
+
+  @@map("profile_prompts")
+  @@schema("profiles")
+}
+
+model ProfilePromptAnswer {
+  id           String   @id @default(uuid()) @db.Uuid
+  profileId    String   @map("profile_id") @db.Uuid
+  promptId     String   @map("prompt_id") @db.Uuid
+  answerText   String   @map("answer_text") @db.Text
+  displayOrder Int      @default(0) @map("display_order")
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt    DateTime @updatedAt @map("updated_at") @db.Timestamptz
+
+  profile Profile       @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  prompt  ProfilePrompt @relation(fields: [promptId], references: [id], onDelete: Cascade)
+
+  @@map("profile_prompt_answers")
+  @@schema("profiles")
+}
+
+model PreferenceSetting {
+  id                String   @id @default(uuid()) @db.Uuid
+  profileId         String   @unique @map("profile_id") @db.Uuid
+  minAge            Int      @default(18) @map("min_age")
+  maxAge            Int      @default(35) @map("max_age")
+  allowedProgrammes String[] @default([]) @map("allowed_programmes")
+  maxDistanceKm     Int?     @map("max_distance_km")
+  showInDiscovery   Boolean  @default(true) @map("show_in_discovery")
+  createdAt         DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt         DateTime @updatedAt @map("updated_at") @db.Timestamptz
+
+  profile Profile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+
+  @@map("preference_settings")
+  @@schema("profiles")
+}
+
+// ==========================================
+// 3. DATING SCHEMA
+// ==========================================
+
+model Like {
+  id            String   @id @default(uuid()) @db.Uuid
+  fromAccountId String   @map("from_account_id") @db.Uuid
+  toAccountId   String   @map("to_account_id") @db.Uuid
+  status        String   @default("active") @db.Text
+  createdAt     DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt     DateTime @updatedAt @map("updated_at") @db.Timestamptz
+
+  @@unique([fromAccountId, toAccountId])
+  @@map("likes")
+  @@schema("dating")
+}
+
+model Pass {
+  id            String   @id @default(uuid()) @db.Uuid
+  fromAccountId String   @map("from_account_id") @db.Uuid
+  toAccountId   String   @map("to_account_id") @db.Uuid
+  expiresAt     DateTime @map("expires_at") @db.Timestamptz
+  createdAt     DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  @@unique([fromAccountId, toAccountId])
+  @@map("passes")
+  @@schema("dating")
+}
+
+model Match {
+  id               String    @id @default(uuid()) @db.Uuid
+  userLowId        String    @map("user_low_id") @db.Uuid
+  userHighId       String    @map("user_high_id") @db.Uuid
+  status           String    @default("active") @db.Text
+  createdAt        DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  endedAt          DateTime? @map("ended_at") @db.Timestamptz
+  endedByAccountId String?   @map("ended_by_account_id") @db.Uuid
+  endReason        String?   @map("end_reason") @db.Text
+
+  events           MatchStateEvent[]
+  conversation     Conversation?
+  relationshipSpace RelationshipSpace?
+
+  @@unique([userLowId, userHighId])
+  @@map("matches")
+  @@schema("dating")
+}
+
+model MatchStateEvent {
+  id            String   @id @default(uuid()) @db.Uuid
+  matchId       String   @map("match_id") @db.Uuid
+  previousState String   @map("previous_state") @db.Text
+  newState      String   @map("new_state") @db.Text
+  actorId       String   @map("actor_id") @db.Uuid
+  metadata      Json?    @db.JsonB
+  createdAt     DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  match Match @relation(fields: [matchId], references: [id], onDelete: Cascade)
+
+  @@map("match_state_events")
+  @@schema("dating")
+}
+
+// ==========================================
+// 4. MESSAGING SCHEMA
+// ==========================================
+
+model Conversation {
+  id             String    @id @default(uuid()) @db.Uuid
+  matchId        String    @unique @map("match_id") @db.Uuid
+  status         String    @default("active") @db.Text
+  lastMessageAt  DateTime? @map("last_message_at") @db.Timestamptz
+  createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt      DateTime  @updatedAt @map("updated_at") @db.Timestamptz
+
+  match        Match                @relation(fields: [matchId], references: [id], onDelete: Cascade)
+  members      ConversationMember[]
+  messages     Message[]
+  callSessions CallSession[]
+  gameSessions GameSession[]
+  virtualDates VirtualDate[]
+
+  @@map("conversations")
+  @@schema("messaging")
+}
+
+model ConversationMember {
+  conversationId     String   @map("conversation_id") @db.Uuid
+  accountId          String   @map("account_id") @db.Uuid
+  lastReadMessageId  String?  @map("last_read_message_id") @db.Uuid
+  joinedAt           DateTime @default(now()) @map("joined_at") @db.Timestamptz
+
+  conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+
+  @@id([conversationId, accountId])
+  @@map("conversation_members")
+  @@schema("messaging")
+}
+
+model Message {
+  id                 String    @id @default(uuid()) @db.Uuid
+  conversationId     String    @map("conversation_id") @db.Uuid
+  sequenceNo         BigInt    @map("sequence_no")
+  senderAccountId    String    @map("sender_account_id") @db.Uuid
+  clientAssignedUuid String?   @unique @map("client_assigned_uuid") @db.Uuid
+  messageType        String    @default("text") @map("message_type") @db.Text
+  bodyText           String?   @map("body_text") @db.Text
+  mediaRefId         String?   @map("media_ref_id") @db.Uuid
+  deliveryState      String    @default("sent") @map("delivery_state") @db.Text
+  createdAt          DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  deliveredAt        DateTime? @map("delivered_at") @db.Timestamptz
+  readAt             DateTime? @map("read_at") @db.Timestamptz
+
+  conversation Conversation  @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  media        MessageMedia?
+
+  @@map("messages")
+  @@schema("messaging")
+}
+
+model MessageMedia {
+  id              String   @id @default(uuid()) @db.Uuid
+  messageId       String   @unique @map("message_id") @db.Uuid
+  mediaType       String   @map("media_type") @db.Text
+  durationSeconds Int?     @map("duration_seconds")
+  s3Key           String   @map("s3_key") @db.Text
+  fileSizeBytes   Int      @map("file_size_bytes")
+  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  message Message @relation(fields: [messageId], references: [id], onDelete: Cascade)
+
+  @@map("message_media")
+  @@schema("messaging")
+}
+
+model CallSession {
+  id              String    @id @default(uuid()) @db.Uuid
+  conversationId  String    @map("conversation_id") @db.Uuid
+  callerId        String    @map("caller_id") @db.Uuid
+  receiverId      String    @map("receiver_id") @db.Uuid
+  callStatus      String    @default("initiated") @map("call_status") @db.Text
+  livekitRoomId   String    @map("livekit_room_id") @db.Text
+  startedAt       DateTime? @map("started_at") @db.Timestamptz
+  endedAt         DateTime? @map("ended_at") @db.Timestamptz
+  durationSeconds Int?      @default(0) @map("duration_seconds")
+  createdAt       DateTime  @default(now()) @map("created_at") @db.Timestamptz
+
+  conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+
+  @@map("call_sessions")
+  @@schema("messaging")
+}
+
+// ==========================================
+// 5. TOGETHER SPACE & RELATIONSHIP SCHEMA
+// ==========================================
+
+model GameCatalog {
+  id          String   @id @default(uuid()) @db.Uuid
+  gameKey     String   @unique @map("game_key") @db.Text
+  title       String   @db.Text
+  description String   @db.Text
+  minPlayers  Int      @default(2) @map("min_players")
+  maxPlayers  Int      @default(2) @map("max_players")
+  isActive    Boolean  @default(true) @map("is_active")
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  sessions GameSession[]
+
+  @@map("game_catalog")
+  @@schema("together")
+}
+
+model GameSession {
+  id              String    @id @default(uuid()) @db.Uuid
+  conversationId  String    @map("conversation_id") @db.Uuid
+  gameId          String    @map("game_id") @db.Uuid
+  sessionStatus   String    @default("invited") @map("session_status") @db.Text
+  currentState    Json?     @map("current_state") @db.JsonB
+  winnerAccountId String?   @map("winner_account_id") @db.Uuid
+  startedAt       DateTime? @map("started_at") @db.Timestamptz
+  completedAt     DateTime? @map("completed_at") @db.Timestamptz
+  createdAt       DateTime  @default(now()) @map("created_at") @db.Timestamptz
+
+  conversation Conversation        @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  game         GameCatalog         @relation(fields: [gameId], references: [id], onDelete: Cascade)
+  members      GameSessionMember[]
+
+  @@map("game_sessions")
+  @@schema("together")
+}
+
+model GameSessionMember {
+  sessionId String   @map("session_id") @db.Uuid
+  accountId String   @map("account_id") @db.Uuid
+  role      String   @default("player") @db.Text
+  score     Int      @default(0)
+  joinedAt  DateTime @default(now()) @map("joined_at") @db.Timestamptz
+
+  session GameSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  @@id([sessionId, accountId])
+  @@map("game_session_members")
+  @@schema("together")
+}
+
+model VirtualDate {
+  id             String    @id @default(uuid()) @db.Uuid
+  conversationId String    @map("conversation_id") @db.Uuid
+  proposedById   String    @map("proposed_by_id") @db.Uuid
+  scheduledFor   DateTime  @map("scheduled_for") @db.Timestamptz
+  timezone       String    @db.Text
+  activityType   String    @map("activity_type") @db.Text
+  status         String    @default("proposed") @db.Text
+  proposalNotes  String?   @map("proposal_notes") @db.Text
+  createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  completedAt    DateTime? @map("completed_at") @db.Timestamptz
+
+  conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+
+  @@map("virtual_dates")
+  @@schema("together")
+}
+
+model RelationshipSpace {
+  id            String    @id @default(uuid()) @db.Uuid
+  matchId       String    @unique @map("match_id") @db.Uuid
+  isActive      Boolean   @default(true) @map("is_active")
+  activatedAt   DateTime  @default(now()) @map("activated_at") @db.Timestamptz
+  disbandedAt   DateTime? @map("disbanded_at") @db.Timestamptz
+  disbandedById String?   @map("disbanded_by_id") @db.Uuid
+
+  match      Match                    @relation(fields: [matchId], references: [id], onDelete: Cascade)
+  milestones RelationshipMilestone[]
+  journals   RelationshipJournal[]
+
+  @@map("relationship_spaces")
+  @@schema("together")
+}
+
+model RelationshipMilestone {
+  id            String   @id @default(uuid()) @db.Uuid
+  spaceId       String   @map("space_id") @db.Uuid
+  title         String   @db.Text
+  milestoneDate DateTime @map("milestone_date") @db.Date
+  description   String?  @db.Text
+  createdById   String   @map("created_by_id") @db.Uuid
+  createdAt     DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  space RelationshipSpace @relation(fields: [spaceId], references: [id], onDelete: Cascade)
+
+  @@map("relationship_milestones")
+  @@schema("together")
+}
+
+model RelationshipJournal {
+  id          String   @id @default(uuid()) @db.Uuid
+  spaceId     String   @map("space_id") @db.Uuid
+  entryText   String   @map("entry_text") @db.Text
+  entryDate   DateTime @map("entry_date") @db.Date
+  createdById String   @map("created_by_id") @db.Uuid
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt   DateTime @updatedAt @map("updated_at") @db.Timestamptz
+
+  space RelationshipSpace @relation(fields: [spaceId], references: [id], onDelete: Cascade)
+
+  @@map("relationship_journals")
+  @@schema("together")
+}
+
+// ==========================================
+// 6. SAFETY SCHEMA
+// ==========================================
+
+model UserBlock {
+  id        String   @id @default(uuid()) @db.Uuid
+  blockerId String   @map("blocker_id") @db.Uuid
+  blockedId String   @map("blocked_id") @db.Uuid
+  reason    String?  @db.Text
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  @@unique([blockerId, blockedId])
+  @@map("user_blocks")
+  @@schema("safety")
+}
+
+model Report {
+  id             String    @id @default(uuid()) @db.Uuid
+  reporterId     String    @map("reporter_id") @db.Uuid
+  reportedId     String    @map("reported_id") @db.Uuid
+  reportCategory String    @map("report_category") @db.Text
+  description    String?   @db.Text
+  status         String    @default("pending") @db.Text
+  createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  resolvedAt     DateTime? @map("resolved_at") @db.Timestamptz
+  resolvedById   String?   @map("resolved_by_id") @db.Text
+
+  evidence ReportEvidenceRef[]
+
+  @@map("reports")
+  @@schema("safety")
+}
+
+model ReportEvidenceRef {
+  id           String   @id @default(uuid()) @db.Uuid
+  reportId     String   @map("report_id") @db.Uuid
+  evidenceType String   @map("evidence_type") @db.Text
+  s3Key        String   @map("s3_key") @db.Text
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  report Report @relation(fields: [reportId], references: [id], onDelete: Cascade)
+
+  @@map("report_evidence_refs")
+  @@schema("safety")
+}
+
+model ModerationAction {
+  id          String    @id @default(uuid()) @db.Uuid
+  accountId   String    @map("account_id") @db.Uuid
+  actionType  String    @map("action_type") @db.Text
+  reason      String    @db.Text
+  expiresAt   DateTime? @map("expires_at") @db.Timestamptz
+  createdById String    @map("created_by_id") @db.Text
+  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz
+
+  @@map("moderation_actions")
+  @@schema("safety")
+}
+
+// ==========================================
+// 7. PLATFORM SCHEMA
+// ==========================================
+
+model UserDevice {
+  id          String   @id @default(uuid()) @db.Uuid
+  accountId   String   @map("account_id") @db.Uuid
+  deviceToken String   @map("device_token") @db.Text
+  deviceOs    String   @map("device_os") @db.Text
+  appVersion  String?  @map("app_version") @db.Text
+  isActive    Boolean  @default(true) @map("is_active")
+  updatedAt   DateTime @updatedAt @map("updated_at") @db.Timestamptz
+
+  account Account @relation(fields: [accountId], references: [id], onDelete: Cascade)
+
+  @@map("user_devices")
+  @@schema("platform")
+}
+
+model NotificationPreference {
+  accountId        String  @id @map("account_id") @db.Uuid
+  pushEnabled      Boolean @default(true) @map("push_enabled")
+  soundEnabled     Boolean @default(true) @map("sound_enabled")
+  quietHoursStart  String? @map("quiet_hours_start") @db.Text
+  quietHoursEnd    String? @map("quiet_hours_end") @db.Text
+
+  account Account @relation(fields: [accountId], references: [id], onDelete: Cascade)
+
+  @@map("notification_preferences")
+  @@schema("platform")
+}
+
+model OutboxEvent {
+  id            String    @id @default(uuid()) @db.Uuid
+  aggregateType String    @map("aggregate_type") @db.Text
+  aggregateId   String    @map("aggregate_id") @db.Uuid
+  eventType     String    @map("event_type") @db.Text
+  payload       Json      @db.JsonB
+  status        String    @default("pending") @db.Text
+  retryCount    Int       @default(0) @map("retry_count")
+  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  processedAt   DateTime? @map("processed_at") @db.Timestamptz
+
+  @@map("outbox_events")
+  @@schema("platform")
+}
+
+model IdempotencyRecord {
+  id             String   @id @default(uuid()) @db.Uuid
+  idempotencyKey String   @unique @map("idempotency_key") @db.Text
+  accountId      String   @map("account_id") @db.Uuid
+  requestHash    String   @map("request_hash") @db.Text
+  responseStatus Int      @map("response_status")
+  responseBody   Json     @map("response_body") @db.JsonB
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz
+  expiresAt      DateTime @map("expires_at") @db.Timestamptz
+
+  @@map("idempotency_records")
+  @@schema("platform")
+}
+
+model AuditEvent {
+  id           String   @id @default(uuid()) @db.Uuid
+  actorId      String?  @map("actor_id") @db.Uuid
+  action       String   @db.Text
+  resourceType String   @map("resource_type") @db.Text
+  resourceId   String?  @map("resource_id") @db.Uuid
+  metadata     Json?    @db.JsonB
+  ipHash       String?  @map("ip_hash") @db.Text
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  @@map("audit_events")
+  @@schema("platform")
+}

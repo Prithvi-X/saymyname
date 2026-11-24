@@ -9,7 +9,9 @@
     "packages/*"
   ],
   "scripts": {
-    "build": "npm run --workspaces --if-present build",
+    "build:packages": "npm run --workspace=@saymyname/contracts build && npm run --workspace=@saymyname/database build && npm run --workspace=@saymyname/design-tokens build && npm run --workspace=@saymyname/validation build",
+    "build:apps": "npm run --workspace=@saymyname/api build && npm run --workspace=@saymyname/web build",
+    "build": "npm run build:packages && npm run build:apps",
     "test": "npm run --workspaces --if-present test",
     "lint": "npm run --workspaces --if-present lint",
     "typecheck": "npm run --workspaces --if-present typecheck",
