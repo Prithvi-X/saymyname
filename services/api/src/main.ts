@@ -53,8 +53,8 @@ async function bootstrap() {
   SwaggerModule.setup('docs', app, document);
 
   const port = process.env.PORT || 4000;
-  await app.listen(port);
-  logger.log(`SayMyName API Server listening on port ${port} (Prefix: /api/v1)`);
+  await app.listen(port, '0.0.0.0');
+  logger.log(`SayMyName API Server listening on port ${port} on 0.0.0.0 (Prefix: /api/v1)`);
   logger.log(`OpenAPI Swagger documentation available at http://localhost:${port}/docs`);
 }
 
