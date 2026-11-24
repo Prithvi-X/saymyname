@@ -274,13 +274,17 @@ class ApiClient {
   }
 
   async verifyAge(payload: AgeCheckPayload) {
-    return this.request<{ success: boolean; isAdult: boolean; calculatedAge: number; eligibility: any }>(
+    const res = await this.request<{ success?: boolean; isAdult?: boolean; calculatedAge?: number; eligibility?: any }>(
       '/identity/age-check',
       {
         method: 'POST',
         body: JSON.stringify(payload),
       },
     );
+    return {
+      ...res,
+      isAdult: res.isAdult ?? (res.calculatedAge ? res.calculatedAge >= 18 : res.eligibility?.ageStatus === 'approved'),
+    };
   }
 
   async verifyStudent(payload: VerifyStudentPayload) {

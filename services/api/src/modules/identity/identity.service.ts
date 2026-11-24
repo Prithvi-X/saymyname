@@ -243,6 +243,7 @@ export class IdentityService {
 
     return {
       message: 'Age verification approved (18+ verified).',
+      isAdult: true,
       calculatedAge: age,
       eligibility: updated,
     };
