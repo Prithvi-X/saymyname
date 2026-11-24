@@ -38,6 +38,12 @@ export class CallingController {
     return this.callingService.inviteCall(req.user.id, dto);
   }
 
+  @Post('call-sessions/invite')
+  @ApiOperation({ summary: 'Initiate 1:1 LiveKit audio/video call invitation (alias)' })
+  async inviteCallAlias(@Request() req: any, @Body() dto: CallInviteDto) {
+    return this.callingService.inviteCall(req.user.id, dto);
+  }
+
   @Post(':callId/respond')
   @ApiOperation({ summary: 'Respond to call invitation (accept, decline, busy)' })
   async respondToCall(

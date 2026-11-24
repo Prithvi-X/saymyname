@@ -27,20 +27,7 @@ interface PendingLike {
 export default function LikesPage() {
   const router = useRouter();
 
-  const [likes, setLikes] = useState<PendingLike[]>([
-    {
-      id: 'like-preview-1',
-      profileId: 'cand-003',
-      candidateName: 'Sneha',
-      age: 20,
-      programme: 'BS in Aeronautics & Space Tech',
-      term: 'Foundation Level • Term 2',
-      likedAt: '2 hours ago',
-      photoUrl: 'https://images.unsplash.com/photo-1517841905240-472988babdf9?auto=format&fit=crop&w=800&q=80',
-      promptText: 'Best way to spend a Saturday...',
-      promptAnswer: 'Tracing constellations away from city light pollution and talking about where we want to be in five years.',
-    },
-  ]);
+  const [likes, setLikes] = useState<PendingLike[]>([]);
 
   const [matchModal, setMatchModal] = useState<{
     isOpen: boolean;

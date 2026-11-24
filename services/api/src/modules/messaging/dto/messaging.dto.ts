@@ -1,10 +1,11 @@
-import { IsString, IsNotEmpty, IsOptional } from 'class-validator';
+import { IsString, IsNotEmpty, IsOptional, MaxLength } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 export class SendMessageDto {
   @ApiProperty({ example: 'Hey Ananya! Loved your take on classical music. Which violin piece is your favorite?' })
   @IsString()
   @IsNotEmpty()
+  @MaxLength(1000)
   bodyText: string;
 
   @ApiPropertyOptional({ example: 'voice-note-uuid-ref' })

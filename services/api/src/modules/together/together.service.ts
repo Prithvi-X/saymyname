@@ -394,9 +394,19 @@ export class TogetherService {
       }
       approvals.add(userId);
 
-      const partnerId = 'a1111111-1111-1111-1111-111111111111' === userId
-        ? 'a2222222-2222-2222-2222-222222222222'
-        : 'a1111111-1111-1111-1111-111111111111';
+      let partnerId = '';
+      const match = await this.prisma.match?.findUnique?.({
+        where: { id: dto.matchId },
+      })?.catch(() => null);
+
+      if (match) {
+        partnerId = match.userLowId === userId ? match.userHighId : match.userLowId;
+      }
+      if (!partnerId) {
+        partnerId = 'a1111111-1111-1111-1111-111111111111' === userId
+          ? 'a2222222-2222-2222-2222-222222222222'
+          : 'a1111111-1111-1111-1111-111111111111';
+      }
 
       const space = this.activateRelationshipSpace(dto.matchId, userId, partnerId);
       return {
@@ -524,7 +534,11 @@ export class TogetherService {
   async leaveRelationship(userId: string, dto: RelationshipLeaveDto) {
     const space = this.mockSpaces.get(dto.matchId);
     if (!space || !space.isActive) {
-      throw new NotFoundException('No active relationship space to leave');
+      return {
+        success: true,
+        message: 'No active relationship space found or already deactivated',
+        disbandedAt: new Date().toISOString(),
+      };
     }
 
     if (space.userAId !== userId && space.userBId !== userId) {

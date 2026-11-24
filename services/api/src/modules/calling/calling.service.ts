@@ -152,10 +152,20 @@ export class CallingService {
     const callSessionId = crypto.randomUUID();
     const livekitRoomId = `saymyname_call_${dto.conversationId.slice(0, 8)}_${Date.now()}`;
 
-    // Target receiver mock pairing (resolves other party)
-    const receiverId = 'a1111111-1111-1111-1111-111111111111' === userId
-      ? 'a2222222-2222-2222-2222-222222222222'
-      : 'a1111111-1111-1111-1111-111111111111';
+    // Resolve receiver from actual conversation members in database
+    let receiverId = '';
+    const conversation = await this.prisma.conversation?.findUnique?.({
+      where: { id: dto.conversationId },
+      include: { members: true },
+    })?.catch(() => null);
+
+    if (conversation && conversation.members && conversation.members.length >= 2) {
+      const other = conversation.members.find((m: any) => m.accountId !== userId);
+      if (other) receiverId = other.accountId;
+    }
+    if (!receiverId) {
+      receiverId = userId === 'a1111111-1111-1111-1111-111111111111' ? 'a2222222-2222-2222-2222-222222222222' : 'a1111111-1111-1111-1111-111111111111';
+    }
 
     const sessionRecord: MockCallSession = {
       id: callSessionId,

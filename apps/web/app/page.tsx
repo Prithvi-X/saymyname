@@ -1,5 +1,8 @@
+'use client';
+
 import React from 'react';
 import Link from 'next/link';
+import { useAuth } from '../lib/auth-context';
 import {
   CompassIcon,
   ShieldIcon,
@@ -9,6 +12,8 @@ import {
 } from '../components/icons';
 
 export default function HomePage() {
+  const { authState } = useAuth();
+  const isVerifiedMember = authState === 'VERIFIED_MEMBER';
   const programmes = [
     {
       title: 'Data Science & Applications',
@@ -103,30 +108,51 @@ export default function HomePage() {
         </p>
 
         <div style={{ display: 'flex', justifyContent: 'center', gap: '14px', flexWrap: 'wrap' }}>
-          <Link
-            href="/discover"
-            className="btn btn-primary"
-            style={{ padding: '14px 32px', fontSize: '15px' }}
-          >
-            <CompassIcon size={18} color="#FFFFFF" />
-            <span>Enter Dating Discovery</span>
-          </Link>
+          {isVerifiedMember ? (
+            <>
+              <Link
+                href="/discover"
+                className="btn btn-primary"
+                style={{ padding: '14px 32px', fontSize: '15px' }}
+              >
+                <CompassIcon size={18} color="#FFFFFF" />
+                <span>Open Discovery Feed</span>
+              </Link>
+              <Link
+                href="/profile"
+                className="btn btn-secondary"
+                style={{ padding: '14px 28px', fontSize: '15px' }}
+              >
+                My Profile & Settings
+              </Link>
+            </>
+          ) : (
+            <>
+              <Link
+                href="/onboarding"
+                className="btn btn-primary"
+                style={{ padding: '14px 32px', fontSize: '15px' }}
+              >
+                Register Account
+              </Link>
 
-          <Link
-            href="/onboarding"
-            className="btn btn-secondary"
-            style={{ padding: '14px 28px', fontSize: '15px' }}
-          >
-            Register Account
-          </Link>
+              <Link
+                href="/login"
+                className="btn btn-secondary"
+                style={{ padding: '14px 28px', fontSize: '15px' }}
+              >
+                Sign In
+              </Link>
 
-          <Link
-            href="/eligibility"
-            className="btn btn-ghost"
-            style={{ padding: '14px 24px', fontSize: '15px' }}
-          >
-            Eligibility Guide
-          </Link>
+              <Link
+                href="/eligibility"
+                className="btn btn-ghost"
+                style={{ padding: '14px 24px', fontSize: '15px' }}
+              >
+                Eligibility Guide
+              </Link>
+            </>
+          )}
         </div>
       </section>
 

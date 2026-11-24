@@ -3,6 +3,7 @@
 import React from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { useAuth } from '../lib/auth-context';
 import {
   CompassIcon,
   HeartIcon,
@@ -13,6 +14,12 @@ import {
 
 export default function BottomNav() {
   const pathname = usePathname();
+  const { authState } = useAuth();
+
+  // Strict Rule: Unauthenticated visitors must NEVER see member dating tabs
+  if (authState !== 'VERIFIED_MEMBER') {
+    return null;
+  }
 
   const tabs = [
     { label: 'Discover', href: '/discover', icon: CompassIcon },

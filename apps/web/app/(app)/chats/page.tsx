@@ -111,27 +111,6 @@ function ChatsContent() {
       const sent = await api.sendMessage(activeMatch.id, trimmed);
       setMessages((prev) => [...prev, sent]);
       setText('');
-
-      // Contextual conversational reply simulation for demo
-      setTimeout(() => {
-        const replies = [
-          'That sounds really thoughtful! How did your BS term quiz go today?',
-          'Completely agree. Filter coffee and distributed systems are the best combination.',
-          'Haha yes! We should definitely play a round of Word Scramble next.',
-        ];
-        const replyText = replies[Math.floor(Math.random() * replies.length)];
-        const partnerReply: ChatMessage = {
-          id: `msg-${Date.now()}`,
-          conversationId: activeMatch.id,
-          senderId: activeMatch.candidate.profileId,
-          senderName: activeMatch.candidate.displayName,
-          text: replyText,
-          createdAt: new Date().toISOString(),
-          isOwn: false,
-          deliveryState: 'delivered',
-        };
-        setMessages((prev) => [...prev, partnerReply]);
-      }, 1400);
     } catch (err: any) {
       alert(err.message || 'Failed to send message');
     } finally {

@@ -358,19 +358,7 @@ export class IdentityService {
     }).catch(() => null);
 
     if (!account) {
-      return {
-        id: accountId,
-        email: 'student@study.iitm.ac.in',
-        displayName: 'Verified Student',
-        accountStatus: 'active',
-        eligibility: {
-          ageStatus: 'approved',
-          studentStatus: 'approved',
-          programmeFamily: 'data_science_applications',
-          discoveryEligible: true,
-        },
-        profile: null,
-      };
+      throw new UnauthorizedException('Account not found or session invalid.');
     }
 
     return {

@@ -1,86 +1,6 @@
 import { Injectable, BadRequestException, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { LikeCandidateDto, PassCandidateDto, UnmatchDto } from './dto/dating.dto';
-import { ProgrammeFamily } from '@saymyname/contracts';
-
-// Curated synthetic test candidate deck (all 18+ verified IITM BS students)
-const SEED_CANDIDATES = [
-  {
-    accountId: 'a1111111-1111-1111-1111-111111111111',
-    displayName: 'Ananya Iyer',
-    age: 21,
-    programmeFamily: ProgrammeFamily.DATA_SCIENCE_APPLICATIONS,
-    termOrYear: 'Year 3, Level 2',
-    locationCity: 'Bengaluru',
-    locationState: 'Karnataka',
-    bio: 'Training deep models by day, exploring indie cafes and acoustic guitar by night.',
-    intention: 'Long-term connection',
-    interests: ['Machine Learning', 'Music', 'Hiking', 'Filter Coffee'],
-    photos: [
-      { id: 'p1', photoUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb', displayOrder: 0, isPrimary: true },
-      { id: 'p2', photoUrl: 'https://images.unsplash.com/photo-1517841905240-472988babdf9', displayOrder: 1, isPrimary: false },
-    ],
-    promptAnswers: [
-      { promptText: 'My most unconventional take on AI is...', answerText: 'That the best models still cannot replicate a heartfelt 2am conversation.' },
-      { promptText: 'A typical weekend in my remote semester looks like...', answerText: 'Submitting assignments on portal, then playing chess and listening to classical violin.' },
-    ],
-  },
-  {
-    accountId: 'a2222222-2222-2222-2222-222222222222',
-    displayName: 'Rohan Deshmukh',
-    age: 22,
-    programmeFamily: ProgrammeFamily.ELECTRONIC_SYSTEMS,
-    termOrYear: 'Year 3, Level 1',
-    locationCity: 'Pune',
-    locationState: 'Maharashtra',
-    bio: 'Embedded systems tinkerer. I love writing low-level C code, rock climbing and reading sci-fi.',
-    intention: 'Meaningful connection',
-    interests: ['Robotics', 'Rock Climbing', 'Sci-Fi', 'Astronomy'],
-    photos: [
-      { id: 'p3', photoUrl: 'https://images.unsplash.com/photo-1539571696357-5a69c17a67c6', displayOrder: 0, isPrimary: true },
-      { id: 'p4', photoUrl: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d', displayOrder: 1, isPrimary: false },
-    ],
-    promptAnswers: [
-      { promptText: 'Together we could build...', answerText: 'An autonomous tea brewer or just memories that make distance feel irrelevant.' },
-    ],
-  },
-  {
-    accountId: 'a3333333-3333-3333-3333-333333333333',
-    displayName: 'Sneha Venkatesh',
-    age: 20,
-    programmeFamily: ProgrammeFamily.AERONAUTICS_SPACE,
-    termOrYear: 'Year 2, Level 2',
-    locationCity: 'Hyderabad',
-    locationState: 'Telangana',
-    bio: 'Orbital mechanics and satellite systems. Looking for someone who gets excited about stargazing and deep conversations.',
-    intention: 'Dating & partnership',
-    interests: ['Space Exploration', 'Photography', 'Badminton', 'Stargazing'],
-    photos: [
-      { id: 'p5', photoUrl: 'https://images.unsplash.com/photo-1524504388940-b1c1722653e1', displayOrder: 0, isPrimary: true },
-    ],
-    promptAnswers: [
-      { promptText: 'My idea of a perfect virtual date is...', answerText: 'Co-op puzzle gaming while sharing playlist recommendations across time zones.' },
-    ],
-  },
-  {
-    accountId: 'a4444444-4444-4444-4444-444444444444',
-    displayName: 'Vikram Menon',
-    age: 23,
-    programmeFamily: ProgrammeFamily.MANAGEMENT_DATA_SCIENCE,
-    termOrYear: 'Year 4, Final Year',
-    locationCity: 'Kochi',
-    locationState: 'Kerala',
-    bio: 'Product analytics and supply chain data. Big fan of Malayalam cinema, poetry and weekend cycling.',
-    intention: 'Long-term relationship',
-    interests: ['Product Strategy', 'Cinema', 'Cycling', 'Cooking'],
-    photos: [
-      { id: 'p6', photoUrl: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e', displayOrder: 0, isPrimary: true },
-    ],
-    promptAnswers: [
-      { promptText: 'The hallmark of a great relationship is...', answerText: 'Shared curiosity, emotional safety, and laughing at the same absurd memes.' },
-    ],
-  },
-];
 
 @Injectable()
 export class DatingService {
@@ -89,6 +9,7 @@ export class DatingService {
   /**
    * 1. Get Discovery Candidates Feed
    * Filtered by eligibility, blocks, likes and passes
+   * Queries ONLY verified, published profiles from the database (zero synthetic injection)
    */
   async getCandidates(accountId: string) {
     // 1. Fetch user blocks
@@ -137,26 +58,20 @@ export class DatingService {
       take: 20,
     }).catch(() => []);
 
-    // 4. Merge seed candidates if database has few records for testing
-    const seedAvailable = SEED_CANDIDATES.filter((c) => !excludedIds.has(c.accountId));
-
-    const candidates = [
-      ...dbProfiles.map((p) => ({
-        accountId: p.accountId,
-        displayName: p.displayName,
-        age: 22,
-        programmeFamily: p.programmeFamily,
-        termOrYear: p.termOrYear,
-        locationCity: p.locationCity,
-        locationState: p.locationState,
-        bio: p.bio,
-        intention: p.intention,
-        interests: p.interests.map((i) => i.interest.name),
-        photos: p.photos,
-        promptAnswers: p.promptAnswers.map((pa) => ({ promptText: pa.prompt.promptText, answerText: pa.answerText })),
-      })),
-      ...seedAvailable,
-    ];
+    const candidates = dbProfiles.map((p) => ({
+      accountId: p.accountId,
+      displayName: p.displayName,
+      age: 22,
+      programmeFamily: p.programmeFamily,
+      termOrYear: p.termOrYear,
+      locationCity: p.locationCity,
+      locationState: p.locationState,
+      bio: p.bio,
+      intention: p.intention,
+      interests: p.interests.map((i) => i.interest.name),
+      photos: p.photos,
+      promptAnswers: p.promptAnswers.map((pa) => ({ promptText: pa.prompt.promptText, answerText: pa.answerText })),
+    }));
 
     return { candidates, count: candidates.length };
   }
@@ -202,9 +117,8 @@ export class DatingService {
       },
     }).catch(() => null);
 
-    // In seed mode: candidate 1 & 2 will automatically reciprocal like for seamless testing!
-    const isSeedAutoMatch = dto.toAccountId === 'a1111111-1111-1111-1111-111111111111' || dto.toAccountId === 'a2222222-2222-2222-2222-222222222222';
-    const isMutualMatch = Boolean(reciprocalLike) || isSeedAutoMatch;
+    // Mutual match strictly requires reciprocal like in database per Document 01 §3.6
+    const isMutualMatch = Boolean(reciprocalLike);
 
     if (isMutualMatch) {
       // Lexicographically sort UUIDs per Document 06 §6.3
@@ -241,14 +155,15 @@ export class DatingService {
         conversation: { id: 'conv-uuid-sample' },
       }));
 
-      // Find matched candidate profile for instant celebration UI
-      const candidateProfile = SEED_CANDIDATES.find((c) => c.accountId === dto.toAccountId);
+      const candidateProfile = await this.prisma.profile?.findUnique?.({
+        where: { accountId: dto.toAccountId },
+      })?.catch(() => null);
 
       return {
         isMutualMatch: true,
         matchId: match.id,
         conversationId: match.conversation?.id || 'conv-sample',
-        matchedUser: candidateProfile || { displayName: 'Your Match', accountId: dto.toAccountId },
+        matchedUser: candidateProfile ? { displayName: candidateProfile.displayName, accountId: candidateProfile.accountId } : { displayName: 'Your Match', accountId: dto.toAccountId },
         message: "It's a Mutual Match! A private conversation has been created.",
       };
     }
@@ -307,12 +222,10 @@ export class DatingService {
 
     return matches.map((m) => {
       const otherAccountId = m.userLowId === accountId ? m.userHighId : m.userLowId;
-      const seedMatch = SEED_CANDIDATES.find((c) => c.accountId === otherAccountId);
 
       return {
         matchId: m.id,
         matchedAccountId: otherAccountId,
-        matchedUser: seedMatch || { displayName: 'Matched Student', accountId: otherAccountId },
         conversationId: m.conversation?.id,
         lastMessage: m.conversation?.messages?.[0] || null,
         createdAt: m.createdAt,

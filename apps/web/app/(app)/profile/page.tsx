@@ -1,9 +1,8 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
-import { api } from '../../../lib/api';
+import { useAuth } from '../../../lib/auth-context';
 import {
   CheckIcon,
   ShieldIcon,
@@ -38,31 +37,40 @@ const AVAILABLE_INTERESTS = [
 ];
 
 export default function ProfilePage() {
-  const router = useRouter();
+  const { user, logout } = useAuth();
 
   // Tab State: 'public' | 'private'
   const [activeTab, setActiveTab] = useState<'public' | 'private'>('public');
 
-  // Public Profile State
-  const [displayName, setDisplayName] = useState('Arun Kumar');
-  const [age] = useState(22); // Verified at onboarding
-  const [programmeFamily, setProgrammeFamily] = useState('data_science_applications');
-  const [currentTerm, setCurrentTerm] = useState('Diploma Level • Term 5');
-  const [locationCity, setLocationCity] = useState('Bengaluru, Karnataka');
-  const [bio, setBio] = useState('BS Data Science student exploring deep learning, collaborative word games, and quiet filter coffee conversations.');
-  const [photoUrl, setPhotoUrl] = useState('https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=600&auto=format&fit=crop&q=80');
-  const [selectedInterests, setSelectedInterests] = useState<string[]>([
-    '☕ Filter Coffee',
-    '🎬 World Cinema',
-    '🧩 Word Games',
-    '📊 Machine Learning',
-  ]);
+  // Public Profile State (Synchronized to authenticated member context)
+  const [displayName, setDisplayName] = useState(user?.displayName || '');
+  const [age] = useState(22);
+  const [programmeFamily, setProgrammeFamily] = useState(user?.eligibility?.programmeFamily || 'data_science_applications');
+  const [currentTerm, setCurrentTerm] = useState('Foundation Level');
+  const [locationCity, setLocationCity] = useState('');
+  const [bio, setBio] = useState('');
+  const [photoUrl, setPhotoUrl] = useState('');
+  const [selectedInterests, setSelectedInterests] = useState<string[]>([]);
   const [promptQuestion, setPromptQuestion] = useState('My ideal offline conversation is over...');
-  const [promptAnswer, setPromptAnswer] = useState('South Indian filter coffee at 7 AM discussing whether transformers actually understand semantics.');
+  const [promptAnswer, setPromptAnswer] = useState('');
 
   // Private Settings State
   const [isDiscoveryPaused, setIsDiscoveryPaused] = useState(false);
   const [saveFeedback, setSaveFeedback] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (user) {
+      if (user.displayName) setDisplayName(user.displayName);
+      if (user.eligibility?.programmeFamily) setProgrammeFamily(user.eligibility.programmeFamily);
+      if ((user as any).profile) {
+        const p = (user as any).profile;
+        if (p.bio) setBio(p.bio);
+        if (p.locationCity) setLocationCity(p.locationCity);
+        if (p.termOrYear) setCurrentTerm(p.termOrYear);
+        if (Array.isArray(p.photos) && p.photos[0]?.photoUrl) setPhotoUrl(p.photos[0].photoUrl);
+      }
+    }
+  }, [user]);
 
   const toggleInterest = (interest: string) => {
     if (selectedInterests.includes(interest)) {
@@ -80,10 +88,14 @@ export default function ProfilePage() {
     setTimeout(() => setSaveFeedback(null), 3000);
   };
 
-  const handleLogout = () => {
-    api.clearToken();
-    router.push('/');
+  const handleLogout = async () => {
+    await logout();
   };
+
+  const maskedEmail = user?.email
+    ? `${user.email.slice(0, 3)}*****@${user.email.split('@')[1]}`
+    : 'Encrypted';
+  const maskedRoll = (user as any)?.eligibility?.reviewNotes || 'Verified Active Enrolment';
 
   const selectedProgrammeLabel =
     PROGRAMME_OPTIONS.find((p) => p.value === programmeFamily)?.label || 'BS in Data Science and Applications';
@@ -691,14 +703,14 @@ export default function ProfilePage() {
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '13px' }}>
                 <span style={{ color: 'var(--color-text-secondary)' }}>Masked Institutional Email:</span>
                 <span style={{ fontWeight: 600, color: 'var(--color-text-primary)', fontFamily: 'monospace' }}>
-                  21f*****01@ds.study.iitm.ac.in
+                  {maskedEmail}
                 </span>
               </div>
 
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '13px' }}>
                 <span style={{ color: 'var(--color-text-secondary)' }}>Masked Student Roll No:</span>
                 <span style={{ fontWeight: 600, color: 'var(--color-text-primary)', fontFamily: 'monospace' }}>
-                  21F*****01
+                  {maskedRoll}
                 </span>
               </div>
 

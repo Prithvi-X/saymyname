@@ -27,6 +27,12 @@ export class DatingController {
     return this.datingService.sendLike(req.user.sub, dto);
   }
 
+  @Post('likes')
+  @ApiOperation({ summary: 'Send Like to candidate (alias for plural /likes)' })
+  sendLikesAlias(@Req() req: AuthenticatedRequest, @Body() dto: LikeCandidateDto) {
+    return this.datingService.sendLike(req.user.sub, dto);
+  }
+
   @Post('pass')
   @ApiOperation({ summary: 'Pass candidate with 30-day cooldown' })
   sendPass(@Req() req: AuthenticatedRequest, @Body() dto: PassCandidateDto) {

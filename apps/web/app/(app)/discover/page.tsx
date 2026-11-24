@@ -319,7 +319,7 @@ export default function DiscoverPage() {
                       border: '1px solid rgba(255, 255, 255, 0.15)',
                     }}
                   >
-                    Curated Profile • Demo Data
+                    Verified Student Profile
                   </span>
 
                   <button

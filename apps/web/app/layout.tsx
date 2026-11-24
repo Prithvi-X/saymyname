@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import './globals.css';
 import Navbar from '../components/Navbar';
 import BottomNav from '../components/BottomNav';
+import { AuthProvider } from '../lib/auth-context';
 
 export const metadata: Metadata = {
   title: 'SayMyName.in — For verified IIT Madras non-campus BS students',
@@ -24,11 +25,13 @@ export default function RootLayout({
         />
       </head>
       <body>
-        <Navbar />
-        <main style={{ minHeight: 'calc(100vh - 140px)', paddingBottom: '70px' }}>
-          {children}
-        </main>
-        <BottomNav />
+        <AuthProvider>
+          <Navbar />
+          <main style={{ minHeight: 'calc(100vh - 140px)', paddingBottom: '70px' }}>
+            {children}
+          </main>
+          <BottomNav />
+        </AuthProvider>
       </body>
     </html>
   );

@@ -3,6 +3,7 @@
 import React, { useState } from 'react';
 import Link from 'next/link';
 import { api } from '../../lib/api';
+import { useAuth } from '../../lib/auth-context';
 import {
   CheckIcon,
   ShieldIcon,
@@ -19,6 +20,7 @@ const PROGRAMME_OPTIONS = [
 ];
 
 export default function OnboardingPage() {
+  const { login } = useAuth();
   const [step, setStep] = useState<1 | 2 | 3 | 4 | 5>(1);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -55,7 +57,10 @@ export default function OnboardingPage() {
     setLoading(true);
     setError(null);
     try {
-      await api.verifyOtp({ email, otp });
+      const res = await api.verifyOtp({ email: email.toLowerCase().trim(), otp: otp.trim() });
+      if (res.accessToken) {
+        await login(res.accessToken, res.refreshToken);
+      }
       setStep(3);
     } catch (err: any) {
       setError(err.message || 'OTP verification failed');
@@ -89,7 +94,10 @@ export default function OnboardingPage() {
     setLoading(true);
     setError(null);
     try {
-      await api.verifyStudent({ programmeFamily, studentRollNo });
+      const res = await api.verifyStudent({ programmeFamily, studentRollNo: studentRollNo.trim() });
+      if (res.accessToken) {
+        await login(res.accessToken);
+      }
       setStep(5);
     } catch (err: any) {
       setError(err.message || 'Student verification failed');
@@ -170,13 +178,15 @@ export default function OnboardingPage() {
             </p>
 
             <div style={{ marginBottom: '18px' }}>
-              <label className="label-editorial">Institutional Student Email</label>
+              <label className="label-editorial" htmlFor="onboardingEmail">Institutional Student Email</label>
               <input
+                id="onboardingEmail"
                 type="email"
                 required
+                autoComplete="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="21f1000001@ds.study.iitm.ac.in"
+                placeholder="username@study.iitm.ac.in"
                 className="input-editorial"
               />
               <span style={{ fontSize: '11px', color: 'var(--color-text-secondary)', display: 'block', marginTop: '4px' }}>
@@ -185,26 +195,30 @@ export default function OnboardingPage() {
             </div>
 
             <div style={{ marginBottom: '18px' }}>
-              <label className="label-editorial">Display Name (First Name)</label>
+              <label className="label-editorial" htmlFor="onboardingName">Display Name (First Name)</label>
               <input
+                id="onboardingName"
                 type="text"
                 required
+                autoComplete="given-name"
                 value={displayName}
                 onChange={(e) => setDisplayName(e.target.value)}
-                placeholder="Aanya"
+                placeholder="Your preferred first name"
                 className="input-editorial"
               />
             </div>
 
             <div style={{ marginBottom: '28px' }}>
-              <label className="label-editorial">Password</label>
+              <label className="label-editorial" htmlFor="onboardingPassword">Password</label>
               <input
+                id="onboardingPassword"
                 type="password"
                 required
                 minLength={8}
+                autoComplete="new-password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                placeholder="••••••••"
+                placeholder="Create a secure password (min 8 characters)"
                 className="input-editorial"
               />
             </div>
@@ -217,6 +231,13 @@ export default function OnboardingPage() {
             >
               {loading ? 'Submitting...' : 'Continue to Verification'}
             </button>
+
+            <div style={{ marginTop: '20px', textAlign: 'center', fontSize: '13px', color: 'var(--color-text-secondary)' }}>
+              <span>Already registered? </span>
+              <Link href="/login" style={{ color: 'var(--color-brand-primary)', fontWeight: 600, textDecoration: 'underline' }}>
+                Sign in here
+              </Link>
+            </div>
           </form>
         )}
 
@@ -348,11 +369,13 @@ export default function OnboardingPage() {
             <div style={{ marginBottom: '28px' }}>
               <label className="label-editorial">Student Roll Number</label>
               <input
+                id="onboardingRollNo"
                 type="text"
                 required
+                autoComplete="off"
                 value={studentRollNo}
                 onChange={(e) => setStudentRollNo(e.target.value)}
-                placeholder="21F1000001"
+                placeholder="e.g. 21F1000001"
                 className="input-editorial"
               />
             </div>
