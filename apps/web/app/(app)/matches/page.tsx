@@ -7,16 +7,17 @@ import {
   ChatIcon,
   XIcon,
   CheckIcon,
-  LockIcon,
   HandshakeIcon,
 } from '../../../components/icons';
 
 export default function MatchesPage() {
   const [matches, setMatches] = useState<MatchProfile[]>([]);
   const [loading, setLoading] = useState(true);
-  const [unmatchModal, setUnmatchModal] = useState<{ isOpen: boolean; matchId?: string; name?: string }>({
-    isOpen: false,
-  });
+  const [unmatchModal, setUnmatchModal] = useState<{
+    isOpen: boolean;
+    matchId?: string;
+    candidateName?: string;
+  }>({ isOpen: false });
 
   useEffect(() => {
     async function loadMatches() {
@@ -50,28 +51,27 @@ export default function MatchesPage() {
       case 'management_data_science':
         return 'Management & Data Science';
       default:
-        return 'IITM BS Cohort';
+        return 'IITM BS Track';
     }
   };
 
   return (
-    <div className="mobile-app-layout" style={{ maxWidth: '680px', margin: '0 auto', padding: '24px 16px 48px 16px' }}>
+    <div className="container-standard" style={{ paddingTop: '32px', paddingBottom: '64px' }}>
       {/* Header */}
-      <div style={{ marginBottom: '20px' }}>
-        <h1 style={{ fontFamily: 'var(--font-display)', fontSize: '28px', fontWeight: 600, margin: '0 0 4px 0' }}>
+      <div style={{ marginBottom: '28px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
+          <span className="index-stamp">Bilateral Matches</span>
+          <span style={{ fontSize: '12px', color: 'var(--color-text-muted)' }}>•</span>
+          <span style={{ fontSize: '12px', color: 'var(--color-text-secondary)' }}>
+            {matches.length} active
+          </span>
+        </div>
+        <h1 style={{ fontFamily: 'var(--font-display)', fontSize: '32px', fontWeight: 600, margin: '0 0 6px 0' }}>
           Mutual Matches
         </h1>
         <p style={{ fontSize: '14px', color: 'var(--color-text-secondary)', margin: 0 }}>
-          Verified learners where both of you expressed mutual interest
+          Verified scholars where both of you expressed mutual interest. Private conversation is unlocked.
         </p>
-      </div>
-
-      {/* Product Invariant Callout (Document 01 §3.6) */}
-      <div className="callout-trust" style={{ marginBottom: '24px' }}>
-        <LockIcon size={18} color="var(--color-brand-primary)" style={{ flexShrink: 0, marginTop: '2px' }} />
-        <span>
-          <strong>SayMyName Invariant</strong>: A Like is not permission to message. Private messaging requires an active mutual match and no block/restriction.
-        </span>
       </div>
 
       {loading ? (
@@ -79,7 +79,7 @@ export default function MatchesPage() {
           Loading your matches...
         </p>
       ) : matches.length === 0 ? (
-        <div className="card-editorial" style={{ padding: '56px 24px', textAlign: 'center' }}>
+        <div className="card-surface" style={{ padding: '64px 28px', textAlign: 'center' }}>
           <div
             style={{
               width: '64px',
@@ -89,46 +89,47 @@ export default function MatchesPage() {
               display: 'inline-flex',
               alignItems: 'center',
               justifyContent: 'center',
-              marginBottom: '16px',
+              marginBottom: '18px',
             }}
           >
             <HandshakeIcon size={28} color="var(--color-brand-primary)" />
           </div>
-          <h2 style={{ fontFamily: 'var(--font-display)', fontSize: '24px', fontWeight: 600, margin: '0 0 8px 0' }}>
+          <h2 style={{ fontFamily: 'var(--font-display)', fontSize: '26px', fontWeight: 600, margin: '0 0 8px 0' }}>
             No Matches Yet
           </h2>
-          <p style={{ fontSize: '14px', color: 'var(--color-text-secondary)', maxWidth: '380px', margin: '0 auto 24px auto', lineHeight: '22px' }}>
-            When someone you liked also likes your profile, they will appear here and private bilateral messaging will unlock.
+          <p style={{ fontSize: '14px', color: 'var(--color-text-secondary)', maxWidth: '400px', margin: '0 auto 24px auto', lineHeight: '22px' }}>
+            When someone you liked also likes your profile back, they will appear here and private 1-on-1 messaging will unlock.
           </p>
           <Link href="/discover" className="btn btn-primary">
-            Explore Discover
+            Explore Discovery
           </Link>
         </div>
       ) : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
           {matches.map((m) => {
             const photo = m.candidate.photos?.[0]?.photoUrl;
             return (
               <div
                 key={m.id}
-                className="card-editorial"
+                className="card-surface"
                 style={{
-                  padding: '16px 20px',
+                  padding: '20px 24px',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'space-between',
-                  gap: '16px',
+                  gap: '20px',
+                  flexWrap: 'wrap',
                 }}
               >
                 {/* Partner Info */}
-                <div style={{ display: 'flex', alignItems: 'center', gap: '14px', flex: 1, minWidth: 0 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '16px', flex: 1, minWidth: '260px' }}>
                   {photo ? (
                     <img
                       src={photo}
                       alt={m.candidate.displayName}
                       style={{
-                        width: '56px',
-                        height: '56px',
+                        width: '60px',
+                        height: '60px',
                         borderRadius: '50%',
                         objectFit: 'cover',
                         flexShrink: 0,
@@ -138,15 +139,15 @@ export default function MatchesPage() {
                   ) : (
                     <div
                       style={{
-                        width: '56px',
-                        height: '56px',
+                        width: '60px',
+                        height: '60px',
                         borderRadius: '50%',
-                        backgroundColor: m.candidate.avatarColor || '#7A3045',
+                        backgroundColor: m.candidate.avatarColor || '#6E2638',
                         color: '#FFFFFF',
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
-                        fontSize: '22px',
+                        fontSize: '24px',
                         fontFamily: 'var(--font-display)',
                         fontWeight: 600,
                         flexShrink: 0,
@@ -158,16 +159,16 @@ export default function MatchesPage() {
 
                   <div style={{ minWidth: 0, flex: 1 }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '2px', flexWrap: 'wrap' }}>
-                      <h2 style={{ fontFamily: 'var(--font-display)', fontSize: '18px', fontWeight: 600, margin: 0, color: 'var(--color-text-primary)' }}>
+                      <h2 style={{ fontFamily: 'var(--font-display)', fontSize: '20px', fontWeight: 600, margin: 0, color: 'var(--color-text-primary)' }}>
                         {m.candidate.displayName}, {m.candidate.age}
                       </h2>
-                      <span className="badge-verified" style={{ fontSize: '10px', padding: '2px 8px' }}>
+                      <span className="badge-verified">
                         <CheckIcon size={10} color="var(--color-brand-primary)" />
                         <span>Verified</span>
                       </span>
                     </div>
 
-                    <p style={{ margin: '0 0 4px 0', fontSize: '12px', color: 'var(--color-accent-warm)', fontWeight: 600 }}>
+                    <p style={{ margin: '0 0 4px 0', fontSize: '12.5px', color: 'var(--color-accent-warm)', fontWeight: 600 }}>
                       BS in {getProgrammeTitle(m.candidate.programmeFamily)}
                     </p>
 
@@ -181,27 +182,34 @@ export default function MatchesPage() {
                         whiteSpace: 'nowrap',
                       }}
                     >
-                      {m.lastMessage || 'Mutual match confirmed • Say hello'}
+                      {m.lastMessage || 'Mutual match active • Ready for conversation'}
                     </p>
                   </div>
                 </div>
 
-                {/* Actions */}
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
+                {/* Actions: Direct Chat & Safe Unmatch */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexShrink: 0 }}>
                   <Link
                     href={`/chats?matchId=${m.id}`}
                     className="btn btn-primary"
-                    style={{ padding: '8px 16px', fontSize: '13px' }}
+                    style={{ padding: '9px 18px', fontSize: '13px' }}
                   >
                     <ChatIcon size={14} color="#FFFFFF" />
-                    <span>Message</span>
+                    <span>Open Chat</span>
                   </Link>
 
                   <button
-                    onClick={() => setUnmatchModal({ isOpen: true, matchId: m.id, name: m.candidate.displayName })}
+                    onClick={() =>
+                      setUnmatchModal({
+                        isOpen: true,
+                        matchId: m.id,
+                        candidateName: m.candidate.displayName,
+                      })
+                    }
                     className="btn btn-secondary btn-round"
-                    style={{ width: '36px', height: '36px' }}
-                    title="Unmatch / Remove"
+                    style={{ width: '38px', height: '38px' }}
+                    title="End Match"
+                    aria-label={`End match with ${m.candidate.displayName}`}
                   >
                     <XIcon size={16} color="var(--color-text-secondary)" />
                   </button>
@@ -212,15 +220,15 @@ export default function MatchesPage() {
         </div>
       )}
 
-      {/* Unmatch Confirmation Modal */}
+      {/* In-App Unmatch Confirmation Modal */}
       {unmatchModal.isOpen && (
-        <div className="dialog-backdrop" onClick={() => setUnmatchModal({ isOpen: false })}>
-          <div className="dialog-sheet" onClick={(e) => e.stopPropagation()}>
+        <div className="dialog-overlay" onClick={() => setUnmatchModal({ isOpen: false })}>
+          <div className="dialog-modal" onClick={(e) => e.stopPropagation()}>
             <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '22px', fontWeight: 600, color: 'var(--color-status-danger)', marginBottom: '8px' }}>
-              End Match with {unmatchModal.name}?
+              End Match with {unmatchModal.candidateName}?
             </h3>
             <p style={{ fontSize: '14px', lineHeight: '22px', color: 'var(--color-text-secondary)', marginBottom: '24px' }}>
-              Ending this match will permanently remove your conversation history. In accordance with Document 01 §3.6, mutual communication will be severed immediately.
+              Ending this match will permanently remove your conversation history. In accordance with Document 01 §3.6, mutual communication will be severed immediately and safely on the server.
             </p>
 
             <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>

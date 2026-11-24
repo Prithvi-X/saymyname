@@ -71,7 +71,7 @@ export default function HomePage() {
         <div style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '6px 16px', borderRadius: 'var(--radius-pill)', backgroundColor: 'var(--color-brand-primary-subtle)', marginBottom: '24px' }}>
           <CheckIcon size={14} color="var(--color-brand-primary)" />
           <span style={{ fontSize: '12px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--color-brand-primary)' }}>
-            Exclusively For Verified IITM BS Scholars • 18+ Only
+            Exclusively For Verified BS Scholars
           </span>
         </div>
 
@@ -117,7 +117,7 @@ export default function HomePage() {
             className="btn btn-secondary"
             style={{ padding: '14px 28px', fontSize: '15px' }}
           >
-            Register Account (18+)
+            Register Account
           </Link>
 
           <Link

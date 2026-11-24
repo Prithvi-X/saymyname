@@ -20,7 +20,13 @@
       }
     ],
     "paths": {
-      "@/*": ["./*"]
+      "@/*": ["./*"],
+      "@saymyname/contracts": ["../../packages/contracts/src/index.ts"],
+      "@saymyname/contracts/*": ["../../packages/contracts/src/*"],
+      "@saymyname/validation": ["../../packages/validation/src/index.ts"],
+      "@saymyname/validation/*": ["../../packages/validation/src/*"],
+      "@saymyname/design-tokens": ["../../packages/design-tokens/src/index.ts"],
+      "@saymyname/design-tokens/*": ["../../packages/design-tokens/src/*"]
     }
   },
   "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts"],

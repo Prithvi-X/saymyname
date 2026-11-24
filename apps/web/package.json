@@ -10,6 +10,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@saymyname/contracts": "*",
     "@saymyname/design-tokens": "*",
     "@saymyname/validation": "*",
     "next": "^15.1.0",

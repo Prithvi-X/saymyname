@@ -1,29 +1,47 @@
 /**
  * SayMyName Design Tokens - CSS Variables
- * Conforms to Document 03 Warm Editorial Minimalism
+ * Conforms to Document 03: Warm Editorial Minimalism with Understated Authority
  */
 
 :root {
-  /* Colors - Light Theme */
+  /* Colors - Light Theme (Warm Paper & Deep Oxblood) */
   --color-canvas: #F7F4EF;
-  --color-surface: #FFFEFC;
-  --color-surface-subtle: #EFE9E1;
-  --color-text-primary: #25211F;
-  --color-text-secondary: #6B625D;
-  --color-border-default: #D6CEC6;
-  --color-brand-primary: #7A3045;
-  --color-brand-primary-hover: #65263A;
-  --color-brand-primary-subtle: #F3E6EA;
-  --color-accent-warm: #A6533D;
-  --color-status-success: #286B55;
-  --color-status-warning: #81561C;
-  --color-status-danger: #A52F41;
-  --color-status-info: #315E82;
-  --color-focus-ring: #315E82;
+  --color-surface: #FFFEFB;
+  --color-surface-raised: #FFFFFF;
+  --color-surface-subtle: #EDE7DF;
+  --color-surface-muted: #E4DCD2;
+  
+  --color-text-primary: #1E1A18;
+  --color-text-secondary: #655C56;
+  --color-text-muted: #887E77;
+  
+  --color-border-default: #D8D1C7;
+  --color-border-subtle: #E8E2D9;
+  --color-border-strong: #B8ADA1;
+  
+  --color-brand-primary: #6E2638;
+  --color-brand-primary-hover: #5A1D2D;
+  --color-brand-primary-subtle: #F4E8EB;
+  --color-brand-primary-tint: #FAF2F4;
+  
+  --color-accent-warm: #A34C38;
+  --color-accent-warm-subtle: #FAEEEB;
+  
+  --color-status-success: #246550;
+  --color-status-success-subtle: #E8F3EE;
+  --color-status-warning: #855218;
+  --color-status-warning-subtle: #FBF4E8;
+  --color-status-danger: #9B2838;
+  --color-status-danger-subtle: #FBEBED;
+  --color-status-info: #2B577A;
+  --color-status-info-subtle: #EBF2F8;
+  
+  --color-focus-ring: #6E2638;
 
   /* Typography */
   --font-display: 'Newsreader', Georgia, serif;
-  --font-body: 'DM Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;
+  --font-body: 'DM Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-mono: 'SF Mono', Menlo, Consolas, Monaco, monospace;
 
   /* Spacing Scale */
   --space-1: 4px;
@@ -39,6 +57,7 @@
   --space-20: 80px;
 
   /* Corner Radii */
+  --radius-xs: 4px;
   --radius-sm: 8px;
   --radius-md: 12px;
   --radius-lg: 16px;
@@ -46,52 +65,71 @@
   --radius-2xl: 24px;
   --radius-pill: 999px;
 
-  /* Elevation Shadows */
-  --elevation-1: 0 1px 3px rgba(37, 33, 31, 0.05), 0 1px 2px rgba(37, 33, 31, 0.04);
-  --elevation-2: 0 4px 6px -1px rgba(37, 33, 31, 0.08), 0 2px 4px -2px rgba(37, 33, 31, 0.05);
-  --elevation-3: 0 10px 15px -3px rgba(37, 33, 31, 0.1), 0 4px 6px -4px rgba(37, 33, 31, 0.05);
+  /* Restrained Tactile Elevation */
+  --elevation-1: 0 1px 2px rgba(30, 26, 24, 0.04), 0 1px 3px rgba(30, 26, 24, 0.03);
+  --elevation-2: 0 3px 8px -1px rgba(30, 26, 24, 0.06), 0 1px 3px -1px rgba(30, 26, 24, 0.04);
+  --elevation-3: 0 12px 28px -4px rgba(30, 26, 24, 0.1), 0 4px 10px -2px rgba(30, 26, 24, 0.04);
+  --elevation-like: 0 6px 20px rgba(110, 38, 56, 0.28);
 
-  /* Motion */
-  --duration-fast: 150ms;
-  --duration-normal: 250ms;
-  --duration-slow: 400ms;
-  --ease-out: cubic-bezier(0, 0, 0.2, 1);
+  /* Calibrated Motion */
+  --duration-immediate: 100ms;
+  --duration-fast: 160ms;
+  --duration-normal: 240ms;
+  --duration-slow: 340ms;
+  --ease-editorial: cubic-bezier(0.16, 1, 0.3, 1);
   --ease-in-out: cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 [data-theme="dark"],
 .dark {
-  /* Colors - Dark Theme */
-  --color-canvas: #171413;
-  --color-surface: #211D1C;
-  --color-surface-raised: #2C2624;
-  --color-surface-subtle: #302927;
-  --color-text-primary: #F4EEEA;
-  --color-text-secondary: #C2B7B0;
-  --color-border-default: #4A403D;
-  --color-brand-primary: #E7A0B2;
-  --color-brand-primary-hover: #F0BCC8;
-  --color-brand-primary-subtle: #3B232B;
-  --color-accent-warm: #E1A08B;
-  --color-status-success: #7FCCAA;
-  --color-status-warning: #F0C17A;
-  --color-status-danger: #F19BA7;
-  --color-status-info: #98C6EC;
-  --color-focus-ring: #98C6EC;
+  /* Colors - Dark Theme (Deep Ink & Warm Mineral Rose) */
+  --color-canvas: #141211;
+  --color-surface: #1E1A18;
+  --color-surface-raised: #282321;
+  --color-surface-subtle: #2C2624;
+  --color-surface-muted: #38312E;
+  
+  --color-text-primary: #F5EFEB;
+  --color-text-secondary: #C4B9B2;
+  --color-text-muted: #8E837C;
+  
+  --color-border-default: #423A36;
+  --color-border-subtle: #332C28;
+  --color-border-strong: #5C524C;
+  
+  --color-brand-primary: #E59BAE;
+  --color-brand-primary-hover: #F2B4C3;
+  --color-brand-primary-subtle: #381E25;
+  --color-brand-primary-tint: #2A171C;
+  
+  --color-accent-warm: #E29C87;
+  --color-accent-warm-subtle: #3A231C;
+  
+  --color-status-success: #78C7A3;
+  --color-status-success-subtle: #193127;
+  --color-status-warning: #ECC078;
+  --color-status-warning-subtle: #382914;
+  --color-status-danger: #EE93A1;
+  --color-status-danger-subtle: #3B1B20;
+  --color-status-info: #95C3EA;
+  --color-status-info-subtle: #192D3D;
+  
+  --color-focus-ring: #95C3EA;
 
-  --elevation-1: 0 1px 3px rgba(0, 0, 0, 0.3);
-  --elevation-2: 0 4px 6px -1px rgba(0, 0, 0, 0.4);
-  --elevation-3: 0 10px 15px -3px rgba(0, 0, 0, 0.5);
+  --elevation-1: 0 1px 3px rgba(0, 0, 0, 0.35);
+  --elevation-2: 0 4px 10px rgba(0, 0, 0, 0.45);
+  --elevation-3: 0 14px 32px rgba(0, 0, 0, 0.6);
+  --elevation-like: 0 6px 20px rgba(229, 155, 174, 0.35);
 }
 
-/* Reduced motion preference */
+/* Accessible Reduced Motion Support */
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
   *::after {
-    animation-duration: 0.01ms !important;
+    animation-duration: 0.001ms !important;
     animation-iteration-count: 1 !important;
-    transition-duration: 0.01ms !important;
+    transition-duration: 0.001ms !important;
     scroll-behavior: auto !important;
   }
 }

@@ -1,7 +1,7 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
-  transpilePackages: ['@saymyname/design-tokens', '@saymyname/validation'],
+  transpilePackages: ['@saymyname/contracts', '@saymyname/validation', '@saymyname/design-tokens'],
   experimental: {
     workerThreads: false,
     cpus: 1,

@@ -3,12 +3,19 @@
 import React from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { CompassIcon, HeartIcon, HandshakeIcon, ChatIcon, UserIcon, ShieldIcon } from './icons';
+import {
+  CompassIcon,
+  HeartIcon,
+  HandshakeIcon,
+  ChatIcon,
+  UserIcon,
+  ShieldIcon,
+} from './icons';
 
 export default function Navbar() {
   const pathname = usePathname();
 
-  const appNavLinks = [
+  const primaryNavItems = [
     { label: 'Discover', href: '/discover', icon: CompassIcon },
     { label: 'Likes', href: '/likes', icon: HeartIcon },
     { label: 'Matches', href: '/matches', icon: HandshakeIcon },
@@ -16,7 +23,7 @@ export default function Navbar() {
     { label: 'Profile', href: '/profile', icon: UserIcon },
   ];
 
-  const isAppSection = appNavLinks.some((l) => pathname.startsWith(l.href));
+  const isAppRoute = primaryNavItems.some((item) => pathname.startsWith(item.href));
 
   return (
     <header
@@ -24,19 +31,23 @@ export default function Navbar() {
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'space-between',
-        padding: '0 28px',
+        padding: '0 32px',
         height: '68px',
         backgroundColor: 'var(--color-surface)',
         borderBottom: '1px solid var(--color-border-default)',
         position: 'sticky',
         top: 0,
         zIndex: 100,
-        boxShadow: '0 1px 3px rgba(37, 33, 31, 0.03)',
+        boxShadow: 'var(--elevation-1)',
       }}
     >
-      {/* Brand Identity */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: '28px' }}>
-        <Link href="/" style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+      {/* Brand Wordmark with Restrained Editorial Authority */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: '36px' }}>
+        <Link
+          href="/"
+          style={{ display: 'inline-flex', alignItems: 'baseline', gap: '8px' }}
+          aria-label="SayMyName Home"
+        >
           <span
             style={{
               fontFamily: 'var(--font-display)',
@@ -49,24 +60,25 @@ export default function Navbar() {
             SayMyName
           </span>
           <span
+            className="index-stamp"
             style={{
-              fontSize: '10px',
-              textTransform: 'uppercase',
-              letterSpacing: '0.06em',
-              padding: '3px 8px',
-              backgroundColor: 'var(--color-brand-primary-subtle)',
-              color: 'var(--color-brand-primary)',
-              borderRadius: 'var(--radius-pill)',
-              fontWeight: 700,
+              fontSize: '9px',
+              color: 'var(--color-text-muted)',
+              display: 'inline-block',
+              transform: 'translateY(-2px)',
             }}
           >
-            IITM BS
+            Phase 1 • Verified
           </span>
         </Link>
 
-        {/* Desktop Primary App Navigation */}
-        <nav className="desktop-only-nav" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-          {appNavLinks.map((tab) => {
+        {/* Primary Desktop Navigation */}
+        <nav
+          className="nav-desktop-tabs"
+          style={{ display: 'flex', alignItems: 'center', gap: '4px' }}
+          aria-label="Main Navigation"
+        >
+          {primaryNavItems.map((tab) => {
             const isActive = pathname.startsWith(tab.href);
             const Icon = tab.icon;
             return (
@@ -76,17 +88,21 @@ export default function Navbar() {
                 style={{
                   display: 'inline-flex',
                   alignItems: 'center',
-                  gap: '7px',
-                  padding: '8px 14px',
+                  gap: '8px',
+                  padding: '8px 16px',
                   borderRadius: 'var(--radius-pill)',
-                  fontSize: '13px',
+                  fontSize: '13.5px',
                   fontWeight: isActive ? 600 : 500,
                   color: isActive ? 'var(--color-brand-primary)' : 'var(--color-text-secondary)',
                   backgroundColor: isActive ? 'var(--color-brand-primary-subtle)' : 'transparent',
-                  transition: 'all var(--duration-fast) var(--ease-out)',
+                  transition: 'all var(--duration-fast) var(--ease-editorial)',
                 }}
               >
-                <Icon size={16} color={isActive ? 'var(--color-brand-primary)' : 'var(--color-text-secondary)'} />
+                <Icon
+                  size={16}
+                  color={isActive ? 'var(--color-brand-primary)' : 'var(--color-text-secondary)'}
+                  strokeWidth={isActive ? 2 : 1.75}
+                />
                 <span>{tab.label}</span>
               </Link>
             );
@@ -94,8 +110,8 @@ export default function Navbar() {
         </nav>
       </div>
 
-      {/* Right Utility Actions */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+      {/* Right Controls: Safety & Account CTA */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
         <Link
           href="/safety"
           style={{
@@ -107,33 +123,21 @@ export default function Navbar() {
             color: 'var(--color-text-secondary)',
             padding: '6px 12px',
             borderRadius: 'var(--radius-pill)',
-            transition: 'color var(--duration-fast) var(--ease-out)',
+            transition: 'color var(--duration-fast)',
           }}
+          title="Safety and Consent Commitments"
         >
           <ShieldIcon size={15} color="var(--color-text-secondary)" />
-          <span className="desktop-only-nav">Safety & Consent</span>
+          <span className="nav-desktop-tabs">Safety & Consent</span>
         </Link>
 
-        <Link
-          href="/eligibility"
-          className="desktop-only-nav"
-          style={{
-            fontSize: '13px',
-            fontWeight: 500,
-            color: 'var(--color-text-secondary)',
-            padding: '6px 12px',
-          }}
-        >
-          Eligibility
-        </Link>
-
-        {!isAppSection && (
+        {!isAppRoute && (
           <Link
             href="/onboarding"
             className="btn btn-primary"
-            style={{ padding: '8px 18px', fontSize: '13px' }}
+            style={{ padding: '8px 20px', fontSize: '13px' }}
           >
-            Register (18+)
+            Register
           </Link>
         )}
       </div>
