@@ -17,14 +17,34 @@ export default function RootLayout({
   return (
     <html lang="en">
       <head>
+        <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+        <link rel="alternate icon" href="/favicon.ico" />
         <script
           dangerouslySetInnerHTML={{
             __html: `
+              // Auto-reload on stale deployment chunk mismatches
+              function handleChunkError(err) {
+                var msg = (err && (err.message || (err.reason && err.reason.message))) || '';
+                var name = (err && (err.name || (err.reason && err.reason.name))) || '';
+                if (name === 'ChunkLoadError' || msg.indexOf('Loading chunk') !== -1 || msg.indexOf('ChunkLoadError') !== -1) {
+                  var storageKey = 'smn_chunk_retry_' + window.location.pathname;
+                  var retries = parseInt(sessionStorage.getItem(storageKey) || '0', 10);
+                  if (retries < 2) {
+                    sessionStorage.setItem(storageKey, String(retries + 1));
+                    window.location.reload();
+                  }
+                }
+              }
               window.addEventListener('error', function(e) {
-                if (e.filename && (e.filename.includes('share-modal.js') || e.filename.includes('vce'))) {
+                handleChunkError(e);
+                // Suppress foreign browser extensions injecting faulty code
+                if (e.filename && (e.filename.indexOf('share-modal') !== -1 || e.filename.indexOf('vce') !== -1)) {
                   e.stopImmediatePropagation();
                   e.preventDefault();
                 }
+              });
+              window.addEventListener('unhandledrejection', function(e) {
+                handleChunkError(e);
               });
             `,
           }}
