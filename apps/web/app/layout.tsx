@@ -17,6 +17,18 @@ export default function RootLayout({
   return (
     <html lang="en">
       <head>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              window.addEventListener('error', function(e) {
+                if (e.filename && (e.filename.includes('share-modal.js') || e.filename.includes('vce'))) {
+                  e.stopImmediatePropagation();
+                  e.preventDefault();
+                }
+              });
+            `,
+          }}
+        />
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         <link

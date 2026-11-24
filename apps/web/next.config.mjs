@@ -6,6 +6,15 @@ const nextConfig = {
     workerThreads: false,
     cpus: 1,
   },
+  async rewrites() {
+    const backendUrl = process.env.API_BACKEND_URL || 'http://localhost:4000';
+    return [
+      {
+        source: '/api/v1/:path*',
+        destination: `${backendUrl}/api/v1/:path*`,
+      },
+    ];
+  },
 };
 
 export default nextConfig;

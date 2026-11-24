@@ -11,7 +11,28 @@
 
 import { ProgrammeFamily } from '@saymyname/contracts';
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api/v1';
+/**
+ * Dynamically resolves the API base URL:
+ * - On localhost/127.0.0.1: automatically points to http://localhost:4000/api/v1
+ * - On local WiFi/LAN IP: automatically points to http://<lan-ip>:4000/api/v1
+ * - In production/custom deployment: uses NEXT_PUBLIC_API_URL or relative /api/v1
+ */
+export function getApiBaseUrl(): string {
+  if (typeof window !== 'undefined') {
+    const { hostname, port, protocol } = window.location;
+    if (hostname === 'localhost' || hostname === '127.0.0.1') {
+      return 'http://localhost:4000/api/v1';
+    }
+    if (/^(?:10\.|192\.168\.|172\.(?:1[6-9]|2[0-9]|3[01])\.)/.test(hostname)) {
+      return `http://${hostname}:4000/api/v1`;
+    }
+    if (process.env.NEXT_PUBLIC_API_URL) {
+      return process.env.NEXT_PUBLIC_API_URL;
+    }
+    return `${protocol}//${hostname}${port ? `:${port}` : ''}/api/v1`;
+  }
+  return process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api/v1';
+}
 
 export interface RegisterPayload {
   email: string;
@@ -113,10 +134,31 @@ class ApiClient {
       headers['Authorization'] = `Bearer ${token}`;
     }
 
-    const res = await fetch(`${API_BASE}${endpoint}`, {
-      ...options,
-      headers,
-    });
+    const baseUrl = getApiBaseUrl();
+    let res: Response;
+    try {
+      res = await fetch(`${baseUrl}${endpoint}`, {
+        ...options,
+        headers,
+      });
+    } catch (networkError: any) {
+      if (
+        networkError?.message?.includes('Failed to fetch') ||
+        networkError?.message?.includes('NetworkError') ||
+        networkError?.name === 'TypeError'
+      ) {
+        let domain = baseUrl;
+        try {
+          domain = new URL(baseUrl).hostname;
+        } catch {}
+        throw new Error(
+          `Unable to connect to the SayMyName API at ${baseUrl}. ` +
+          `If you are testing locally, please open http://localhost:3000 (and ensure the backend is running on port 4000). ` +
+          `If testing an online deployment, ensure the DNS record for "${domain}" is active in your Cloudflare dashboard.`
+        );
+      }
+      throw networkError;
+    }
 
     if (res.status === 401) {
       this.clearToken();
