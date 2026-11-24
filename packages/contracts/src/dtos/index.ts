@@ -6,6 +6,10 @@ import {
   MessageType,
   DeliveryState,
   CallStatus,
+  GameSessionStatus,
+  VirtualDateStatus,
+  RelationshipProposalStatus,
+  ActivityType,
 } from '../enums';
 
 export interface AccountDto {
@@ -104,4 +108,149 @@ export interface CallSessionDto {
   livekitRoomId: string;
   startedAt?: string | null;
   durationSeconds?: number | null;
+}
+
+export interface VoiceNotePresignRequestDto {
+  filename: string;
+  mimeType: string;
+  durationSeconds: number;
+}
+
+export interface VoiceNotePresignResponseDto {
+  uploadUrl: string;
+  mediaRefId: string;
+  s3Key: string;
+  expiresInSeconds: number;
+}
+
+export interface CallInviteRequestDto {
+  conversationId: string;
+}
+
+export interface CallRespondRequestDto {
+  action: 'accept' | 'decline' | 'busy';
+}
+
+export interface CallTokenResponseDto {
+  callSessionId: string;
+  livekitRoomId: string;
+  token: string;
+  callStatus: CallStatus;
+}
+
+export interface GameCatalogItemDto {
+  id: string;
+  gameKey: string;
+  title: string;
+  description: string;
+  minPlayers: number;
+  maxPlayers: number;
+  isActive: boolean;
+}
+
+export interface GameInviteRequestDto {
+  conversationId: string;
+  gameKey: string;
+}
+
+export interface GameRespondRequestDto {
+  action: 'accept' | 'decline';
+}
+
+export interface GameMoveRequestDto {
+  moveType: string;
+  moveData: Record<string, unknown>;
+}
+
+export interface GameSessionDto {
+  id: string;
+  conversationId: string;
+  gameKey: string;
+  title: string;
+  sessionStatus: GameSessionStatus;
+  currentState: Record<string, unknown>;
+  winnerAccountId?: string | null;
+  startedAt?: string | null;
+  completedAt?: string | null;
+}
+
+export interface VirtualDateProposeRequestDto {
+  conversationId: string;
+  scheduledFor: string;
+  timezone: string;
+  activityType: ActivityType | string;
+  proposalNotes?: string;
+}
+
+export interface VirtualDateRespondRequestDto {
+  action: 'accept' | 'cancel';
+}
+
+export interface VirtualDateDto {
+  id: string;
+  conversationId: string;
+  proposedById: string;
+  scheduledFor: string;
+  timezone: string;
+  activityType: string;
+  status: VirtualDateStatus;
+  proposalNotes?: string | null;
+  createdAt: string;
+  completedAt?: string | null;
+}
+
+export interface RelationshipProposeRequestDto {
+  matchId: string;
+}
+
+export interface RelationshipProposalDto {
+  matchId: string;
+  proposedByAccountId: string;
+  status: RelationshipProposalStatus;
+  createdAt: string;
+}
+
+export interface RelationshipRespondRequestDto {
+  action: 'accept' | 'decline';
+}
+
+export interface RelationshipSpaceDto {
+  id: string;
+  matchId: string;
+  partnerAccountId: string;
+  isActive: boolean;
+  activatedAt: string;
+  activeDays: number;
+  disbandedAt?: string | null;
+}
+
+export interface RelationshipMilestoneDto {
+  id: string;
+  spaceId: string;
+  title: string;
+  milestoneDate: string;
+  description?: string | null;
+  createdById: string;
+  createdAt: string;
+}
+
+export interface RelationshipMilestoneCreateDto {
+  title: string;
+  milestoneDate: string;
+  description?: string;
+}
+
+export interface RelationshipJournalDto {
+  id: string;
+  spaceId: string;
+  entryText: string;
+  entryDate: string;
+  createdById: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface RelationshipJournalCreateDto {
+  entryText: string;
+  entryDate: string;
 }

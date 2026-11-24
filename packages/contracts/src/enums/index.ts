@@ -74,3 +74,24 @@ export enum VirtualDateStatus {
   COMPLETED = 'completed',
   CANCELLED = 'cancelled',
 }
+
+export enum RelationshipProposalStatus {
+  PROPOSED = 'proposed',
+  ACCEPTED = 'accepted',
+  DECLINED = 'declined',
+  WITHDRAWN = 'withdrawn',
+}
+
+export enum ActivityType {
+  STUDY_SESSION = 'study_session',
+  CAMPUS_WALK = 'campus_walk',
+  GAME_NIGHT = 'game_night',
+  MUSIC_SHARE = 'music_share',
+  COFFEE_CHAT = 'coffee_chat',
+}
+
+export enum GameType {
+  WORD_SCRAMBLE = 'word_scramble',
+  IITM_TRIVIA = 'iitm_trivia',
+  TWENTY_QUESTIONS = 'twenty_questions',
+}

@@ -7,6 +7,8 @@ import { ProfilesModule } from './modules/profiles/profiles.module';
 import { DatingModule } from './modules/dating/dating.module';
 import { MessagingModule } from './modules/messaging/messaging.module';
 import { SafetyModule } from './modules/safety/safety.module';
+import { CallingModule } from './modules/calling/calling.module';
+import { TogetherModule } from './modules/together/together.module';
 
 @Module({
   imports: [
@@ -21,6 +23,8 @@ import { SafetyModule } from './modules/safety/safety.module';
     DatingModule,
     MessagingModule,
     SafetyModule,
+    CallingModule,
+    TogetherModule,
   ],
 })
 export class AppModule {}

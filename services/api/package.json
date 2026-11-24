@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "build": "tsc",
-    "test": "node --test dist/test/identity.test.js dist/test/dating.test.js",
+    "test": "node --test dist/test/identity.test.js dist/test/dating.test.js dist/test/calling.test.js dist/test/together.test.js",
     "start": "node dist/src/main.js",
     "typecheck": "tsc --noEmit"
   },
