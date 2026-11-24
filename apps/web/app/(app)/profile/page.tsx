@@ -4,6 +4,10 @@ import React, { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { api } from '../../../lib/api';
+import {
+  CheckIcon,
+  ShieldIcon,
+} from '../../../components/icons';
 
 export default function ProfilePage() {
   const router = useRouter();
@@ -54,9 +58,9 @@ export default function ProfilePage() {
   };
 
   return (
-    <div style={{ maxWidth: '640px', margin: '0 auto', padding: '24px 16px 80px 16px' }}>
+    <div className="mobile-app-layout" style={{ maxWidth: '640px', margin: '0 auto', padding: '24px 16px 48px 16px' }}>
       <div style={{ marginBottom: '24px' }}>
-        <h1 style={{ fontFamily: 'var(--font-heading)', fontSize: '28px', fontWeight: 700, margin: '0 0 4px 0', color: 'var(--color-text-primary)' }}>
+        <h1 style={{ fontFamily: 'var(--font-display)', fontSize: '28px', fontWeight: 600, margin: '0 0 4px 0' }}>
           My Profile & Settings
         </h1>
         <p style={{ fontSize: '14px', color: 'var(--color-text-secondary)', margin: 0 }}>
@@ -67,15 +71,16 @@ export default function ProfilePage() {
       {saveFeedback && (
         <div
           style={{
-            padding: '12px 16px',
+            padding: '12px 18px',
             backgroundColor: 'var(--color-surface-subtle)',
             border: '1px solid var(--color-status-success)',
             color: 'var(--color-status-success)',
             borderRadius: 'var(--radius-md)',
-            fontSize: '14px',
+            fontSize: '13px',
             fontWeight: 500,
-            marginBottom: '16px',
+            marginBottom: '20px',
             textAlign: 'center',
+            animation: 'fadeIn 150ms ease-out',
           }}
         >
           {saveFeedback}
@@ -83,69 +88,52 @@ export default function ProfilePage() {
       )}
 
       {/* Verified Student Identity Card */}
-      <div
-        style={{
-          backgroundColor: 'var(--color-surface)',
-          borderRadius: 'var(--radius-xl)',
-          border: '1px solid var(--color-border-default)',
-          padding: '24px',
-          boxShadow: 'var(--elevation-1)',
-          marginBottom: '24px',
-        }}
-      >
-        <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '16px' }}>
+      <div className="card-editorial" style={{ padding: '28px', marginBottom: '24px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '18px', marginBottom: '20px' }}>
           <div
             style={{
               width: '64px',
               height: '64px',
-              borderRadius: 'var(--radius-pill)',
+              borderRadius: '50%',
               backgroundColor: 'var(--color-brand-primary)',
               color: '#FFFFFF',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              fontSize: '24px',
-              fontWeight: 700,
+              fontSize: '26px',
+              fontFamily: 'var(--font-display)',
+              fontWeight: 600,
+              boxShadow: '0 4px 12px rgba(122, 48, 69, 0.25)',
+              flexShrink: 0,
             }}
           >
             {displayName.charAt(0)}
           </div>
+
           <div>
-            <h2 style={{ fontFamily: 'var(--font-heading)', fontSize: '22px', fontWeight: 700, margin: '0 0 4px 0' }}>
+            <h2 style={{ fontFamily: 'var(--font-display)', fontSize: '24px', fontWeight: 600, margin: '0 0 6px 0' }}>
               {displayName}, 22
             </h2>
             <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-              <span
-                style={{
-                  padding: '2px 8px',
-                  backgroundColor: 'var(--color-brand-primary-subtle)',
-                  color: 'var(--color-brand-primary)',
-                  borderRadius: 'var(--radius-pill)',
-                  fontSize: '11px',
-                  fontWeight: 700,
-                  textTransform: 'uppercase',
-                }}
-              >
-                ✓ Verified
+              <span className="badge-verified">
+                <CheckIcon size={12} color="var(--color-brand-primary)" />
+                <span>Verified</span>
               </span>
               <span
+                className="badge-tag"
                 style={{
-                  padding: '2px 8px',
-                  backgroundColor: 'var(--color-surface-subtle)',
                   color: 'var(--color-accent-warm)',
-                  borderRadius: 'var(--radius-pill)',
+                  fontWeight: 600,
                   fontSize: '11px',
-                  fontWeight: 700,
-                  textTransform: 'uppercase',
                 }}
               >
-                ✓ BS Data Science Enrolled
+                BS Data Science Enrolled
               </span>
             </div>
           </div>
         </div>
 
-        <div style={{ borderTop: '1px solid var(--color-border-default)', paddingTop: '16px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+        <div style={{ borderTop: '1px solid var(--color-border-default)', paddingTop: '18px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px' }}>
             <span style={{ color: 'var(--color-text-secondary)' }}>Institutional Email:</span>
             <span style={{ fontWeight: 600, color: 'var(--color-text-primary)' }}>21f1000001@ds.study.iitm.ac.in</span>
@@ -163,67 +151,37 @@ export default function ProfilePage() {
 
       {/* Edit Profile Form */}
       <form onSubmit={handleSave} style={{ display: 'flex', flexDirection: 'column', gap: '20px', marginBottom: '24px' }}>
-        <div
-          style={{
-            backgroundColor: 'var(--color-surface)',
-            borderRadius: 'var(--radius-xl)',
-            border: '1px solid var(--color-border-default)',
-            padding: '24px',
-            boxShadow: 'var(--elevation-1)',
-          }}
-        >
-          <h3 style={{ fontFamily: 'var(--font-heading)', fontSize: '18px', fontWeight: 700, margin: '0 0 16px 0' }}>
+        <div className="card-editorial" style={{ padding: '28px' }}>
+          <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '20px', fontWeight: 600, margin: '0 0 20px 0' }}>
             Edit Profile Details
           </h3>
 
-          <div style={{ marginBottom: '16px' }}>
-            <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, marginBottom: '6px' }}>
-              Display Name
-            </label>
+          <div style={{ marginBottom: '20px' }}>
+            <label className="label-editorial">Display Name</label>
             <input
               type="text"
               value={displayName}
               onChange={(e) => setDisplayName(e.target.value)}
-              style={{
-                width: '100%',
-                padding: '10px 14px',
-                borderRadius: 'var(--radius-md)',
-                border: '1px solid var(--color-border-default)',
-                backgroundColor: 'var(--color-surface-subtle)',
-                fontSize: '14px',
-                outline: 'none',
-              }}
+              className="input-editorial"
             />
           </div>
 
-          <div style={{ marginBottom: '16px' }}>
-            <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, marginBottom: '6px' }}>
-              About Me (Bio)
-            </label>
+          <div style={{ marginBottom: '20px' }}>
+            <label className="label-editorial">About Me (Bio)</label>
             <textarea
               value={bio}
               onChange={(e) => setBio(e.target.value.slice(0, 500))}
               rows={3}
-              style={{
-                width: '100%',
-                padding: '10px 14px',
-                borderRadius: 'var(--radius-md)',
-                border: '1px solid var(--color-border-default)',
-                backgroundColor: 'var(--color-surface-subtle)',
-                fontSize: '14px',
-                outline: 'none',
-                resize: 'vertical',
-              }}
+              className="input-editorial"
+              style={{ resize: 'vertical' }}
             />
-            <span style={{ fontSize: '11px', color: 'var(--color-text-secondary)', display: 'block', textAlign: 'right' }}>
+            <span style={{ fontSize: '11px', color: 'var(--color-text-secondary)', display: 'block', textAlign: 'right', marginTop: '4px' }}>
               {500 - bio.length} characters remaining
             </span>
           </div>
 
           <div>
-            <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, marginBottom: '8px' }}>
-              Interests & Academic Passions (Select up to 5)
-            </label>
+            <label className="label-editorial">Interests & Academic Passions (Select up to 5)</label>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
               {availableInterests.map((interest) => {
                 const isSelected = selectedInterests.includes(interest);
@@ -232,38 +190,23 @@ export default function ProfilePage() {
                     type="button"
                     key={interest}
                     onClick={() => toggleInterest(interest)}
+                    className="badge-tag"
                     style={{
-                      padding: '6px 14px',
-                      borderRadius: 'var(--radius-pill)',
-                      border: isSelected ? '1px solid var(--color-brand-primary)' : '1px solid var(--color-border-default)',
+                      border: isSelected ? '1.5px solid var(--color-brand-primary)' : '1px solid var(--color-border-default)',
                       backgroundColor: isSelected ? 'var(--color-brand-primary-subtle)' : 'var(--color-surface-subtle)',
                       color: isSelected ? 'var(--color-brand-primary)' : 'var(--color-text-secondary)',
-                      fontSize: '12px',
-                      fontWeight: 500,
-                      cursor: 'pointer',
+                      fontWeight: isSelected ? 600 : 500,
                     }}
                   >
-                    {interest} {isSelected ? '✓' : ''}
+                    {interest} {isSelected && '✓'}
                   </button>
                 );
               })}
             </div>
           </div>
 
-          <div style={{ marginTop: '20px' }}>
-            <button
-              type="submit"
-              style={{
-                padding: '10px 24px',
-                backgroundColor: 'var(--color-brand-primary)',
-                color: '#FFFFFF',
-                borderRadius: 'var(--radius-pill)',
-                border: 'none',
-                fontSize: '14px',
-                fontWeight: 600,
-                cursor: 'pointer',
-              }}
-            >
+          <div style={{ marginTop: '24px' }}>
+            <button type="submit" className="btn btn-primary">
               Save Profile Changes
             </button>
           </div>
@@ -271,19 +214,8 @@ export default function ProfilePage() {
       </form>
 
       {/* Safety & Discovery Settings */}
-      <div
-        style={{
-          backgroundColor: 'var(--color-surface)',
-          borderRadius: 'var(--radius-xl)',
-          border: '1px solid var(--color-border-default)',
-          padding: '24px',
-          boxShadow: 'var(--elevation-1)',
-          display: 'flex',
-          flexDirection: 'column',
-          gap: '16px',
-        }}
-      >
-        <h3 style={{ fontFamily: 'var(--font-heading)', fontSize: '18px', fontWeight: 700, margin: 0 }}>
+      <div className="card-editorial" style={{ padding: '28px', display: 'flex', flexDirection: 'column', gap: '20px' }}>
+        <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '20px', fontWeight: 600, margin: 0 }}>
           Privacy & Account Controls
         </h3>
 
@@ -291,61 +223,36 @@ export default function ProfilePage() {
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <div>
             <h4 style={{ fontSize: '14px', fontWeight: 600, margin: '0 0 2px 0' }}>Pause Discovery</h4>
-            <p style={{ margin: 0, fontSize: '12px', color: 'var(--color-text-secondary)' }}>
-              Temporarily hide your profile from new candidate cards. Existing matches remain active.
+            <p style={{ margin: 0, fontSize: '12px', color: 'var(--color-text-secondary)', maxWidth: '420px', lineHeight: '18px' }}>
+              Temporarily hide your profile from new candidate cards. Existing matches and chats remain active.
             </p>
           </div>
           <button
             type="button"
             onClick={() => setIsDiscoveryPaused(!isDiscoveryPaused)}
-            style={{
-              padding: '6px 14px',
-              borderRadius: 'var(--radius-pill)',
-              border: isDiscoveryPaused ? '1px solid var(--color-status-success)' : '1px solid var(--color-border-default)',
-              backgroundColor: isDiscoveryPaused ? 'var(--color-surface-subtle)' : 'var(--color-surface-subtle)',
-              fontSize: '12px',
-              fontWeight: 600,
-              cursor: 'pointer',
-            }}
+            className={isDiscoveryPaused ? 'btn btn-subtle' : 'btn btn-secondary'}
+            style={{ padding: '6px 16px', fontSize: '12px' }}
           >
             {isDiscoveryPaused ? '✓ Paused' : 'Active'}
           </button>
         </div>
 
-        <div style={{ borderTop: '1px solid var(--color-border-default)', paddingTop: '14px', display: 'flex', gap: '12px' }}>
+        <div style={{ borderTop: '1px solid var(--color-border-default)', paddingTop: '18px', display: 'flex', gap: '12px' }}>
           <Link
             href="/safety"
-            style={{
-              flex: 1,
-              padding: '10px',
-              textAlign: 'center',
-              backgroundColor: 'var(--color-surface-subtle)',
-              border: '1px solid var(--color-border-default)',
-              borderRadius: 'var(--radius-md)',
-              fontSize: '13px',
-              fontWeight: 500,
-              color: 'var(--color-text-primary)',
-              textDecoration: 'none',
-            }}
+            className="btn btn-secondary"
+            style={{ flex: 1, padding: '10px 16px', fontSize: '13px' }}
           >
-            🛡️ Safety Commitments
+            <ShieldIcon size={15} color="var(--color-brand-primary)" />
+            <span>Safety Commitments</span>
           </Link>
 
           <button
             onClick={handleLogout}
-            style={{
-              flex: 1,
-              padding: '10px',
-              backgroundColor: 'var(--color-surface-subtle)',
-              border: '1px solid var(--color-border-default)',
-              borderRadius: 'var(--radius-md)',
-              fontSize: '13px',
-              fontWeight: 500,
-              color: 'var(--color-status-danger)',
-              cursor: 'pointer',
-            }}
+            className="btn btn-danger"
+            style={{ flex: 1, padding: '10px 16px', fontSize: '13px' }}
           >
-            🚪 Log Out
+            Log Out
           </button>
         </div>
       </div>

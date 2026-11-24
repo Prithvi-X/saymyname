@@ -78,7 +78,7 @@ const MOCK_CANDIDATES: DiscoveryCandidate[] = [
     locationCity: 'Bengaluru / Remote',
     currentTerm: 'Diploma Level • Term 4',
     avatarColor: '#B04A36',
-    photos: [{ id: 'p1', photoUrl: '', isPrimary: true }],
+    photos: [{ id: 'p1', photoUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=800&q=80', isPrimary: true }],
     interests: ['🎬 Cinema', '☕ Filter Coffee', '🧩 Word Games', '📊 ML Models'],
     promptAnswers: [
       {
@@ -102,7 +102,7 @@ const MOCK_CANDIDATES: DiscoveryCandidate[] = [
     locationCity: 'Hyderabad / Remote',
     currentTerm: 'BSc Degree Level • Term 6',
     avatarColor: '#2B4C7E',
-    photos: [{ id: 'p2', photoUrl: '', isPrimary: true }],
+    photos: [{ id: 'p2', photoUrl: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=800&q=80', isPrimary: true }],
     interests: ['⚡ Microcontrollers', '📚 Speculative Sci-Fi', '🏸 Badminton', '🎧 Ambient Music'],
     promptAnswers: [
       {
@@ -121,7 +121,7 @@ const MOCK_CANDIDATES: DiscoveryCandidate[] = [
     locationCity: 'Pune / Remote',
     currentTerm: 'Foundation Level • Term 2',
     avatarColor: '#3B6E58',
-    photos: [{ id: 'p3', photoUrl: '', isPrimary: true }],
+    photos: [{ id: 'p3', photoUrl: 'https://images.unsplash.com/photo-1517841905240-472988babdf9?auto=format&fit=crop&w=800&q=80', isPrimary: true }],
     interests: ['🚀 Orbital Dynamics', '🔭 Astronomy', '🧗 Rock Climbing', '🍵 Earl Grey'],
     promptAnswers: [
       {

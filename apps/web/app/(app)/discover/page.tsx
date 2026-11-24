@@ -4,17 +4,40 @@ import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { api, DiscoveryCandidate } from '../../../lib/api';
+import {
+  CheckIcon,
+  PinIcon,
+  XIcon,
+  HeartIcon,
+  MoreVerticalIcon,
+  ShieldIcon,
+  FlagIcon,
+  LockIcon,
+  SparklesIcon,
+  CompassIcon,
+} from '../../../components/icons';
 
 export default function DiscoverPage() {
   const router = useRouter();
   const [candidates, setCandidates] = useState<DiscoveryCandidate[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [loading, setLoading] = useState(true);
-  const [matchModal, setMatchModal] = useState<{ isOpen: boolean; candidate?: DiscoveryCandidate; matchId?: string }>({
-    isOpen: false,
-  });
+  const [imageError, setImageError] = useState<Record<string, boolean>>({});
+
+  // Safety & Action Modals
   const [safetyMenuOpen, setSafetyMenuOpen] = useState(false);
-  const [blockReportFeedback, setBlockReportFeedback] = useState<string | null>(null);
+  const [blockModalOpen, setBlockModalOpen] = useState(false);
+  const [reportModalOpen, setReportModalOpen] = useState(false);
+  const [reportReason, setReportReason] = useState('Inappropriate content or messages');
+  const [reportNotes, setReportNotes] = useState('');
+  const [feedbackMessage, setFeedbackMessage] = useState<string | null>(null);
+
+  // Match celebration modal
+  const [matchModal, setMatchModal] = useState<{
+    isOpen: boolean;
+    candidate?: DiscoveryCandidate;
+    matchId?: string;
+  }>({ isOpen: false });
 
   useEffect(() => {
     async function loadCandidates() {
@@ -31,6 +54,17 @@ export default function DiscoverPage() {
   }, []);
 
   const currentCandidate = candidates[currentIndex];
+
+  // Keyboard navigation for calm, intentional browsing
+  useEffect(() => {
+    function handleKeyDown(e: KeyboardEvent) {
+      if (matchModal.isOpen || blockModalOpen || reportModalOpen) return;
+      if (e.key === 'ArrowLeft') handlePass();
+      if (e.key === 'ArrowRight') handleLike();
+    }
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [currentIndex, candidates, matchModal.isOpen, blockModalOpen, reportModalOpen]);
 
   const handlePass = async () => {
     if (!currentCandidate) return;
@@ -54,34 +88,31 @@ export default function DiscoverPage() {
     setSafetyMenuOpen(false);
   };
 
-  const handleBlock = async () => {
+  const confirmBlock = async () => {
     if (!currentCandidate) return;
-    const confirmBlock = window.confirm(
-      `Block ${currentCandidate.displayName}? They will never see your profile, and all interactions will be severed immediately.`
-    );
-    if (!confirmBlock) return;
-
     await api.blockUser(currentCandidate.profileId, 'User requested block from discovery');
-    setBlockReportFeedback(`Blocked ${currentCandidate.displayName}. You will never see each other again.`);
+    setBlockModalOpen(false);
+    setSafetyMenuOpen(false);
+    setFeedbackMessage(`Blocked ${currentCandidate.displayName}. Mutual visibility has been severed immediately.`);
     setTimeout(() => {
-      setBlockReportFeedback(null);
+      setFeedbackMessage(null);
       setCurrentIndex((prev) => prev + 1);
-      setSafetyMenuOpen(false);
-    }, 1800);
+    }, 2000);
   };
 
-  const handleReport = async () => {
+  const submitReport = async (e: React.FormEvent) => {
+    e.preventDefault();
     if (!currentCandidate) return;
-    const reason = window.prompt('Please specify the reason for reporting this profile (e.g. harassment, impersonation, commercial spam):');
-    if (!reason) return;
-
-    await api.reportUser(currentCandidate.profileId, reason);
-    setBlockReportFeedback(`Report submitted confidentially. Thank you for keeping SayMyName safe.`);
+    const fullReason = `${reportReason}${reportNotes ? `: ${reportNotes}` : ''}`;
+    await api.reportUser(currentCandidate.profileId, fullReason);
+    setReportModalOpen(false);
+    setSafetyMenuOpen(false);
+    setReportNotes('');
+    setFeedbackMessage(`Report submitted confidentially. Thank you for protecting the community.`);
     setTimeout(() => {
-      setBlockReportFeedback(null);
+      setFeedbackMessage(null);
       setCurrentIndex((prev) => prev + 1);
-      setSafetyMenuOpen(false);
-    }, 1800);
+    }, 2000);
   };
 
   const getProgrammeTitle = (family: string) => {
@@ -99,20 +130,31 @@ export default function DiscoverPage() {
     }
   };
 
+  const primaryPhoto = currentCandidate?.photos?.[0]?.photoUrl;
+  const hasValidPhoto = primaryPhoto && !imageError[currentCandidate?.profileId || ''];
+
   if (loading) {
     return (
-      <div style={{ maxWidth: '580px', margin: '40px auto', padding: '0 16px', textAlign: 'center' }}>
-        <p style={{ color: 'var(--color-text-secondary)', fontSize: '15px' }}>Loading verified peer queue...</p>
+      <div style={{ maxWidth: '580px', margin: '64px auto', padding: '0 20px', textAlign: 'center' }}>
+        <div style={{ display: 'inline-flex', padding: '16px', borderRadius: '50%', backgroundColor: 'var(--color-brand-primary-subtle)', marginBottom: '16px' }}>
+          <CompassIcon size={32} color="var(--color-brand-primary)" />
+        </div>
+        <h2 style={{ fontFamily: 'var(--font-display)', fontSize: '24px', fontWeight: 600, marginBottom: '8px' }}>
+          Connecting with IITM BS Cohorts
+        </h2>
+        <p style={{ color: 'var(--color-text-secondary)', fontSize: '14px' }}>
+          Loading your daily batch of verified student profiles...
+        </p>
       </div>
     );
   }
 
   return (
-    <div style={{ maxWidth: '580px', margin: '0 auto', padding: '24px 16px 80px 16px' }}>
+    <div className="mobile-app-layout" style={{ maxWidth: '560px', margin: '0 auto', padding: '24px 16px 40px 16px' }}>
       {/* Top Header */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
         <div>
-          <h1 style={{ fontFamily: 'var(--font-heading)', fontSize: '28px', fontWeight: 700, margin: 0, color: 'var(--color-text-primary)' }}>
+          <h1 style={{ fontFamily: 'var(--font-display)', fontSize: '28px', fontWeight: 600, margin: 0 }}>
             Discover
           </h1>
           <p style={{ fontSize: '13px', color: 'var(--color-text-secondary)', margin: '2px 0 0 0' }}>
@@ -123,85 +165,133 @@ export default function DiscoverPage() {
         <Link
           href="/eligibility"
           style={{
-            padding: '6px 12px',
-            backgroundColor: 'var(--color-surface-subtle)',
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: '6px',
+            padding: '6px 14px',
+            backgroundColor: 'var(--color-surface)',
             border: '1px solid var(--color-border-default)',
             borderRadius: 'var(--radius-pill)',
             fontSize: '12px',
             fontWeight: 600,
             color: 'var(--color-text-secondary)',
-            textDecoration: 'none',
           }}
         >
-          🎓 Eligibility Guide
+          <ShieldIcon size={14} color="var(--color-text-secondary)" />
+          <span>Eligibility</span>
         </Link>
       </div>
 
-      {blockReportFeedback && (
+      {feedbackMessage && (
         <div
           style={{
-            padding: '12px 16px',
+            padding: '12px 18px',
             backgroundColor: 'var(--color-surface-subtle)',
             border: '1px solid var(--color-brand-primary)',
             borderRadius: 'var(--radius-md)',
             color: 'var(--color-brand-primary)',
-            fontSize: '14px',
+            fontSize: '13px',
+            fontWeight: 500,
             marginBottom: '16px',
             textAlign: 'center',
-            fontWeight: 500,
+            animation: 'fadeIn 150ms ease-out',
           }}
         >
-          {blockReportFeedback}
+          {feedbackMessage}
         </div>
       )}
 
       {/* Main Candidate Card Deck */}
       {currentCandidate ? (
-        <div
-          style={{
-            backgroundColor: 'var(--color-surface)',
-            borderRadius: 'var(--radius-xl)',
-            border: '1px solid var(--color-border-default)',
-            overflow: 'hidden',
-            boxShadow: 'var(--elevation-2)',
-            position: 'relative',
-          }}
-        >
-          {/* Photo / Avatar Canvas */}
+        <div className="card-editorial" style={{ position: 'relative' }}>
+          {/* Photo / Portrait Stage */}
           <div
             style={{
-              height: '380px',
-              backgroundColor: currentCandidate.avatarColor || '#2B4C7E',
-              background: `linear-gradient(145deg, ${currentCandidate.avatarColor || '#2B4C7E'} 0%, #1A1A24 100%)`,
-              display: 'flex',
-              flexDirection: 'column',
-              justifyContent: 'flex-end',
-              padding: '24px',
-              color: '#FFFFFF',
+              height: '440px',
               position: 'relative',
+              backgroundColor: currentCandidate.avatarColor || '#3B232B',
+              overflow: 'hidden',
             }}
           >
-            {/* Safety Options Menu Trigger */}
-            <div style={{ position: 'absolute', top: '16px', right: '16px' }}>
+            {hasValidPhoto ? (
+              <img
+                src={primaryPhoto}
+                alt={currentCandidate.displayName}
+                onError={() => setImageError((prev) => ({ ...prev, [currentCandidate.profileId]: true }))}
+                style={{
+                  width: '100%',
+                  height: '100%',
+                  objectFit: 'cover',
+                  display: 'block',
+                }}
+              />
+            ) : (
+              <div
+                style={{
+                  width: '100%',
+                  height: '100%',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  background: `linear-gradient(145deg, ${currentCandidate.avatarColor || '#7A3045'} 0%, #211D1C 100%)`,
+                  color: '#FFFFFF',
+                }}
+              >
+                <div
+                  style={{
+                    width: '96px',
+                    height: '96px',
+                    borderRadius: '50%',
+                    backgroundColor: 'rgba(255, 255, 255, 0.15)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    fontFamily: 'var(--font-display)',
+                    fontSize: '44px',
+                    fontWeight: 600,
+                    marginBottom: '12px',
+                    border: '2px solid rgba(255, 255, 255, 0.25)',
+                  }}
+                >
+                  {currentCandidate.displayName.charAt(0)}
+                </div>
+                <span style={{ fontSize: '12px', opacity: 0.8, letterSpacing: '0.04em', textTransform: 'uppercase' }}>
+                  IITM Verified Learner
+                </span>
+              </div>
+            )}
+
+            {/* Gradient Scrim for Text Legibility */}
+            <div
+              style={{
+                position: 'absolute',
+                inset: 0,
+                background: 'linear-gradient(to top, rgba(23, 20, 19, 0.92) 0%, rgba(23, 20, 19, 0.4) 45%, rgba(0, 0, 0, 0) 75%)',
+                pointerEvents: 'none',
+              }}
+            />
+
+            {/* Top Bar: Safety Options Menu Trigger */}
+            <div style={{ position: 'absolute', top: '16px', right: '16px', zIndex: 10 }}>
               <button
                 onClick={() => setSafetyMenuOpen(!safetyMenuOpen)}
                 style={{
                   width: '36px',
                   height: '36px',
-                  borderRadius: 'var(--radius-pill)',
-                  backgroundColor: 'rgba(0,0,0,0.4)',
+                  borderRadius: '50%',
+                  backgroundColor: 'rgba(23, 20, 19, 0.45)',
+                  backdropFilter: 'blur(8px)',
                   color: '#FFFFFF',
-                  border: 'none',
-                  fontSize: '16px',
-                  cursor: 'pointer',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  backdropFilter: 'blur(4px)',
+                  border: '1px solid rgba(255, 255, 255, 0.2)',
+                  transition: 'background-color var(--duration-fast)',
                 }}
                 aria-label="Safety menu"
               >
-                ⋮
+                <MoreVerticalIcon size={18} color="#FFFFFF" />
               </button>
 
               {safetyMenuOpen && (
@@ -220,71 +310,90 @@ export default function DiscoverPage() {
                   }}
                 >
                   <button
-                    onClick={handleReport}
+                    onClick={() => {
+                      setSafetyMenuOpen(false);
+                      setReportModalOpen(true);
+                    }}
                     style={{
                       width: '100%',
-                      padding: '10px 14px',
+                      padding: '12px 16px',
                       textAlign: 'left',
-                      background: 'none',
-                      border: 'none',
                       fontSize: '13px',
                       color: 'var(--color-text-primary)',
-                      cursor: 'pointer',
                       borderBottom: '1px solid var(--color-border-default)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '8px',
                     }}
                   >
-                    🚩 Report Profile
+                    <FlagIcon size={15} color="var(--color-text-secondary)" />
+                    <span>Report Profile</span>
                   </button>
                   <button
-                    onClick={handleBlock}
+                    onClick={() => {
+                      setSafetyMenuOpen(false);
+                      setBlockModalOpen(true);
+                    }}
                     style={{
                       width: '100%',
-                      padding: '10px 14px',
+                      padding: '12px 16px',
                       textAlign: 'left',
-                      background: 'none',
-                      border: 'none',
                       fontSize: '13px',
                       color: 'var(--color-status-danger)',
-                      cursor: 'pointer',
                       fontWeight: 600,
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '8px',
                     }}
                   >
-                    🚫 Block User
+                    <ShieldIcon size={15} color="var(--color-status-danger)" />
+                    <span>Block User</span>
                   </button>
                 </div>
               )}
             </div>
 
             {/* Candidate Identity Overlay */}
-            <div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
-                <span
-                  style={{
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: '4px',
-                    padding: '3px 10px',
-                    backgroundColor: 'rgba(255, 255, 255, 0.22)',
-                    backdropFilter: 'blur(8px)',
-                    borderRadius: 'var(--radius-pill)',
-                    fontSize: '11px',
-                    fontWeight: 700,
-                    letterSpacing: '0.04em',
-                    textTransform: 'uppercase',
-                  }}
-                >
-                  ✓ Verified
+            <div style={{ position: 'absolute', bottom: '20px', left: '20px', right: '20px', zIndex: 5, color: '#FFFFFF' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px', flexWrap: 'wrap' }}>
+                <span className="badge-verified">
+                  <CheckIcon size={12} color="var(--color-brand-primary)" />
+                  <span>Verified</span>
                 </span>
                 {currentCandidate.locationCity && (
-                  <span style={{ fontSize: '12px', opacity: 0.85 }}>📍 {currentCandidate.locationCity}</span>
+                  <span
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '4px',
+                      fontSize: '12px',
+                      padding: '3px 10px',
+                      borderRadius: 'var(--radius-pill)',
+                      backgroundColor: 'rgba(255, 255, 255, 0.2)',
+                      backdropFilter: 'blur(8px)',
+                      color: '#FFFFFF',
+                    }}
+                  >
+                    <PinIcon size={12} color="#FFFFFF" />
+                    <span>{currentCandidate.locationCity}</span>
+                  </span>
                 )}
               </div>
 
-              <h2 style={{ fontFamily: 'var(--font-heading)', fontSize: '32px', fontWeight: 700, margin: '0 0 4px 0', textShadow: '0 2px 4px rgba(0,0,0,0.3)' }}>
+              <h2
+                style={{
+                  fontFamily: 'var(--font-display)',
+                  fontSize: '32px',
+                  fontWeight: 600,
+                  margin: '0 0 4px 0',
+                  color: '#FFFFFF',
+                  letterSpacing: '-0.02em',
+                }}
+              >
                 {currentCandidate.displayName}, {currentCandidate.age}
               </h2>
 
-              <p style={{ margin: 0, fontSize: '14px', fontWeight: 500, opacity: 0.9 }}>
+              <p style={{ margin: 0, fontSize: '14px', fontWeight: 500, color: 'rgba(255, 255, 255, 0.9)' }}>
                 {getProgrammeTitle(currentCandidate.programmeFamily)} {currentCandidate.currentTerm ? `• ${currentCandidate.currentTerm}` : ''}
               </p>
             </div>
@@ -301,22 +410,11 @@ export default function DiscoverPage() {
               </div>
             )}
 
-            {/* Interest Tags */}
+            {/* Academic & Personal Interests */}
             {currentCandidate.interests && currentCandidate.interests.length > 0 && (
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '24px' }}>
                 {currentCandidate.interests.map((interest, i) => (
-                  <span
-                    key={i}
-                    style={{
-                      padding: '5px 12px',
-                      backgroundColor: 'var(--color-surface-subtle)',
-                      border: '1px solid var(--color-border-default)',
-                      borderRadius: 'var(--radius-pill)',
-                      fontSize: '12px',
-                      fontWeight: 500,
-                      color: 'var(--color-text-secondary)',
-                    }}
-                  >
+                  <span key={i} className="badge-tag">
                     {interest}
                   </span>
                 ))}
@@ -325,30 +423,34 @@ export default function DiscoverPage() {
 
             {/* Prompt Cards (Document 04 §4.2) */}
             {currentCandidate.promptAnswers && currentCandidate.promptAnswers.length > 0 && (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
                 {currentCandidate.promptAnswers.map((pa) => (
                   <div
                     key={pa.id}
-                    style={{
-                      padding: '16px 20px',
-                      backgroundColor: 'var(--color-surface-subtle)',
-                      borderRadius: 'var(--radius-lg)',
-                      border: '1px solid var(--color-border-default)',
-                    }}
+                    className="card-subtle"
+                    style={{ borderLeft: '3px solid var(--color-accent-warm)' }}
                   >
                     <p
                       style={{
-                        margin: '0 0 8px 0',
-                        fontSize: '12px',
+                        margin: '0 0 6px 0',
+                        fontSize: '11px',
                         fontWeight: 700,
                         textTransform: 'uppercase',
-                        letterSpacing: '0.04em',
+                        letterSpacing: '0.06em',
                         color: 'var(--color-accent-warm)',
                       }}
                     >
                       {pa.promptText}
                     </p>
-                    <p style={{ margin: 0, fontFamily: 'var(--font-heading)', fontSize: '17px', lineHeight: '24px', color: 'var(--color-text-primary)' }}>
+                    <p
+                      style={{
+                        margin: 0,
+                        fontFamily: 'var(--font-display)',
+                        fontSize: '18px',
+                        lineHeight: '26px',
+                        color: 'var(--color-text-primary)',
+                      }}
+                    >
                       "{pa.answerText}"
                     </p>
                   </div>
@@ -357,10 +459,10 @@ export default function DiscoverPage() {
             )}
           </div>
 
-          {/* Action Bar: Pass (✕) & Like (♥) */}
+          {/* Tactile Action Bar: Pass (✕) & Like (♥) */}
           <div
             style={{
-              padding: '16px 24px 24px 24px',
+              padding: '16px 24px 28px 24px',
               borderTop: '1px solid var(--color-border-default)',
               backgroundColor: 'var(--color-surface)',
               display: 'flex',
@@ -372,147 +474,234 @@ export default function DiscoverPage() {
             {/* Pass Button */}
             <button
               onClick={handlePass}
+              className="btn btn-secondary btn-round"
               style={{
                 width: '64px',
                 height: '64px',
-                borderRadius: 'var(--radius-pill)',
-                backgroundColor: 'var(--color-surface)',
-                border: '2px solid var(--color-border-default)',
+                border: '1.5px solid var(--color-border-default)',
                 color: 'var(--color-text-secondary)',
-                fontSize: '24px',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                cursor: 'pointer',
-                boxShadow: 'var(--elevation-1)',
-                transition: 'all var(--duration-fast) var(--ease-out)',
+                boxShadow: '0 2px 8px rgba(37, 33, 31, 0.05)',
               }}
               aria-label="Pass candidate"
-              title="Pass"
+              title="Pass (Left Arrow)"
             >
-              ✕
+              <XIcon size={26} color="var(--color-text-secondary)" strokeWidth={2} />
             </button>
 
             {/* Like Button */}
             <button
               onClick={handleLike}
+              className="btn btn-primary btn-round"
               style={{
                 width: '72px',
                 height: '72px',
-                borderRadius: 'var(--radius-pill)',
-                backgroundColor: 'var(--color-brand-primary)',
-                border: 'none',
-                color: '#FFFFFF',
-                fontSize: '30px',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                cursor: 'pointer',
-                boxShadow: 'var(--elevation-2)',
-                transition: 'all var(--duration-fast) var(--ease-out)',
+                boxShadow: '0 6px 22px rgba(122, 48, 69, 0.35)',
               }}
               aria-label="Like profile"
-              title="Like"
+              title="Like (Right Arrow)"
             >
-              ♥
+              <HeartIcon size={32} color="#FFFFFF" fill="#FFFFFF" strokeWidth={0} />
             </button>
           </div>
         </div>
       ) : (
         /* Empty Candidate State */
-        <div
-          style={{
-            backgroundColor: 'var(--color-surface)',
-            borderRadius: 'var(--radius-xl)',
-            border: '1px solid var(--color-border-default)',
-            padding: '48px 24px',
-            textAlign: 'center',
-            boxShadow: 'var(--elevation-1)',
-          }}
-        >
-          <div style={{ fontSize: '48px', marginBottom: '16px' }}>☕</div>
-          <h2 style={{ fontFamily: 'var(--font-heading)', fontSize: '24px', fontWeight: 700, margin: '0 0 12px 0' }}>
+        <div className="card-editorial" style={{ padding: '56px 24px', textAlign: 'center' }}>
+          <div
+            style={{
+              width: '64px',
+              height: '64px',
+              borderRadius: '50%',
+              backgroundColor: 'var(--color-surface-subtle)',
+              display: 'inline-flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              marginBottom: '20px',
+            }}
+          >
+            <CompassIcon size={32} color="var(--color-brand-primary)" />
+          </div>
+          <h2 style={{ fontFamily: 'var(--font-display)', fontSize: '26px', fontWeight: 600, margin: '0 0 10px 0' }}>
             You're All Caught Up
           </h2>
-          <p style={{ fontSize: '15px', lineHeight: '24px', color: 'var(--color-text-secondary)', maxWidth: '420px', margin: '0 auto 24px auto' }}>
-            You have reviewed all available candidates in your current batch. SayMyName maintains a calm, bounded discovery rhythm—new verified IITM non-campus BS learners join daily.
+          <p style={{ fontSize: '14px', lineHeight: '22px', color: 'var(--color-text-secondary)', maxWidth: '400px', margin: '0 auto 24px auto' }}>
+            You have reviewed all available profiles in your daily batch. SayMyName maintains a calm, bounded rhythm—new verified learners join daily.
           </p>
           <button
             onClick={() => setCurrentIndex(0)}
-            style={{
-              padding: '10px 24px',
-              backgroundColor: 'var(--color-brand-primary)',
-              color: '#FFFFFF',
-              border: 'none',
-              borderRadius: 'var(--radius-pill)',
-              fontSize: '14px',
-              fontWeight: 600,
-              cursor: 'pointer',
-            }}
+            className="btn btn-primary"
           >
-            Review Queue Again
+            Review Cohort Again
           </button>
         </div>
       )}
 
-      {/* Mutual Match Celebration Modal (Document 04 §5.3) */}
+      {/* Invariant Trust Callout */}
+      <div className="callout-trust" style={{ marginTop: '24px' }}>
+        <LockIcon size={18} color="var(--color-brand-primary)" style={{ flexShrink: 0, marginTop: '2px' }} />
+        <span>
+          <strong>SayMyName Invariant</strong>: Private communication is strictly bilateral between verified matches. No stranger DMs or unsolicited calls are ever permitted.
+        </span>
+      </div>
+
+      {/* Safety Report Modal */}
+      {reportModalOpen && currentCandidate && (
+        <div className="dialog-backdrop" onClick={() => setReportModalOpen(false)}>
+          <div className="dialog-sheet" onClick={(e) => e.stopPropagation()}>
+            <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '22px', fontWeight: 600, marginBottom: '8px' }}>
+              Report {currentCandidate.displayName}
+            </h3>
+            <p style={{ fontSize: '13px', color: 'var(--color-text-secondary)', marginBottom: '20px' }}>
+              Your report is strictly confidential. Safety operators review every student report under Document 07 protocols.
+            </p>
+
+            <form onSubmit={submitReport}>
+              <div style={{ marginBottom: '16px' }}>
+                <label className="label-editorial">Reason for Report</label>
+                {[
+                  'Inappropriate content or messages',
+                  'Impersonation or false student identity',
+                  'Commercial solicitation or spam',
+                  'Under-18 or non-IITM qualifier',
+                ].map((reason) => (
+                  <label
+                    key={reason}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '10px',
+                      padding: '10px 12px',
+                      borderRadius: 'var(--radius-md)',
+                      backgroundColor: reportReason === reason ? 'var(--color-brand-primary-subtle)' : 'transparent',
+                      cursor: 'pointer',
+                      fontSize: '13px',
+                      marginBottom: '4px',
+                    }}
+                  >
+                    <input
+                      type="radio"
+                      name="reportReason"
+                      checked={reportReason === reason}
+                      onChange={() => setReportReason(reason)}
+                      style={{ accentColor: 'var(--color-brand-primary)' }}
+                    />
+                    <span>{reason}</span>
+                  </label>
+                ))}
+              </div>
+
+              <div style={{ marginBottom: '24px' }}>
+                <label className="label-editorial">Additional Details (Optional)</label>
+                <textarea
+                  className="input-editorial"
+                  rows={3}
+                  value={reportNotes}
+                  onChange={(e) => setReportNotes(e.target.value)}
+                  placeholder="Provide context for our moderation team..."
+                  style={{ resize: 'vertical' }}
+                />
+              </div>
+
+              <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>
+                <button
+                  type="button"
+                  onClick={() => setReportModalOpen(false)}
+                  className="btn btn-secondary"
+                >
+                  Cancel
+                </button>
+                <button type="submit" className="btn btn-danger">
+                  Submit Confidential Report
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Universal Block Modal */}
+      {blockModalOpen && currentCandidate && (
+        <div className="dialog-backdrop" onClick={() => setBlockModalOpen(false)}>
+          <div className="dialog-sheet" onClick={(e) => e.stopPropagation()}>
+            <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '22px', fontWeight: 600, color: 'var(--color-status-danger)', marginBottom: '8px' }}>
+              Block {currentCandidate.displayName}?
+            </h3>
+            <p style={{ fontSize: '14px', lineHeight: '22px', color: 'var(--color-text-secondary)', marginBottom: '24px' }}>
+              Under Document 04 §11, blocking is immediate and universal on the server. They will not be notified, and all mutual visibility will be permanently severed.
+            </p>
+
+            <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>
+              <button
+                type="button"
+                onClick={() => setBlockModalOpen(false)}
+                className="btn btn-secondary"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={confirmBlock}
+                className="btn btn-danger"
+              >
+                Confirm Universal Block
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Mutual Match Celebration Dialog */}
       {matchModal.isOpen && matchModal.candidate && (
-        <div
-          style={{
-            position: 'fixed',
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            backgroundColor: 'rgba(26, 20, 18, 0.75)',
-            backdropFilter: 'blur(8px)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            zIndex: 100,
-            padding: '16px',
-          }}
-        >
-          <div
-            style={{
-              backgroundColor: 'var(--color-surface)',
-              borderRadius: 'var(--radius-xl)',
-              maxWidth: '440px',
-              width: '100%',
-              padding: '36px 28px',
-              textAlign: 'center',
-              boxShadow: 'var(--elevation-3)',
-              border: '1px solid var(--color-border-default)',
-            }}
-          >
-            <div style={{ fontSize: '48px', marginBottom: '8px' }}>✨</div>
+        <div className="dialog-backdrop">
+          <div className="dialog-sheet" style={{ textAlign: 'center', maxWidth: '420px' }}>
+            <div
+              style={{
+                width: '64px',
+                height: '64px',
+                borderRadius: '50%',
+                backgroundColor: 'var(--color-brand-primary-subtle)',
+                display: 'inline-flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                marginBottom: '16px',
+              }}
+            >
+              <SparklesIcon size={32} color="var(--color-brand-primary)" />
+            </div>
+
             <h2
               style={{
-                fontFamily: 'var(--font-heading)',
+                fontFamily: 'var(--font-display)',
                 fontSize: '28px',
-                fontWeight: 700,
-                margin: '0 0 8px 0',
+                fontWeight: 600,
                 color: 'var(--color-brand-primary)',
+                marginBottom: '8px',
               }}
             >
               It's a Mutual Match!
             </h2>
-            <p style={{ fontSize: '15px', lineHeight: '22px', color: 'var(--color-text-secondary)', margin: '0 0 24px 0' }}>
-              Both you and <strong style={{ color: 'var(--color-text-primary)' }}>{matchModal.candidate.displayName}</strong> liked each other. Private messaging is now active!
+            <p style={{ fontSize: '14px', lineHeight: '22px', color: 'var(--color-text-secondary)', marginBottom: '24px' }}>
+              Both you and <strong style={{ color: 'var(--color-text-primary)' }}>{matchModal.candidate.displayName}</strong> liked each other. Private messaging is now active.
             </p>
 
             <div
               style={{
-                padding: '12px 16px',
+                display: 'flex',
+                alignItems: 'flex-start',
+                gap: '8px',
+                padding: '12px 14px',
                 backgroundColor: 'var(--color-surface-subtle)',
                 borderRadius: 'var(--radius-md)',
                 fontSize: '12px',
                 color: 'var(--color-text-secondary)',
-                marginBottom: '28px',
+                marginBottom: '24px',
                 textAlign: 'left',
               }}
             >
-              🔒 <strong>SayMyName Invariant</strong>: Private communication is strictly bilateral between verified matches. No stranger DMs or unsolicited calls are ever permitted.
+              <LockIcon size={15} color="var(--color-brand-primary)" style={{ flexShrink: 0, marginTop: '2px' }} />
+              <span>
+                <strong>SayMyName Invariant</strong>: Private communication is strictly bilateral between verified matches. No stranger DMs or unsolicited calls are ever permitted.
+              </span>
             </div>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
@@ -521,17 +710,8 @@ export default function DiscoverPage() {
                   setMatchModal({ isOpen: false });
                   router.push(`/chats?matchId=${matchModal.matchId || 'match-001'}`);
                 }}
-                style={{
-                  width: '100%',
-                  padding: '14px',
-                  backgroundColor: 'var(--color-brand-primary)',
-                  color: '#FFFFFF',
-                  border: 'none',
-                  borderRadius: 'var(--radius-pill)',
-                  fontSize: '15px',
-                  fontWeight: 600,
-                  cursor: 'pointer',
-                }}
+                className="btn btn-primary"
+                style={{ width: '100%', padding: '13px' }}
               >
                 Send Message Now
               </button>
@@ -540,16 +720,8 @@ export default function DiscoverPage() {
                   setMatchModal({ isOpen: false });
                   setCurrentIndex((prev) => prev + 1);
                 }}
-                style={{
-                  width: '100%',
-                  padding: '12px',
-                  backgroundColor: 'transparent',
-                  color: 'var(--color-text-secondary)',
-                  border: 'none',
-                  fontSize: '14px',
-                  fontWeight: 500,
-                  cursor: 'pointer',
-                }}
+                className="btn btn-ghost"
+                style={{ width: '100%' }}
               >
                 Keep Exploring
               </button>

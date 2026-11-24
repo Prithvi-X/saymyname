@@ -1,155 +1,278 @@
 import React from 'react';
 import Link from 'next/link';
+import {
+  CompassIcon,
+  ShieldIcon,
+  LockIcon,
+  HeartIcon,
+  CheckIcon,
+} from '../components/icons';
 
 export default function HomePage() {
+  const programmes = [
+    {
+      title: 'Data Science & Applications',
+      code: 'BS-DSA',
+      level: 'Foundation • Diploma • Degree',
+      description: 'Applied machine learning, statistical modeling, distributed computing, and data algorithms.',
+      tag: 'Data Science',
+    },
+    {
+      title: 'Electronic Systems',
+      code: 'BS-ES',
+      level: 'Foundation • Diploma • Degree',
+      description: 'Embedded RTOS, VLSI design, digital signal processing, microcontrollers, and hardware engineering.',
+      tag: 'Electronics',
+    },
+    {
+      title: 'Aeronautics & Space Tech',
+      code: 'BS-AST',
+      level: 'Foundation • Diploma • Degree',
+      description: 'Orbital dynamics, propulsion systems, satellite architecture, aerodynamics, and telemetry.',
+      tag: 'Aerospace',
+    },
+    {
+      title: 'Management & Data Science',
+      code: 'BS-MDS',
+      level: 'Foundation • Diploma • Degree',
+      description: 'Econometric forecasting, quantitative business analytics, decision theory, and tech leadership.',
+      tag: 'Management',
+    },
+  ];
+
+  const guarantees = [
+    {
+      title: 'Consent Before Connection',
+      icon: HeartIcon,
+      accentColor: 'var(--color-brand-primary)',
+      description:
+        'A Like is never permission to message. Private messaging unlocks only when both verified adults express mutual interest. Unsolicited stranger DMs and contact scraping are physically impossible.',
+    },
+    {
+      title: 'Zero Surveillance Guarantee',
+      icon: LockIcon,
+      accentColor: 'var(--color-accent-warm)',
+      description:
+        'No GPS location tracking, no ambient audio monitoring, and no read-receipt pressure. Relationship Mode is a private sanctuary that either partner can leave independently at any time.',
+    },
+    {
+      title: 'Strict Adult Verification (18+)',
+      icon: ShieldIcon,
+      accentColor: 'var(--color-status-success)',
+      description:
+        'Phase 1 is strictly restricted to adult students currently enrolled in the four approved IIT Madras non-campus BS families. Age and student enrolment are verified privately without public display.',
+    },
+  ];
+
   return (
-    <div style={{ maxWidth: '1000px', margin: '0 auto', padding: '48px 24px' }}>
+    <div className="desktop-app-layout" style={{ maxWidth: '1000px', margin: '0 auto', padding: '48px 20px 80px 20px' }}>
       {/* Editorial Hero */}
-      <section style={{ textAlign: 'center', marginBottom: '64px' }}>
-        <p
-          style={{
-            fontSize: '14px',
-            textTransform: 'uppercase',
-            letterSpacing: '0.08em',
-            color: 'var(--color-accent-warm)',
-            fontWeight: 600,
-            marginBottom: '16px',
-          }}
-        >
-          Phase 1.0 • Adult Enrolled Students Only (18+)
-        </p>
+      <section style={{ textAlign: 'center', marginBottom: '72px', paddingTop: '20px' }}>
+        <div style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '6px 16px', borderRadius: 'var(--radius-pill)', backgroundColor: 'var(--color-brand-primary-subtle)', marginBottom: '24px' }}>
+          <CheckIcon size={14} color="var(--color-brand-primary)" />
+          <span style={{ fontSize: '12px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--color-brand-primary)' }}>
+            Exclusively For Verified IITM BS Scholars • 18+ Only
+          </span>
+        </div>
+
         <h1
           style={{
-            fontSize: 'clamp(36px, 6vw, 56px)',
+            fontFamily: 'var(--font-display)',
+            fontSize: 'clamp(40px, 6vw, 64px)',
             lineHeight: 1.15,
-            fontWeight: 400,
+            fontWeight: 500,
             color: 'var(--color-text-primary)',
             marginBottom: '24px',
+            letterSpacing: '-0.025em',
           }}
         >
-          Meaningful connection across distance.
+          Meaningful connection, <br />
+          <span style={{ fontStyle: 'italic', color: 'var(--color-brand-primary)' }}>across distance.</span>
         </h1>
+
         <p
           style={{
             fontSize: '18px',
-            lineHeight: '28px',
+            lineHeight: '30px',
             color: 'var(--color-text-secondary)',
-            maxWidth: '680px',
-            margin: '0 auto 32px auto',
+            maxWidth: '660px',
+            margin: '0 auto 36px auto',
           }}
         >
-          SayMyName is an independent, dating-first platform exclusively for verified adult learners in the four approved IIT Madras non-campus BS programme families.
+          An independent, dating-first product created for verified adults enrolled in IIT Madras non-campus BS programmes. Intentional discovery without endless swiping, gameified noise, or surveillance.
         </p>
 
-        <div style={{ display: 'flex', justifyContent: 'center', gap: '16px', flexWrap: 'wrap' }}>
-          <Link
-            href="/onboarding"
-            style={{
-              padding: '12px 28px',
-              backgroundColor: 'var(--color-brand-primary)',
-              color: '#FFFFFF',
-              borderRadius: 'var(--radius-md)',
-              fontSize: '16px',
-              fontWeight: 600,
-              boxShadow: 'var(--elevation-1)',
-            }}
-          >
-            Register & Get Verified
-          </Link>
+        <div style={{ display: 'flex', justifyContent: 'center', gap: '14px', flexWrap: 'wrap' }}>
           <Link
             href="/discover"
-            style={{
-              padding: '12px 28px',
-              backgroundColor: 'var(--color-surface)',
-              color: 'var(--color-text-primary)',
-              border: '1px solid var(--color-border-default)',
-              borderRadius: 'var(--radius-md)',
-              fontSize: '16px',
-              fontWeight: 600,
-            }}
+            className="btn btn-primary"
+            style={{ padding: '14px 32px', fontSize: '15px' }}
           >
-            Preview Discovery
+            <CompassIcon size={18} color="#FFFFFF" />
+            <span>Enter Dating Discovery</span>
           </Link>
+
+          <Link
+            href="/onboarding"
+            className="btn btn-secondary"
+            style={{ padding: '14px 28px', fontSize: '15px' }}
+          >
+            Register Account (18+)
+          </Link>
+
           <Link
             href="/eligibility"
-            style={{
-              padding: '12px 28px',
-              backgroundColor: 'var(--color-surface)',
-              color: 'var(--color-text-secondary)',
-              border: '1px solid var(--color-border-default)',
-              borderRadius: 'var(--radius-md)',
-              fontSize: '16px',
-              fontWeight: 500,
-            }}
+            className="btn btn-ghost"
+            style={{ padding: '14px 24px', fontSize: '15px' }}
           >
-            Check Eligibility
+            Eligibility Guide
           </Link>
         </div>
       </section>
 
-      {/* Eligible Programmes Card */}
+      {/* Community Manifesto Banner */}
       <section
+        className="card-editorial"
         style={{
+          padding: '40px 36px',
+          marginBottom: '64px',
           backgroundColor: 'var(--color-surface)',
-          borderRadius: 'var(--radius-lg)',
-          border: '1px solid var(--color-border-default)',
-          padding: '32px',
-          marginBottom: '48px',
+          borderLeft: '4px solid var(--color-brand-primary)',
         }}
       >
-        <h2 style={{ fontSize: '24px', marginBottom: '16px', fontWeight: 600 }}>
-          Eligible BS Programme Pathways
-        </h2>
-        <p style={{ color: 'var(--color-text-secondary)', marginBottom: '24px' }}>
-          Phase 1 includes verified students in active Foundation, Diploma, or Degree stages:
+        <p
+          style={{
+            fontFamily: 'var(--font-display)',
+            fontSize: '22px',
+            lineHeight: '34px',
+            color: 'var(--color-text-primary)',
+            fontStyle: 'italic',
+            margin: '0 0 16px 0',
+          }}
+        >
+          "Non-campus learners balance rigorous term projects, remote coding sprints, and demanding lives across India and abroad. SayMyName provides the intentional space to meet someone who shares that intellectual rhythm."
         </p>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '16px' }}>
-          <div style={{ padding: '16px', backgroundColor: 'var(--color-surface-subtle)', borderRadius: 'var(--radius-md)' }}>
-            <h3 style={{ fontSize: '16px', fontWeight: 600, marginBottom: '6px' }}>Data Science</h3>
-            <p style={{ fontSize: '13px', color: 'var(--color-text-secondary)' }}>BS in Data Science & Applications</p>
-          </div>
-          <div style={{ padding: '16px', backgroundColor: 'var(--color-surface-subtle)', borderRadius: 'var(--radius-md)' }}>
-            <h3 style={{ fontSize: '16px', fontWeight: 600, marginBottom: '6px' }}>Electronic Systems</h3>
-            <p style={{ fontSize: '13px', color: 'var(--color-text-secondary)' }}>BS in Electronic Systems</p>
-          </div>
-          <div style={{ padding: '16px', backgroundColor: 'var(--color-surface-subtle)', borderRadius: 'var(--radius-md)' }}>
-            <h3 style={{ fontSize: '16px', fontWeight: 600, marginBottom: '6px' }}>Aero & Space</h3>
-            <p style={{ fontSize: '13px', color: 'var(--color-text-secondary)' }}>BS in Aeronautics & Space Technology</p>
-          </div>
-          <div style={{ padding: '16px', backgroundColor: 'var(--color-surface-subtle)', borderRadius: 'var(--radius-md)' }}>
-            <h3 style={{ fontSize: '16px', fontWeight: 600, marginBottom: '6px' }}>Management & DS</h3>
-            <p style={{ fontSize: '13px', color: 'var(--color-text-secondary)' }}>BS in Management & Data Science</p>
-          </div>
+        <p style={{ margin: 0, fontSize: '13px', fontWeight: 600, color: 'var(--color-accent-warm)', letterSpacing: '0.04em', textTransform: 'uppercase' }}>
+          — SayMyName Product Constitution (Document 01)
+        </p>
+      </section>
+
+      {/* Approved BS Programmes Grid */}
+      <section style={{ marginBottom: '64px' }}>
+        <div style={{ textAlign: 'center', marginBottom: '36px' }}>
+          <h2 style={{ fontFamily: 'var(--font-display)', fontSize: '32px', fontWeight: 600, marginBottom: '8px' }}>
+            Four Approved Programme Pathways
+          </h2>
+          <p style={{ fontSize: '15px', color: 'var(--color-text-secondary)', maxWidth: '540px', margin: '0 auto' }}>
+            Phase 1 is strictly restricted to active learners enrolled in the four approved IITM non-campus BS families:
+          </p>
+        </div>
+
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '20px' }}>
+          {programmes.map((p) => (
+            <div
+              key={p.code}
+              className="card-editorial"
+              style={{
+                padding: '24px',
+                display: 'flex',
+                flexDirection: 'column',
+                justifyContent: 'space-between',
+              }}
+            >
+              <div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+                  <span className="badge-tag" style={{ fontSize: '11px', fontWeight: 700 }}>
+                    {p.code}
+                  </span>
+                  <span style={{ fontSize: '11px', color: 'var(--color-accent-warm)', fontWeight: 600 }}>
+                    Approved
+                  </span>
+                </div>
+
+                <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '18px', fontWeight: 600, marginBottom: '8px' }}>
+                  {p.title}
+                </h3>
+
+                <p style={{ fontSize: '13px', lineHeight: '20px', color: 'var(--color-text-secondary)', marginBottom: '16px' }}>
+                  {p.description}
+                </p>
+              </div>
+
+              <div style={{ borderTop: '1px solid var(--color-border-default)', paddingTop: '12px', fontSize: '11px', color: 'var(--color-text-secondary)' }}>
+                {p.level}
+              </div>
+            </div>
+          ))}
         </div>
       </section>
 
-      {/* Core Architectural Guarantees */}
-      <section style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '24px' }}>
-        <div style={{ padding: '24px', backgroundColor: 'var(--color-surface)', borderRadius: 'var(--radius-lg)', border: '1px solid var(--color-border-default)' }}>
-          <h3 style={{ fontSize: '18px', fontWeight: 600, marginBottom: '8px', color: 'var(--color-brand-primary)' }}>
-            Consent Before Connection
-          </h3>
-          <p style={{ fontSize: '14px', color: 'var(--color-text-secondary)' }}>
-            A Like is never permission to message. Private conversation begins only after mutual matching. Calls, dates, and games require individual voluntary consent.
+      {/* Architectural Guarantees */}
+      <section style={{ marginBottom: '64px' }}>
+        <div style={{ textAlign: 'center', marginBottom: '36px' }}>
+          <h2 style={{ fontFamily: 'var(--font-display)', fontSize: '32px', fontWeight: 600, marginBottom: '8px' }}>
+            Core Safety & Architectural Invariants
+          </h2>
+          <p style={{ fontSize: '15px', color: 'var(--color-text-secondary)', maxWidth: '520px', margin: '0 auto' }}>
+            Enforced server-side under Documents 01, 04, and 05. Not negotiable.
           </p>
         </div>
-        <div style={{ padding: '24px', backgroundColor: 'var(--color-surface)', borderRadius: 'var(--radius-lg)', border: '1px solid var(--color-border-default)' }}>
-          <h3 style={{ fontSize: '18px', fontWeight: 600, marginBottom: '8px', color: 'var(--color-accent-warm)' }}>
-            Zero Surveillance
-          </h3>
-          <p style={{ fontSize: '14px', color: 'var(--color-text-secondary)' }}>
-            No GPS tracking, no partner surveillance, and no read-receipt pressure. Relationship Mode is a private workspace that either partner can leave independently.
-          </p>
-        </div>
-        <div style={{ padding: '24px', backgroundColor: 'var(--color-surface)', borderRadius: 'var(--radius-lg)', border: '1px solid var(--color-border-default)' }}>
-          <h3 style={{ fontSize: '18px', fontWeight: 600, marginBottom: '8px', color: 'var(--color-status-success)' }}>
-            Independent Platform
-          </h3>
-          <p style={{ fontSize: '14px', color: 'var(--color-text-secondary)' }}>
-            SayMyName is independently operated. We do not imply IIT Madras ownership or official affiliation, protecting student identity with isolated verification storage.
-          </p>
+
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '24px' }}>
+          {guarantees.map((g) => {
+            const Icon = g.icon;
+            return (
+              <div
+                key={g.title}
+                className="card-editorial"
+                style={{ padding: '28px' }}
+              >
+                <div
+                  style={{
+                    width: '48px',
+                    height: '48px',
+                    borderRadius: '50%',
+                    backgroundColor: 'var(--color-surface-subtle)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    marginBottom: '18px',
+                  }}
+                >
+                  <Icon size={22} color={g.accentColor} />
+                </div>
+
+                <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '20px', fontWeight: 600, marginBottom: '10px' }}>
+                  {g.title}
+                </h3>
+
+                <p style={{ fontSize: '14px', lineHeight: '22px', color: 'var(--color-text-secondary)', margin: 0 }}>
+                  {g.description}
+                </p>
+              </div>
+            );
+          })}
         </div>
       </section>
+
+      {/* Independent Platform Disclaimer Footer */}
+      <footer
+        style={{
+          textAlign: 'center',
+          paddingTop: '36px',
+          borderTop: '1px solid var(--color-border-default)',
+          color: 'var(--color-text-secondary)',
+          fontSize: '13px',
+          lineHeight: '22px',
+        }}
+      >
+        <p style={{ maxWidth: '680px', margin: '0 auto 12px auto' }}>
+          <strong>Independent Product Disclaimer:</strong> SayMyName is an independent, private platform built exclusively for verified adult learners in approved IIT Madras non-campus BS programme pathways. SayMyName is not operated, owned, endorsed, or officially affiliated with the Indian Institute of Technology Madras.
+        </p>
+        <p style={{ margin: 0, fontSize: '12px' }}>
+          © 2026 SayMyName.in • Built with Warm Editorial Minimalism • DPDP & IT Act 2000 Compliant
+        </p>
+      </footer>
     </div>
   );
 }

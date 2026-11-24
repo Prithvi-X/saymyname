@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react';
 import Link from 'next/link';
+import { HeartIcon, CheckIcon, LockIcon } from '../../components/icons';
 
 export default function LikesPage() {
   const [likes] = useState([
@@ -11,14 +12,15 @@ export default function LikesPage() {
       age: 20,
       programme: 'BS in Aeronautics & Space Tech',
       likedAt: '2 hours ago',
+      photoUrl: 'https://images.unsplash.com/photo-1517841905240-472988babdf9?auto=format&fit=crop&w=800&q=80',
       note: 'Liked your prompt about filter coffee vs gradient descent.',
     },
   ]);
 
   return (
-    <div style={{ maxWidth: '640px', margin: '0 auto', padding: '24px 16px 80px 16px' }}>
+    <div className="mobile-app-layout" style={{ maxWidth: '680px', margin: '0 auto', padding: '24px 16px 48px 16px' }}>
       <div style={{ marginBottom: '20px' }}>
-        <h1 style={{ fontFamily: 'var(--font-heading)', fontSize: '28px', fontWeight: 700, margin: '0 0 4px 0', color: 'var(--color-text-primary)' }}>
+        <h1 style={{ fontFamily: 'var(--font-display)', fontSize: '28px', fontWeight: 600, margin: '0 0 4px 0' }}>
           Likes Received
         </h1>
         <p style={{ fontSize: '14px', color: 'var(--color-text-secondary)', margin: 0 }}>
@@ -27,52 +29,36 @@ export default function LikesPage() {
       </div>
 
       {/* Invariant Banner (Document 01 §3.6) */}
-      <div
-        style={{
-          padding: '12px 16px',
-          backgroundColor: 'var(--color-surface-subtle)',
-          borderRadius: 'var(--radius-md)',
-          border: '1px solid var(--color-border-default)',
-          fontSize: '13px',
-          lineHeight: '18px',
-          color: 'var(--color-text-secondary)',
-          marginBottom: '24px',
-        }}
-      >
-        🔒 <strong>Core Privacy Invariant</strong>: A Like is not permission to message. Private messaging requires an active mutual match. You must like each other before any communication or contact can occur.
+      <div className="callout-trust" style={{ marginBottom: '24px' }}>
+        <LockIcon size={18} color="var(--color-brand-primary)" style={{ flexShrink: 0, marginTop: '2px' }} />
+        <span>
+          <strong>Core Privacy Invariant</strong>: A Like is not permission to message. Private messaging requires an active mutual match. You must like each other before any communication or contact can occur.
+        </span>
       </div>
 
       {likes.length === 0 ? (
-        <div
-          style={{
-            backgroundColor: 'var(--color-surface)',
-            borderRadius: 'var(--radius-xl)',
-            border: '1px solid var(--color-border-default)',
-            padding: '48px 24px',
-            textAlign: 'center',
-            boxShadow: 'var(--elevation-1)',
-          }}
-        >
-          <div style={{ fontSize: '40px', marginBottom: '12px' }}>🌱</div>
-          <h2 style={{ fontFamily: 'var(--font-heading)', fontSize: '22px', fontWeight: 700, margin: '0 0 8px 0' }}>
-            No Pending Likes
-          </h2>
-          <p style={{ fontSize: '14px', color: 'var(--color-text-secondary)', maxWidth: '380px', margin: '0 auto 20px auto', lineHeight: '22px' }}>
-            When a verified peer likes your profile, they will appear here. Or find matches directly in your discovery feed.
-          </p>
-          <Link
-            href="/discover"
+        <div className="card-editorial" style={{ padding: '56px 24px', textAlign: 'center' }}>
+          <div
             style={{
-              display: 'inline-block',
-              padding: '10px 24px',
-              backgroundColor: 'var(--color-brand-primary)',
-              color: '#FFFFFF',
-              borderRadius: 'var(--radius-pill)',
-              fontSize: '14px',
-              fontWeight: 600,
-              textDecoration: 'none',
+              width: '64px',
+              height: '64px',
+              borderRadius: '50%',
+              backgroundColor: 'var(--color-surface-subtle)',
+              display: 'inline-flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              marginBottom: '16px',
             }}
           >
+            <HeartIcon size={28} color="var(--color-brand-primary)" />
+          </div>
+          <h2 style={{ fontFamily: 'var(--font-display)', fontSize: '24px', fontWeight: 600, margin: '0 0 8px 0' }}>
+            No Pending Likes
+          </h2>
+          <p style={{ fontSize: '14px', color: 'var(--color-text-secondary)', maxWidth: '380px', margin: '0 auto 24px auto', lineHeight: '22px' }}>
+            When a verified peer likes your profile, they will appear here. Or find matches directly in your discovery feed.
+          </p>
+          <Link href="/discover" className="btn btn-primary">
             Explore Discover
           </Link>
         </div>
@@ -81,62 +67,76 @@ export default function LikesPage() {
           {likes.map((l) => (
             <div
               key={l.id}
-              style={{
-                padding: '20px',
-                backgroundColor: 'var(--color-surface)',
-                borderRadius: 'var(--radius-lg)',
-                border: '1px solid var(--color-border-default)',
-                boxShadow: 'var(--elevation-1)',
-              }}
+              className="card-editorial"
+              style={{ padding: '20px' }}
             >
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '8px' }}>
-                <div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '2px' }}>
-                    <h3 style={{ fontFamily: 'var(--font-heading)', fontSize: '18px', fontWeight: 700, margin: 0 }}>
-                      {l.candidateName}, {l.age}
-                    </h3>
-                    <span
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '12px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+                  {l.photoUrl ? (
+                    <img
+                      src={l.photoUrl}
+                      alt={l.candidateName}
                       style={{
-                        padding: '2px 6px',
-                        backgroundColor: 'var(--color-brand-primary-subtle)',
-                        color: 'var(--color-brand-primary)',
-                        borderRadius: 'var(--radius-pill)',
-                        fontSize: '10px',
-                        fontWeight: 700,
-                        textTransform: 'uppercase',
+                        width: '52px',
+                        height: '52px',
+                        borderRadius: '50%',
+                        objectFit: 'cover',
+                        border: '1.5px solid var(--color-border-default)',
+                      }}
+                    />
+                  ) : (
+                    <div
+                      style={{
+                        width: '52px',
+                        height: '52px',
+                        borderRadius: '50%',
+                        backgroundColor: '#7A3045',
+                        color: '#FFFFFF',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        fontSize: '20px',
+                        fontFamily: 'var(--font-display)',
+                        fontWeight: 600,
                       }}
                     >
-                      ✓ Verified
-                    </span>
+                      {l.candidateName.charAt(0)}
+                    </div>
+                  )}
+
+                  <div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '2px' }}>
+                      <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '18px', fontWeight: 600, margin: 0 }}>
+                        {l.candidateName}, {l.age}
+                      </h3>
+                      <span className="badge-verified" style={{ fontSize: '10px', padding: '2px 8px' }}>
+                        <CheckIcon size={10} color="var(--color-brand-primary)" />
+                        <span>Verified</span>
+                      </span>
+                    </div>
+                    <p style={{ margin: 0, fontSize: '12px', color: 'var(--color-accent-warm)', fontWeight: 600 }}>
+                      {l.programme}
+                    </p>
                   </div>
-                  <p style={{ margin: 0, fontSize: '12px', color: 'var(--color-accent-warm)', fontWeight: 600 }}>
-                    {l.programme}
-                  </p>
                 </div>
+
                 <span style={{ fontSize: '11px', color: 'var(--color-text-secondary)' }}>{l.likedAt}</span>
               </div>
 
-              <p style={{ fontSize: '13px', color: 'var(--color-text-secondary)', margin: '0 0 16px 0', fontStyle: 'italic' }}>
-                "{l.note}"
-              </p>
+              <div className="card-subtle" style={{ margin: '0 0 16px 0', borderLeft: '3px solid var(--color-brand-primary)' }}>
+                <p style={{ fontSize: '13px', color: 'var(--color-text-primary)', margin: 0, fontStyle: 'italic' }}>
+                  "{l.note}"
+                </p>
+              </div>
 
               <div style={{ display: 'flex', gap: '10px' }}>
                 <Link
                   href="/discover"
-                  style={{
-                    padding: '8px 18px',
-                    backgroundColor: 'var(--color-brand-primary)',
-                    color: '#FFFFFF',
-                    borderRadius: 'var(--radius-pill)',
-                    fontSize: '13px',
-                    fontWeight: 600,
-                    textDecoration: 'none',
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: '4px',
-                  }}
+                  className="btn btn-primary"
+                  style={{ padding: '8px 18px', fontSize: '13px' }}
                 >
-                  ♥ Match in Discover
+                  <HeartIcon size={14} color="#FFFFFF" fill="#FFFFFF" />
+                  <span>Match in Discover</span>
                 </Link>
               </div>
             </div>
