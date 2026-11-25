@@ -61,14 +61,14 @@ export const Dialog: React.FC<DialogProps> = ({
     >
       {/* Backdrop */}
       <div
-        className="fixed inset-0 bg-stage/85 backdrop-blur-xs transition-opacity duration-180"
+        className="fixed inset-0 bg-stage/80 backdrop-blur-sm transition-opacity duration-180"
         onClick={onClose}
         aria-hidden="true"
       />
 
       {/* Surface Panel */}
       <div
-        className={`relative w-full ${widthMap[maxWidth]} bg-iron border border-edge rounded-[12px] shadow-2xl p-6 sm:p-7 flex flex-col gap-5 z-10 animate-in fade-in zoom-in-95 duration-180 ease-out`}
+        className={`relative w-full ${widthMap[maxWidth]} smn-glass-overlay smn-dialog-enter rounded-[12px] p-6 sm:p-7 flex flex-col gap-5 z-10`}
       >
         <div className="flex items-start justify-between gap-4">
           <div>

@@ -77,10 +77,20 @@ const CONSENT_INVARIANTS = [
 
 export default function HomePage() {
   return (
-    <div className="bg-void text-chalk font-ui">
+    <div className="bg-void text-chalk font-ui smn-stage-wrap">
       {/* HERO SECTION: 12-Column Asymmetric Architectural Grid */}
-      <section className="border-b border-edge">
-        <div className="container-wide py-12 sm:py-16 lg:py-24 grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-12 items-center">
+      <section className="relative border-b border-edge smn-ambient-hero overflow-hidden">
+        {/* Cropped Architectural Planes (THE INTERVAL offset plane & ambient depth, non-interactive) */}
+        <div
+          aria-hidden="true"
+          className="pointer-events-none hidden md:block absolute -top-24 -right-24 w-[520px] h-[520px] rounded-[16px] smn-hero-plane-a"
+        />
+        <div
+          aria-hidden="true"
+          className="pointer-events-none hidden lg:block absolute top-14 right-[10%] w-[380px] h-[380px] rounded-[16px] smn-hero-plane-b smn-ambient-breathe"
+        />
+
+        <div className="relative container-wide py-12 sm:py-16 lg:py-24 grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-12 items-center">
           {/* Left 7 Columns: Editorial Proposition & Actions */}
           <div className="lg:col-span-7 flex flex-col gap-6">
             <div className="inline-flex items-center gap-2.5 self-start px-3 py-1.5 rounded-[4px] bg-coal border border-edge text-[11px] font-semibold uppercase tracking-[0.14em] text-silver">
@@ -127,7 +137,11 @@ export default function HomePage() {
 
           {/* Right 5 Columns: Original "THE INTERVAL" Architectural Structural Diagram */}
           <div className="lg:col-span-5">
-            <div className="bg-coal border border-edge rounded-[12px] p-6 sm:p-7 shadow-md">
+            <div className="relative bg-coal/92 border border-edge rounded-[12px] p-6 sm:p-7 smn-surface-elevated">
+              <div
+                aria-hidden="true"
+                className="pointer-events-none absolute inset-x-8 top-0 h-px bg-gradient-to-r from-transparent via-ember/35 to-transparent"
+              />
               <div className="flex items-center justify-between pb-4 mb-5 border-b border-edge">
                 <div>
                   <p className="text-[11px] uppercase tracking-[0.14em] text-ash font-semibold">
@@ -229,7 +243,7 @@ export default function HomePage() {
             {VERIFICATION_GATES.map((gate) => (
               <div
                 key={gate.step}
-                className="bg-coal border border-edge rounded-[10px] p-5 flex flex-col gap-3"
+                className="bg-coal border border-edge rounded-[10px] p-5 flex flex-col gap-3 smn-surface-elevated transition-colors duration-180 hover:border-[#4A5665]"
               >
                 <div className="flex items-center justify-between">
                   <span className="font-mono text-xs font-semibold text-iris px-2 py-0.5 rounded-[4px] bg-iron border border-edge">
@@ -308,7 +322,7 @@ export default function HomePage() {
               {CONSENT_INVARIANTS.map((item) => (
                 <div
                   key={item.label}
-                  className="bg-coal border border-edge rounded-[10px] p-5 flex flex-col gap-2.5"
+                  className="bg-coal border border-edge rounded-[10px] p-5 flex flex-col gap-2.5 smn-surface-elevated transition-colors duration-180 hover:border-[#4A5665]"
                 >
                   <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-iris">
                     {item.label}

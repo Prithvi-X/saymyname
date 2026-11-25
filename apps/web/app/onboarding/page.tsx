@@ -112,6 +112,12 @@ function OnboardingContent() {
   const [photos, setPhotos] = useState<
     Array<{ id: string; photoUrl: string | null; isPrimary: boolean }>
   >([]);
+  const [supportedImageMimes, setSupportedImageMimes] = useState<string[]>([
+    'image/jpeg',
+    'image/png',
+    'image/webp',
+    'image/heic',
+  ]);
   const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
   const [consentAccepted, setConsentAccepted] = useState(false);
 
@@ -126,12 +132,17 @@ function OnboardingContent() {
     try {
       const [caseList, catalog, profile] = await Promise.all([
         api.getVerificationCases().catch(() => []),
-        api.getProfileCatalog().catch(() => ({ interests: [], prompts: [] })),
+        api
+          .getProfileCatalog()
+          .catch(() => ({ interests: [], prompts: [], supportedImageMimes: undefined })),
         api.getProfile().catch(() => null),
       ]);
       setCases(caseList);
       setCatalogInterests(catalog.interests || []);
       setCatalogPrompts(catalog.prompts || []);
+      if (Array.isArray(catalog.supportedImageMimes) && catalog.supportedImageMimes.length > 0) {
+        setSupportedImageMimes(catalog.supportedImageMimes);
+      }
       if (catalog.prompts?.[0] && !selectedPromptId) {
         setSelectedPromptId(catalog.prompts[0].id);
       }
@@ -402,8 +413,11 @@ function OnboardingContent() {
     setError(null);
     setNotice(null);
 
-    if (!['image/jpeg', 'image/png', 'image/webp', 'image/heic'].includes(file.type)) {
-      setError('Select a JPEG, PNG, WebP, or HEIC portrait photo.');
+    if (!supportedImageMimes.includes(file.type.toLowerCase())) {
+      const labels = supportedImageMimes
+        .map((m) => m.replace('image/', '').toUpperCase())
+        .join(', ');
+      setError(`Select a supported portrait photo (${labels}).`);
       return;
     }
     if (file.size > 10 * 1024 * 1024) {
@@ -495,7 +509,7 @@ function OnboardingContent() {
     user?.eligibility?.studentStatus === 'needs_information';
 
   return (
-    <div className="min-h-[calc(100vh-140px)] bg-void text-chalk font-ui py-10 px-4">
+    <div className="min-h-[calc(100vh-140px)] bg-void smn-ambient-calm smn-stage-wrap text-chalk font-ui py-10 px-4">
       <div className="max-w-3xl mx-auto">
         {/* Progress Indicator Header */}
         <div className="mb-8">
@@ -558,7 +572,7 @@ function OnboardingContent() {
 
         {/* STEP 1: REGISTRATION */}
         {view === 'register' && (
-          <div className="bg-coal border border-edge rounded-[12px] p-6 sm:p-8 shadow-md">
+          <div className="bg-coal border border-edge rounded-[12px] p-6 sm:p-8 smn-surface-elevated">
             <p className="text-xs sm:text-sm text-silver mb-6 leading-relaxed">
               Approved institutional BS study email required. Email validation is only the first
               screen—age (18+) and current enrolment review are completed separately. No photo is
@@ -1098,7 +1112,7 @@ function OnboardingContent() {
                       <span>{isUploadingPhoto ? 'Uploading...' : '+ Upload Portrait Photo'}</span>
                       <input
                         type="file"
-                        accept="image/jpeg,image/png,image/webp,image/heic"
+                        accept={supportedImageMimes.join(',')}
                         onChange={handlePhotoUpload}
                         disabled={isUploadingPhoto}
                         className="sr-only"

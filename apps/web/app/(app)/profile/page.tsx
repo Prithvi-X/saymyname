@@ -97,6 +97,12 @@ export default function ProfilePage() {
   const [photos, setPhotos] = useState<PhotoItem[]>([]);
   const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
   const [uploadProgress, setUploadProgress] = useState<number | null>(null);
+  const [supportedImageMimes, setSupportedImageMimes] = useState<string[]>([
+    'image/jpeg',
+    'image/png',
+    'image/webp',
+    'image/heic',
+  ]);
 
   // Interests & Prompts Catalogs
   const [catalogInterests, setCatalogInterests] = useState<InterestItem[]>([]);
@@ -138,12 +144,17 @@ export default function ProfilePage() {
     try {
       const [profile, catalog, prefs] = await Promise.all([
         api.getProfile(),
-        api.getProfileCatalog().catch(() => ({ interests: [], prompts: [] })),
+        api
+          .getProfileCatalog()
+          .catch(() => ({ interests: [], prompts: [], supportedImageMimes: undefined })),
         api.getPreferences().catch(() => null),
       ]);
 
       setCatalogInterests(catalog.interests || []);
       setCatalogPrompts(catalog.prompts || []);
+      if (Array.isArray(catalog.supportedImageMimes) && catalog.supportedImageMimes.length > 0) {
+        setSupportedImageMimes(catalog.supportedImageMimes);
+      }
 
       const clean = sanitizeDisplayName(profile.displayName);
       if (clean && clean !== 'Member') setDisplayName(clean);
@@ -318,9 +329,11 @@ export default function ProfilePage() {
     setSaveError(null);
     setSaveFeedback(null);
 
-    const allowed = ['image/jpeg', 'image/png', 'image/webp', 'image/heic'];
-    if (!allowed.includes(file.type.toLowerCase())) {
-      setSaveError('Unsupported photo format. Allowed: JPEG, PNG, WebP, or HEIC.');
+    if (!supportedImageMimes.includes(file.type.toLowerCase())) {
+      const labels = supportedImageMimes
+        .map((m) => m.replace('image/', '').toUpperCase())
+        .join(', ');
+      setSaveError(`Unsupported photo format. Allowed: ${labels}.`);
       return;
     }
     if (file.size > 10 * 1024 * 1024) {
@@ -470,9 +483,9 @@ export default function ProfilePage() {
   const primaryPhoto = photos.find((p) => p.isPrimary) || photos[0];
 
   return (
-    <div className="min-h-screen bg-[#0B0D0E] text-[#E6E4DF] pb-24 selection:bg-[#C8A97E]/30 selection:text-white">
+    <div className="min-h-screen bg-[#0B0D0E] smn-ambient-discover smn-stage-wrap text-[#E6E4DF] pb-24 selection:bg-[#C8A97E]/30 selection:text-white">
       {/* Top Identity Header */}
-      <div className="border-b border-[#262B30] bg-[#131618]/60 backdrop-blur-md sticky top-0 z-30">
+      <div className="border-b border-[#262B30] bg-[#131618]/78 backdrop-blur-md shadow-[inset_0_-1px_0_rgba(255,255,255,0.03)] sticky top-0 z-30">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div className="flex items-center gap-4">
             {/* Primary Portrait Thumbnail / Monogram */}
@@ -599,7 +612,7 @@ export default function ProfilePage() {
           <div className="space-y-8 animate-fadeIn">
             {/* Status & Completion Card */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              <div className="md:col-span-2 p-6 rounded-xl bg-[#131618] border border-[#262B30] flex flex-col justify-between">
+              <div className="md:col-span-2 p-6 rounded-xl bg-[#131618] border border-[#262B30] shadow-[inset_0_1px_0_rgba(255,255,255,0.04)] flex flex-col justify-between">
                 <div>
                   <div className="flex items-center justify-between mb-3">
                     <span className="text-xs uppercase tracking-wider text-[#C8A97E] font-medium">
@@ -653,7 +666,7 @@ export default function ProfilePage() {
               </div>
 
               {/* Verified Identity Summary Card */}
-              <div className="p-6 rounded-xl bg-[#131618] border border-[#262B30] flex flex-col justify-between">
+              <div className="p-6 rounded-xl bg-[#131618] border border-[#262B30] shadow-[inset_0_1px_0_rgba(255,255,255,0.04)] flex flex-col justify-between">
                 <div>
                   <div className="flex items-center gap-2 mb-4 text-[#C8A97E]">
                     <ShieldIcon size={20} color="currentColor" />
@@ -1037,7 +1050,7 @@ export default function ProfilePage() {
                   </span>
                   <input
                     type="file"
-                    accept="image/jpeg,image/png,image/webp,image/heic"
+                    accept={supportedImageMimes.join(',')}
                     onChange={handlePhotoUpload}
                     disabled={isUploadingPhoto}
                     className="hidden"
@@ -1151,7 +1164,7 @@ export default function ProfilePage() {
                   <span className="text-[10px] text-[#5D6268] mt-1">JPEG, PNG, WebP up to 10MB</span>
                   <input
                     type="file"
-                    accept="image/jpeg,image/png,image/webp,image/heic"
+                    accept={supportedImageMimes.join(',')}
                     onChange={handlePhotoUpload}
                     disabled={isUploadingPhoto}
                     className="hidden"

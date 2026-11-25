@@ -64,22 +64,57 @@ export interface DiscoveryCandidate {
   profileId: string;
   displayName: string;
   age: number | null;
+  ageVisible?: boolean;
   programmeFamily: ProgrammeFamily;
   bio: string;
-  locationCity?: string;
-  locationState?: string;
-  currentTerm?: string;
+  locationCity?: string | null;
+  locationState?: string | null;
+  currentTerm?: string | null;
+  intention?: string | null;
   avatarColor?: string;
-  photos: { id: string; photoUrl: string | null; isPrimary: boolean }[];
+  isVerified?: boolean;
+  sharedInterests?: string[];
+  photos: { id: string; photoUrl: string | null; displayOrder?: number; isPrimary: boolean }[];
   interests: string[];
-  promptAnswers: { id?: string; promptText: string; answerText: string }[];
+  promptAnswers: { id?: string; promptId?: string; promptText: string; answerText: string }[];
+}
+
+export interface DiscoveryFeedResponse {
+  candidates: DiscoveryCandidate[];
+  nextCursor: string | null;
+  hasMore: boolean;
+  count: number;
+  pageSize: number;
+  viewerState: 'ready' | 'paused' | 'profile_incomplete';
+  preferencesApplied?: {
+    minAge: number;
+    maxAge: number;
+    allowedProgrammes: string[];
+    dormantDistanceIgnored: boolean;
+  };
 }
 
 export interface LikeResponse {
   likeId: string;
   isMutualMatch: boolean;
-  matchId?: string;
+  matchId?: string | null;
+  conversationId?: string | null;
+  message?: string;
+  matchedProfile?: {
+    profileId: string;
+    displayName: string;
+    programmeFamily: ProgrammeFamily;
+    primaryPhotoUrl?: string | null;
+  } | null;
 }
+
+export type ReportCategory =
+  | 'harassment'
+  | 'inappropriate_content'
+  | 'underage_suspected'
+  | 'fake_profile'
+  | 'spam'
+  | 'offline_safety';
 
 export interface MatchProfile {
   id: string;
@@ -343,6 +378,8 @@ class ApiClient {
     return this.request<{
       interests: { id: string; name: string; category: string }[];
       prompts: { id: string; promptText: string; category: string }[];
+      supportedImageMimes?: string[];
+      heicSupported?: boolean;
     }>('/api/bff/v1/profiles/catalog');
   }
 
@@ -520,36 +557,74 @@ class ApiClient {
 
   // --- Dating Discovery ---
 
-  async getCandidates(): Promise<DiscoveryCandidate[]> {
-    const res = await this.request<any>('/api/bff/v1/dating/candidates');
-    const list = Array.isArray(res) ? res : Array.isArray(res?.candidates) ? res.candidates : [];
-    return list.map((c: any) => ({
-      profileId: c.accountId || c.profileId,
+  private mapCandidate(c: any): DiscoveryCandidate {
+    return {
+      profileId: c.profileId,
       displayName: c.displayName,
       age: typeof c.age === 'number' ? c.age : null,
+      ageVisible: typeof c.ageVisible === 'boolean' ? c.ageVisible : typeof c.age === 'number',
       programmeFamily: c.programmeFamily,
       bio: c.bio || '',
-      locationCity: c.locationCity,
-      locationState: c.locationState,
-      currentTerm: c.termOrYear || c.currentTerm,
-      avatarColor: c.avatarColor || '#8580C4',
+      locationCity: c.locationCity ?? null,
+      locationState: c.locationState ?? null,
+      currentTerm: c.termOrYear || c.currentTerm || null,
+      intention: c.intention ?? null,
+      isVerified: Boolean(c.isVerified),
+      sharedInterests: Array.isArray(c.sharedInterests) ? c.sharedInterests : [],
       photos: Array.isArray(c.photos) ? c.photos : [],
       interests: Array.isArray(c.interests) ? c.interests : [],
       promptAnswers: Array.isArray(c.promptAnswers) ? c.promptAnswers : [],
-    }));
+    };
   }
 
-  async likeCandidate(candidateId: string): Promise<LikeResponse> {
+  async getDiscoverFeed(params?: {
+    cursor?: string | null;
+    limit?: number;
+  }): Promise<DiscoveryFeedResponse> {
+    const qs = new URLSearchParams();
+    if (params?.cursor) qs.set('cursor', params.cursor);
+    if (params?.limit) qs.set('limit', String(params.limit));
+    const suffix = qs.toString() ? `?${qs.toString()}` : '';
+    const res = await this.request<any>(`/api/bff/v1/dating/candidates${suffix}`);
+    const rawList = Array.isArray(res) ? res : Array.isArray(res?.candidates) ? res.candidates : [];
+
+    return {
+      candidates: rawList.map((c: any) => this.mapCandidate(c)),
+      nextCursor: typeof res?.nextCursor === 'string' ? res.nextCursor : null,
+      hasMore: Boolean(res?.hasMore),
+      count: typeof res?.count === 'number' ? res.count : rawList.length,
+      pageSize: typeof res?.pageSize === 'number' ? res.pageSize : 10,
+      viewerState: res?.viewerState || 'ready',
+      preferencesApplied: res?.preferencesApplied,
+    };
+  }
+
+  async getCandidates(): Promise<DiscoveryCandidate[]> {
+    const feed = await this.getDiscoverFeed();
+    return feed.candidates;
+  }
+
+  async getCandidateDetail(profileId: string): Promise<DiscoveryCandidate> {
+    const res = await this.request<any>(`/api/bff/v1/dating/candidates/${profileId}`);
+    return this.mapCandidate(res);
+  }
+
+  async likeCandidate(targetProfileId: string, idempotencyKey?: string): Promise<LikeResponse> {
     return this.request<LikeResponse>('/api/bff/v1/dating/likes', {
       method: 'POST',
-      body: JSON.stringify({ toAccountId: candidateId }),
+      headers: idempotencyKey ? { 'Idempotency-Key': idempotencyKey } : undefined,
+      body: JSON.stringify({ targetProfileId }),
     });
   }
 
-  async passCandidate(candidateId: string): Promise<{ success: boolean }> {
-    return this.request<{ success: boolean }>('/api/bff/v1/dating/passes', {
+  async passCandidate(
+    targetProfileId: string,
+    idempotencyKey?: string,
+  ): Promise<{ success: boolean; message?: string }> {
+    return this.request<{ success: boolean; message?: string }>('/api/bff/v1/dating/passes', {
       method: 'POST',
-      body: JSON.stringify({ toAccountId: candidateId }),
+      headers: idempotencyKey ? { 'Idempotency-Key': idempotencyKey } : undefined,
+      body: JSON.stringify({ targetProfileId }),
     });
   }
 
@@ -631,17 +706,59 @@ class ApiClient {
 
   // --- Safety & Moderation ---
 
-  async blockUser(targetUserId: string, reason: string) {
+  async blockCandidate(targetProfileId: string, reason?: string) {
     return this.request<{ success: boolean; message: string }>('/api/bff/v1/safety/block', {
       method: 'POST',
-      body: JSON.stringify({ targetUserId, reason }),
+      body: JSON.stringify({ targetProfileId, reason }),
     });
   }
 
-  async reportUser(targetUserId: string, reason: string, details?: string) {
+  async reportCandidate(
+    targetProfileId: string,
+    reportCategory: ReportCategory,
+    description?: string,
+  ) {
+    return this.request<{ success: boolean; reportId?: string; message: string }>(
+      '/api/bff/v1/safety/report',
+      {
+        method: 'POST',
+        body: JSON.stringify({ targetProfileId, reportCategory, description }),
+      },
+    );
+  }
+
+  async blockUser(targetAccountOrId: string, reason: string) {
+    return this.request<{ success: boolean; message: string }>('/api/bff/v1/safety/block', {
+      method: 'POST',
+      body: JSON.stringify({ blockedId: targetAccountOrId, reason }),
+    });
+  }
+
+  async reportUser(targetAccountOrId: string, categoryOrReason: string, details?: string) {
+    const categories = new Set([
+      'harassment',
+      'inappropriate_content',
+      'underage_suspected',
+      'fake_profile',
+      'spam',
+      'offline_safety',
+    ]);
+    const reportCategory = categories.has(categoryOrReason)
+      ? categoryOrReason
+      : 'inappropriate_content';
+    const description = categories.has(categoryOrReason)
+      ? details
+      : details
+        ? `${categoryOrReason}: ${details}`
+        : categoryOrReason;
+
     return this.request<{ success: boolean; message: string }>('/api/bff/v1/safety/report', {
       method: 'POST',
-      body: JSON.stringify({ targetUserId, reason, details }),
+      body: JSON.stringify({
+        reportedId: targetAccountOrId,
+        reportCategory,
+        description,
+      }),
     });
   }
 }

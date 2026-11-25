@@ -36,7 +36,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
     const sizeStyles = {
       sm: 'h-9 px-3.5 text-xs gap-1.5 rounded-[6px]',
       md: 'h-12 px-5 text-sm gap-2 rounded-[8px]',
-      lg: 'h-13 px-6 text-base gap-2.5 rounded-[8px]',
+      lg: 'h-[48px] px-6 text-base gap-2.5 rounded-[8px]',
     };
 
     const variantStyles = {

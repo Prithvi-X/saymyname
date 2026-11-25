@@ -32,6 +32,7 @@ export class EligibilityGuard implements CanActivate {
                 ageStatus: true,
                 studentStatus: true,
                 discoveryEligible: true,
+                dateOfBirth: true,
               },
             },
           },
@@ -39,12 +40,17 @@ export class EligibilityGuard implements CanActivate {
         .catch(() => null);
 
       if (account) {
+        const hasVerifiedDob =
+          !account.eligibility ||
+          !('dateOfBirth' in account.eligibility) ||
+          account.eligibility.dateOfBirth !== null;
         const ok =
           !account.deletedAt &&
           account.accountStatus === 'active' &&
           account.eligibility?.discoveryEligible === true &&
           account.eligibility?.ageStatus === 'approved' &&
-          account.eligibility?.studentStatus === 'approved';
+          account.eligibility?.studentStatus === 'approved' &&
+          hasVerifiedDob;
         if (!ok) {
           throw new ForbiddenException(
             'Dating capabilities require verified 18+ age and approved IIT Madras BS student eligibility',

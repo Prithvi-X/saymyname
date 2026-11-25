@@ -1,69 +1,108 @@
-import { Injectable, BadRequestException, ForbiddenException } from '@nestjs/common';
+import {
+  Injectable,
+  BadRequestException,
+  ForbiddenException,
+  ServiceUnavailableException,
+  Optional,
+} from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { SendMessageDto } from './dto/messaging.dto';
+import { MatchAuthorizationService } from '../safety/match-authorization.service';
 
 @Injectable()
 export class MessagingService {
-  constructor(private readonly prisma: PrismaService) {}
+  private readonly matchAuth: MatchAuthorizationService;
+
+  constructor(
+    private readonly prisma: PrismaService,
+    @Optional() matchAuthService?: MatchAuthorizationService,
+  ) {
+    this.matchAuth = matchAuthService ?? new MatchAuthorizationService(this.prisma);
+  }
+
+  private async assertActiveMatchConversationMember(accountId: string, conversationId: string) {
+    try {
+      return await this.matchAuth.assertAuthorizedForConversation(accountId, conversationId);
+    } catch (err: any) {
+      if (
+        err instanceof ForbiddenException ||
+        err instanceof BadRequestException
+      ) {
+        throw err;
+      }
+      throw new ServiceUnavailableException('Messaging service is temporarily unavailable.');
+    }
+  }
 
   /**
    * 1. Get all active conversations for user
    */
   async getConversations(accountId: string) {
-    const members = await this.prisma.conversationMember.findMany({
-      where: { accountId },
-      include: {
-        conversation: {
-          include: {
-            members: true,
-            match: true,
-            messages: {
-              orderBy: { sequenceNo: 'desc' },
-              take: 1,
+    try {
+      const members = await this.prisma.conversationMember.findMany({
+        where: { accountId },
+        include: {
+          conversation: {
+            include: {
+              members: true,
+              match: true,
+              messages: {
+                orderBy: { sequenceNo: 'desc' },
+                take: 1,
+              },
             },
           },
         },
-      },
-    }).catch(() => []);
+      });
 
-    return members
-      .filter((m) => m.conversation.status === 'active')
-      .map((m) => {
+      const activeConversations: any[] = [];
+      for (const m of members) {
         const c = m.conversation;
+        if (c?.status !== 'active' || c?.match?.status !== 'active') {
+          continue;
+        }
+        const blocked = await this.matchAuth.hasBidirectionalBlock(
+          this.prisma,
+          c.match.userLowId,
+          c.match.userHighId,
+        );
+        if (blocked) {
+          continue;
+        }
+        const bothActive = await this.matchAuth.verifyParticipantAccountsActive(this.prisma, [
+          c.match.userLowId,
+          c.match.userHighId,
+        ]);
+        if (!bothActive) {
+          continue;
+        }
         const otherMember = c.members.find((mem) => mem.accountId !== accountId);
-        return {
+        activeConversations.push({
           conversationId: c.id,
           matchId: c.matchId,
           lastMessageAt: c.lastMessageAt || c.createdAt,
           lastMessage: c.messages[0] || null,
-          partnerAccountId: otherMember?.accountId || 'matched-partner',
-        };
-      });
+          partnerAccountId: otherMember?.accountId || null,
+        });
+      }
+
+      return activeConversations;
+    } catch {
+      throw new ServiceUnavailableException('Messaging service is temporarily unavailable.');
+    }
   }
 
   /**
    * 2. Get message history for a conversation
    */
   async getMessages(accountId: string, conversationId: string) {
-    // Enforce conversation membership check
-    const member = await this.prisma.conversationMember?.findUnique?.({
-      where: {
-        conversationId_accountId: {
-          conversationId,
-          accountId,
-        },
-      },
-    }).catch(() => null);
-
-    if (!member) {
-      throw new ForbiddenException('You are not an authorized member of this conversation.');
-    }
+    await this.assertActiveMatchConversationMember(accountId, conversationId);
 
     return this.prisma.message.findMany({
       where: { conversationId },
       orderBy: { sequenceNo: 'asc' },
       take: 100,
-    }).catch(() => []);
+    });
   }
 
   /**
@@ -77,51 +116,35 @@ export class MessagingService {
       throw new BadRequestException('Message body exceeds 1,000 characters limit (Document 04 §6.1).');
     }
 
-    // Enforce conversation membership check
-    const member = await this.prisma.conversationMember?.findUnique?.({
-      where: {
-        conversationId_accountId: {
-          conversationId,
-          accountId,
-        },
-      },
-    }).catch(() => null);
+    await this.assertActiveMatchConversationMember(accountId, conversationId);
 
-    if (!member) {
-      throw new ForbiddenException('You are not an authorized member of this conversation.');
-    }
-
-    // Count existing messages to get next sequence_no
-    const count = await this.prisma.message.count({
+    const lastMsg = await this.prisma.message.findFirst({
       where: { conversationId },
-    }).catch(() => 0);
+      orderBy: { sequenceNo: 'desc' },
+      select: { sequenceNo: true },
+    });
 
-    const sequenceNo = BigInt(count + 1);
+    const sequenceNo = BigInt((lastMsg ? Number(lastMsg.sequenceNo) : 0) + 1);
 
-    const message = await this.prisma.message.create({
-      data: {
-        conversationId,
-        sequenceNo,
-        senderAccountId: accountId,
-        messageType: 'text',
-        bodyText: dto.bodyText,
-        deliveryState: 'delivered',
-      },
-    }).catch(() => ({
-      id: `msg-${Date.now()}`,
-      conversationId,
-      sequenceNo: Number(sequenceNo),
-      senderAccountId: accountId,
-      messageType: 'text',
-      bodyText: dto.bodyText,
-      deliveryState: 'delivered',
-      createdAt: new Date(),
-    }));
+    const message = await this.prisma.$transaction(async (tx) => {
+      const created = await tx.message.create({
+        data: {
+          conversationId,
+          sequenceNo,
+          senderAccountId: accountId,
+          messageType: 'text',
+          bodyText: dto.bodyText.trim(),
+          deliveryState: 'delivered',
+        },
+      });
 
-    await this.prisma.conversation.update({
-      where: { id: conversationId },
-      data: { lastMessageAt: new Date() },
-    }).catch(() => null);
+      await tx.conversation.update({
+        where: { id: conversationId },
+        data: { lastMessageAt: new Date() },
+      });
+
+      return created;
+    });
 
     return {
       id: message.id,
@@ -131,7 +154,7 @@ export class MessagingService {
       messageType: message.messageType,
       bodyText: message.bodyText,
       deliveryState: message.deliveryState,
-      createdAt: (message as any).createdAt,
+      createdAt: message.createdAt,
     };
   }
 }

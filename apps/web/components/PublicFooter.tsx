@@ -27,7 +27,7 @@ export default function PublicFooter({ supportEmail = null }: PublicFooterProps)
   }
 
   return (
-    <footer className="bg-coal border-t border-edge font-ui mt-16">
+    <footer className="bg-coal/90 border-t border-edge shadow-[inset_0_1px_0_rgba(255,255,255,0.03)] font-ui mt-16">
       <div className="container-wide py-12 grid grid-cols-1 md:grid-cols-12 gap-8">
         <div className="md:col-span-5 flex flex-col gap-3">
           <Logo size="sm" symbolConcept="A" />

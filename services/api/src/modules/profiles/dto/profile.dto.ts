@@ -133,11 +133,6 @@ export class AddPhotoDto {
   @Min(1)
   @Max(10485760)
   fileSizeBytes?: number;
-
-  @ApiPropertyOptional({ description: 'Optional base64 payload for direct server binary validation' })
-  @IsOptional()
-  @IsString()
-  fileBufferBase64?: string;
 }
 
 export class UpdatePreferencesDto {

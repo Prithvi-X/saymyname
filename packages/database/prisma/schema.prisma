@@ -80,6 +80,7 @@ model AccountEligibility {
   studentStatus     String    @default("not_started") @map("student_status") @db.Text
   programmeFamily   String?   @map("programme_family") @db.Text
   pathwayCode       String?   @map("pathway_code") @db.Text
+  dateOfBirth       DateTime? @map("date_of_birth") @db.Date
   discoveryEligible Boolean   @default(false) @map("discovery_eligible")
   ageVerifiedAt     DateTime? @map("age_verified_at") @db.Timestamptz
   studentVerifiedAt DateTime? @map("student_verified_at") @db.Timestamptz
@@ -190,6 +191,7 @@ model Profile {
   promptAnswers ProfilePromptAnswer[]
   preferences   PreferenceSetting?
 
+  @@index([profileStatus, isPublished, isPaused, programmeFamily], map: "profiles_discovery_status_idx")
   @@map("profiles")
   @@schema("profiles")
 }
@@ -210,6 +212,7 @@ model ProfilePhoto {
 
   profile Profile @relation(fields: [profileId], references: [id], onDelete: Cascade)
 
+  @@index([profileId, moderationStatus, deletedAt, displayOrder], map: "profile_photos_ready_idx")
   @@map("profile_photos")
   @@schema("profiles")
 }
@@ -297,6 +300,8 @@ model Like {
   updatedAt     DateTime @updatedAt @map("updated_at") @db.Timestamptz
 
   @@unique([fromAccountId, toAccountId])
+  @@index([fromAccountId, status])
+  @@index([toAccountId, status])
   @@map("likes")
   @@schema("dating")
 }
@@ -309,6 +314,7 @@ model Pass {
   createdAt     DateTime @default(now()) @map("created_at") @db.Timestamptz
 
   @@unique([fromAccountId, toAccountId])
+  @@index([fromAccountId, expiresAt])
   @@map("passes")
   @@schema("dating")
 }
@@ -566,6 +572,7 @@ model UserBlock {
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
 
   @@unique([blockerId, blockedId])
+  @@index([blockedId, blockerId])
   @@map("user_blocks")
   @@schema("safety")
 }

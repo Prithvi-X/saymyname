@@ -1,17 +1,12 @@
-import {
-  Injectable,
-  BadRequestException,
-  ConflictException,
-  UnauthorizedException,
-  ForbiddenException,
-  ServiceUnavailableException,
-  HttpException,
-  HttpStatus,
-} from '@nestjs/common';
+import { Injectable, BadRequestException, ConflictException, UnauthorizedException, ForbiddenException, ServiceUnavailableException, HttpException, HttpStatus, Optional } from '@nestjs/common';
 import * as crypto from 'crypto';
 import { PrismaService } from '../../prisma/prisma.service';
 import { CryptoService } from './security/crypto.service';
 import { VerificationService } from '../verification/verification.service';
+import {
+  AccountInvalidationReason,
+  MatchAuthorizationService,
+} from '../safety/match-authorization.service';
 import {
   RegisterDto,
   LoginDto,
@@ -37,11 +32,16 @@ const RESET_EXPIRY_MS = 30 * 60 * 1000;
 
 @Injectable()
 export class IdentityService {
+  private readonly matchAuth: MatchAuthorizationService;
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly crypto: CryptoService,
     private readonly verificationService: VerificationService,
-  ) {}
+    @Optional() matchAuthService?: MatchAuthorizationService,
+  ) {
+    this.matchAuth = matchAuthService ?? new MatchAuthorizationService(this.prisma);
+  }
 
   /**
    * Central institutional BS email allowlist check (D-P2-03).
@@ -81,8 +81,9 @@ export class IdentityService {
       ageStatus?: string | null;
       studentStatus?: string | null;
       discoveryEligible?: boolean | null;
+      dateOfBirth?: Date | string | null;
     } | null,
-    profile: { isPublished?: boolean | null; profileStatus?: string | null } | null,
+    profile: { isPublished?: boolean | null; profileStatus?: string | null; publishedAt?: Date | string | null } | null,
   ): AccountLifecycleState {
     if (!account || account.deletedAt) return AccountLifecycleState.UNAUTHENTICATED;
     if (account.accountStatus === 'suspended') return AccountLifecycleState.SUSPENDED;
@@ -102,6 +103,14 @@ export class IdentityService {
     if (ageStatus === 'not_started') {
       return AccountLifecycleState.AGE_VERIFICATION;
     }
+    if (
+      ageStatus === 'approved' &&
+      eligibility &&
+      'dateOfBirth' in eligibility &&
+      eligibility.dateOfBirth === null
+    ) {
+      return AccountLifecycleState.AGE_VERIFICATION;
+    }
     if (studentStatus === 'not_started') {
       return AccountLifecycleState.STUDENT_VERIFICATION;
     }
@@ -116,7 +125,9 @@ export class IdentityService {
     }
 
     const profileLive = Boolean(profile?.isPublished) || profile?.profileStatus === 'live';
-    if (!profile || !profileLive) {
+    const profileCompletedPaused =
+      profile?.profileStatus === 'paused' && Boolean(profile?.publishedAt);
+    if (!profile || (!profileLive && !profileCompletedPaused)) {
       return AccountLifecycleState.PROFILE_INCOMPLETE;
     }
 
@@ -775,6 +786,85 @@ export class IdentityService {
       message: 'Other active sessions have been signed out.',
       revokedCount: result.count,
     };
+  }
+
+  /**
+   * Transitions an account to suspended, disabled, or soft-deleted cleanly while
+   * revoking active sessions, pausing discovery visibility, disabling eligibility, and
+   * invalidating active matches and downstream messaging/calling/Together permissions.
+   */
+  async suspendOrRestrictAccount(
+    accountId: string,
+    params: {
+      status: 'suspended' | 'disabled' | 'deleted';
+      actorId?: string;
+    },
+  ) {
+    const now = new Date();
+    const reasonCode: AccountInvalidationReason =
+      params.status === 'deleted'
+        ? 'account_deleted'
+        : params.status === 'disabled'
+          ? 'account_disabled'
+          : 'account_suspended';
+
+    return this.prisma.$transaction(async (tx) => {
+      await tx.account.update({
+        where: { id: accountId },
+        data: {
+          accountStatus: params.status === 'deleted' ? 'disabled' : params.status,
+          ...(params.status === 'deleted' ? { deletedAt: now } : {}),
+        },
+      });
+
+      await tx.appSession
+        .updateMany({
+          where: { accountId, revokedAt: null },
+          data: { revokedAt: now },
+        })
+        .catch(() => null);
+
+      await tx.accountEligibility
+        .updateMany({
+          where: { accountId },
+          data: { discoveryEligible: false },
+        })
+        .catch(() => null);
+
+      await tx.profile
+        .updateMany({
+          where: { accountId, isPaused: false },
+          data: { isPaused: true, profileStatus: 'paused' },
+        })
+        .catch(() => null);
+
+      const { invalidatedCount } = await this.matchAuth.invalidateActiveMatchesForAccount(
+        tx,
+        accountId,
+        {
+          reasonCode,
+          actorId: params.actorId || accountId,
+        },
+      );
+
+      await tx.auditEvent
+        .create({
+          data: {
+            actorId: accountId,
+            action: `identity.${reasonCode}`,
+            resourceType: 'account',
+            resourceId: accountId,
+            metadata: { invalidatedMatches: invalidatedCount },
+          },
+        })
+        .catch(() => null);
+
+      return {
+        accountId,
+        reasonCode,
+        invalidatedMatches: invalidatedCount,
+      };
+    });
   }
 
   /**

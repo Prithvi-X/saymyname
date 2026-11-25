@@ -63,8 +63,8 @@ function LoginFormContent() {
   };
 
   return (
-    <div className="min-h-[calc(100vh-140px)] bg-void flex flex-col items-center justify-center px-4 py-12 font-ui">
-      <div className="w-full max-w-[440px] bg-coal border border-edge rounded-[12px] p-7 sm:p-9 shadow-md">
+    <div className="min-h-[calc(100vh-140px)] bg-void smn-ambient-calm smn-stage-wrap flex flex-col items-center justify-center px-4 py-12 font-ui">
+      <div className="w-full max-w-[440px] bg-coal border border-edge rounded-[12px] p-7 sm:p-9 smn-surface-elevated">
         <div className="text-center mb-7">
           <div className="w-11 h-11 rounded-[8px] bg-iron border border-edge text-iris inline-flex items-center justify-center mb-4">
             <LockIcon size={20} color="currentColor" />

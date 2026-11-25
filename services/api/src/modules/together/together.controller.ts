@@ -45,7 +45,7 @@ export class TogetherController {
   @Post('games/invite')
   @ApiOperation({ summary: 'Invite match partner to play a mini-game' })
   async inviteGame(@Request() req: any, @Body() dto: GameInviteDto) {
-    return this.togetherService.inviteGame(req.user.id, dto);
+    return this.togetherService.inviteGame(req.user?.sub ?? req.user?.id, dto);
   }
 
   @Post('games/:sessionId/respond')
@@ -55,7 +55,7 @@ export class TogetherController {
     @Param('sessionId') sessionId: string,
     @Body() dto: GameRespondDto,
   ) {
-    return this.togetherService.respondGame(req.user.id, sessionId, dto);
+    return this.togetherService.respondGame(req.user?.sub ?? req.user?.id, sessionId, dto);
   }
 
   @Post('games/:sessionId/move')
@@ -65,13 +65,13 @@ export class TogetherController {
     @Param('sessionId') sessionId: string,
     @Body() dto: GameMoveDto,
   ) {
-    return this.togetherService.submitMove(req.user.id, sessionId, dto);
+    return this.togetherService.submitMove(req.user?.sub ?? req.user?.id, sessionId, dto);
   }
 
   @Get('games/:sessionId')
   @ApiOperation({ summary: 'Get live game session status' })
   async getGameSession(@Request() req: any, @Param('sessionId') sessionId: string) {
-    return this.togetherService.getGameSession(req.user.id, sessionId);
+    return this.togetherService.getGameSession(req.user?.sub ?? req.user?.id, sessionId);
   }
 
   // ==========================================
@@ -81,7 +81,7 @@ export class TogetherController {
   @Post('virtual-dates/propose')
   @ApiOperation({ summary: 'Propose a virtual date with specific time and activity' })
   async proposeVirtualDate(@Request() req: any, @Body() dto: VirtualDateProposeDto) {
-    return this.togetherService.proposeVirtualDate(req.user.id, dto);
+    return this.togetherService.proposeVirtualDate(req.user?.sub ?? req.user?.id, dto);
   }
 
   @Post('virtual-dates/:dateId/respond')
@@ -91,13 +91,13 @@ export class TogetherController {
     @Param('dateId') dateId: string,
     @Body() dto: VirtualDateRespondDto,
   ) {
-    return this.togetherService.respondVirtualDate(req.user.id, dateId, dto);
+    return this.togetherService.respondVirtualDate(req.user?.sub ?? req.user?.id, dateId, dto);
   }
 
   @Get('virtual-dates')
   @ApiOperation({ summary: 'List virtual dates for a conversation' })
   async listVirtualDates(@Request() req: any, @Query('conversationId') conversationId: string) {
-    return this.togetherService.listVirtualDates(req.user.id, conversationId);
+    return this.togetherService.listVirtualDates(req.user?.sub ?? req.user?.id, conversationId);
   }
 
   // ==========================================
@@ -107,19 +107,19 @@ export class TogetherController {
   @Post('relationship/propose')
   @ApiOperation({ summary: 'Propose relationship mode (requires partner acceptance)' })
   async proposeRelationship(@Request() req: any, @Body() dto: RelationshipProposeDto) {
-    return this.togetherService.proposeRelationship(req.user.id, dto);
+    return this.togetherService.proposeRelationship(req.user?.sub ?? req.user?.id, dto);
   }
 
   @Post('relationship/respond')
   @ApiOperation({ summary: 'Accept or decline relationship mode proposal' })
   async respondRelationship(@Request() req: any, @Body() dto: RelationshipRespondDto) {
-    return this.togetherService.respondRelationship(req.user.id, dto);
+    return this.togetherService.respondRelationship(req.user?.sub ?? req.user?.id, dto);
   }
 
   @Get('relationship/:matchId')
   @ApiOperation({ summary: 'Get active relationship space details and anniversary countdown' })
   async getRelationshipSpace(@Request() req: any, @Param('matchId') matchId: string) {
-    return this.togetherService.getRelationshipSpace(req.user.id, matchId);
+    return this.togetherService.getRelationshipSpace(req.user?.sub ?? req.user?.id, matchId);
   }
 
   @Post('relationship/:matchId/milestones')
@@ -129,13 +129,13 @@ export class TogetherController {
     @Param('matchId') matchId: string,
     @Body() dto: RelationshipMilestoneDto,
   ) {
-    return this.togetherService.createMilestone(req.user.id, matchId, dto);
+    return this.togetherService.createMilestone(req.user?.sub ?? req.user?.id, matchId, dto);
   }
 
   @Get('relationship/:matchId/milestones')
   @ApiOperation({ summary: 'List shared milestones' })
   async listMilestones(@Request() req: any, @Param('matchId') matchId: string) {
-    return this.togetherService.listMilestones(req.user.id, matchId);
+    return this.togetherService.listMilestones(req.user?.sub ?? req.user?.id, matchId);
   }
 
   @Post('relationship/:matchId/journal')
@@ -145,18 +145,18 @@ export class TogetherController {
     @Param('matchId') matchId: string,
     @Body() dto: RelationshipJournalDto,
   ) {
-    return this.togetherService.createJournalEntry(req.user.id, matchId, dto);
+    return this.togetherService.createJournalEntry(req.user?.sub ?? req.user?.id, matchId, dto);
   }
 
   @Get('relationship/:matchId/journal')
   @ApiOperation({ summary: 'List private relationship journal entries' })
   async listJournalEntries(@Request() req: any, @Param('matchId') matchId: string) {
-    return this.togetherService.listJournalEntries(req.user.id, matchId);
+    return this.togetherService.listJournalEntries(req.user?.sub ?? req.user?.id, matchId);
   }
 
   @Post('relationship/leave')
   @ApiOperation({ summary: 'Unilaterally deactivate relationship mode (zero partner permission required)' })
   async leaveRelationship(@Request() req: any, @Body() dto: RelationshipLeaveDto) {
-    return this.togetherService.leaveRelationship(req.user.id, dto);
+    return this.togetherService.leaveRelationship(req.user?.sub ?? req.user?.id, dto);
   }
 }

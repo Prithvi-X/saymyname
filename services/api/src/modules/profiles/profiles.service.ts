@@ -6,9 +6,14 @@ import {
   ServiceUnavailableException,
 } from '@nestjs/common';
 import * as crypto from 'crypto';
-import { S3Client, PutObjectCommand, GetObjectCommand, HeadObjectCommand } from '@aws-sdk/client-s3';
+import {
+  S3Client,
+  PutObjectCommand,
+  GetObjectCommand,
+  DeleteObjectCommand,
+} from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
-import { isPrivateIdentifierLike, validateProfile } from '@saymyname/validation';
+import { calculateAgeYears, isPrivateIdentifierLike, validateProfile } from '@saymyname/validation';
 import { PrismaService } from '../../prisma/prisma.service';
 import {
   UpdateProfileDto,
@@ -17,138 +22,17 @@ import {
   PresignPhotoDto,
   PublishProfileDto,
 } from './dto/profile.dto';
+import {
+  getAllowedImageMimes,
+  isHeicDecodingSupported,
+  ImageValidationResult,
+  MAX_PHOTO_BYTES,
+  readLimitedS3Body,
+  validateImageBinary,
+  verifyAndSanitizeR2Image,
+} from './image-security';
 
-const ALLOWED_IMAGE_MIMES = ['image/jpeg', 'image/png', 'image/webp', 'image/heic'];
-
-export interface ImageValidationResult {
-  isValid: boolean;
-  detectedMime: string;
-  sizeBytes: number;
-  exifStripped: boolean;
-  isHeic: boolean;
-  sanitizedBuffer?: Buffer;
-}
-
-export function validateImageBinary(buffer: Buffer, declaredMime?: string): ImageValidationResult {
-  if (!buffer || buffer.length < 12) {
-    throw new BadRequestException('Image content validation failed: file is empty or corrupted.');
-  }
-
-  const sizeBytes = buffer.length;
-  if (sizeBytes > 10 * 1024 * 1024) {
-    throw new BadRequestException('Image content validation failed: file size exceeds 10 MB limit.');
-  }
-
-  // Detect malicious/executable/script signatures
-  const headerAscii = buffer.toString('ascii', 0, Math.min(64, buffer.length)).toLowerCase();
-  if (
-    (buffer[0] === 0x4D && buffer[1] === 0x5A) || // MZ (Windows executable)
-    (buffer[0] === 0x7F && buffer[1] === 0x45 && buffer[2] === 0x4C && buffer[3] === 0x46) || // ELF
-    headerAscii.includes('<script') ||
-    headerAscii.includes('<!doctype') ||
-    headerAscii.includes('<html') ||
-    headerAscii.includes('<?xml') ||
-    headerAscii.includes('<svg') ||
-    (buffer[0] === 0x50 && buffer[1] === 0x4B && buffer[2] === 0x03 && buffer[3] === 0x04) // PK (Zip archive)
-  ) {
-    throw new BadRequestException('Image content validation failed: unsupported or disguised file format.');
-  }
-
-  let detectedMime: string | null = null;
-  let isHeic = false;
-
-  // JPEG: FF D8 FF
-  if (buffer[0] === 0xFF && buffer[1] === 0xD8 && buffer[2] === 0xFF) {
-    detectedMime = 'image/jpeg';
-  }
-  // PNG: 89 50 4E 47 0D 0A 1A 0A
-  else if (
-    buffer.length >= 8 &&
-    buffer[0] === 0x89 &&
-    buffer[1] === 0x50 &&
-    buffer[2] === 0x4E &&
-    buffer[3] === 0x47 &&
-    buffer[4] === 0x0D &&
-    buffer[5] === 0x0A &&
-    buffer[6] === 0x1A &&
-    buffer[7] === 0x0A
-  ) {
-    detectedMime = 'image/png';
-  }
-  // WebP: RIFF ... WEBP
-  else if (
-    buffer.length >= 12 &&
-    buffer.toString('ascii', 0, 4) === 'RIFF' &&
-    buffer.toString('ascii', 8, 12) === 'WEBP'
-  ) {
-    detectedMime = 'image/webp';
-  }
-  // HEIC: bytes 4-8 'ftyp', brands: heic, heix, hevc, mif1, msf1
-  else if (
-    buffer.length >= 12 &&
-    buffer.toString('ascii', 4, 8) === 'ftyp'
-  ) {
-    const brand = buffer.toString('ascii', 8, 12).toLowerCase().trim();
-    if (['heic', 'heix', 'hevc', 'mif1', 'msf1'].includes(brand)) {
-      detectedMime = 'image/heic';
-      isHeic = true;
-    }
-  }
-
-  if (!detectedMime) {
-    throw new BadRequestException('Image content validation failed: unrecognized binary signature.');
-  }
-
-  if (declaredMime) {
-    const normDeclared = declaredMime.toLowerCase().trim();
-    if (normDeclared !== detectedMime) {
-      throw new BadRequestException(
-        `Image content validation failed: declared MIME (${declaredMime}) does not match detected format (${detectedMime}).`,
-      );
-    }
-  }
-
-  // EXIF sanitization: strip APP1 (0xFF 0xE1) marker in JPEGs to eliminate geolocation/GPS metadata
-  let exifStripped = false;
-  let sanitizedBuffer = buffer;
-  if (detectedMime === 'image/jpeg') {
-    let pos = 2;
-    let foundApp1 = false;
-    while (pos < buffer.length - 4) {
-      if (buffer[pos] === 0xFF && buffer[pos + 1] === 0xE1) {
-        foundApp1 = true;
-        const app1Len = buffer.readUInt16BE(pos + 2);
-        sanitizedBuffer = Buffer.concat([
-          buffer.subarray(0, pos),
-          buffer.subarray(pos + 2 + app1Len),
-        ]);
-        exifStripped = true;
-        break;
-      } else if (buffer[pos] === 0xFF && buffer[pos + 1] === 0xDA) {
-        break;
-      } else if (buffer[pos] === 0xFF && pos + 3 < buffer.length) {
-        const markerLen = buffer.readUInt16BE(pos + 2);
-        pos += 2 + markerLen;
-      } else {
-        pos++;
-      }
-    }
-    if (!foundApp1) {
-      exifStripped = true;
-    }
-  } else {
-    exifStripped = true;
-  }
-
-  return {
-    isValid: true,
-    detectedMime,
-    sizeBytes,
-    exifStripped,
-    isHeic,
-    sanitizedBuffer,
-  };
-}
+export { ImageValidationResult, validateImageBinary };
 
 const DEFAULT_INTERESTS_CATALOG = [
   { name: 'Machine Learning', category: 'academic' },
@@ -206,11 +90,20 @@ export class ProfilesService {
       return null;
     }
 
+    let isCloudflareR2Host = false;
+    try {
+      isCloudflareR2Host = /(?:^|\.)r2\.cloudflarestorage\.com$/i.test(new URL(endpoint).hostname);
+    } catch {
+      isCloudflareR2Host = false;
+    }
+    const forcePathStyle = !isCloudflareR2Host && process.env.R2_FORCE_PATH_STYLE === 'true';
+
     return {
       bucket,
       client: new S3Client({
         region: 'auto',
         endpoint,
+        ...(forcePathStyle ? { forcePathStyle: true } : {}),
         credentials: { accessKeyId, secretAccessKey },
       }),
     };
@@ -295,7 +188,12 @@ export class ProfilesService {
         .catch(() => []),
     ]);
 
-    return { interests, prompts };
+    return {
+      interests,
+      prompts,
+      supportedImageMimes: [...getAllowedImageMimes()],
+      heicSupported: isHeicDecodingSupported(),
+    };
   }
 
   /**
@@ -511,9 +409,13 @@ export class ProfilesService {
    */
   async presignPhoto(accountId: string, dto: PresignPhotoDto) {
     const mime = dto.mimeType.toLowerCase().trim();
-    if (!ALLOWED_IMAGE_MIMES.includes(mime)) {
+    const allowedMimes = getAllowedImageMimes();
+    if (!allowedMimes.includes(mime)) {
+      const labels = allowedMimes
+        .map((m) => m.replace('image/', '').toUpperCase())
+        .join(', ');
       throw new BadRequestException(
-        `Unsupported photo format: ${dto.mimeType}. Allowed: JPEG, PNG, WebP, HEIC`,
+        `Unsupported photo format: ${dto.mimeType}. Allowed in current runtime: ${labels}`,
       );
     }
 
@@ -569,6 +471,19 @@ export class ProfilesService {
    * Attaches a verified private R2 portrait key to the user's profile (no external/raw URLs accepted)
    */
   async addPhoto(accountId: string, dto: AddPhotoDto) {
+    if (dto.mimeType) {
+      const normalizedMime = dto.mimeType.toLowerCase().trim();
+      const allowedMimes = getAllowedImageMimes();
+      if (!allowedMimes.includes(normalizedMime)) {
+        const labels = allowedMimes
+          .map((m) => m.replace('image/', '').toUpperCase())
+          .join(', ');
+        throw new BadRequestException(
+          `Unsupported photo format: ${dto.mimeType}. Allowed in current runtime: ${labels}`,
+        );
+      }
+    }
+
     const expectedPrefix = `photos/${accountId}/`;
     if (!dto.s3Key || !dto.s3Key.startsWith(expectedPrefix) || dto.s3Key.includes('..')) {
       throw new BadRequestException('Invalid portrait storage key ownership.');
@@ -588,27 +503,65 @@ export class ProfilesService {
       throw new BadRequestException('Maximum of 6 profile portrait photos allowed.');
     }
 
-    // Direct binary content inspection & sanitization if buffer provided
     let verifiedMime = dto.mimeType || 'image/jpeg';
-    if (dto.fileBufferBase64) {
-      const buffer = Buffer.from(dto.fileBufferBase64, 'base64');
-      const validation = validateImageBinary(buffer, dto.mimeType);
-      verifiedMime = validation.detectedMime;
-    }
+    let verifiedWidth: number | null = dto.widthPx ?? null;
+    let verifiedHeight: number | null = dto.heightPx ?? null;
 
-    // When R2 client is active, verify object existence and bounds in private storage
+    // When R2 client is active, fetch uploaded binary from private storage, validate magic bytes + image decode, strip metadata/EXIF, and overwrite safely
     const r2 = this.createR2Client();
     if (r2) {
+      let rawBuffer: Buffer;
+      let objectMime: string | undefined;
       try {
-        const head = await r2.client.send(
-          new HeadObjectCommand({ Bucket: r2.bucket, Key: dto.s3Key }),
+        const obj = await r2.client.send(
+          new GetObjectCommand({ Bucket: r2.bucket, Key: dto.s3Key }),
         );
-        if (head.ContentLength && head.ContentLength > 10 * 1024 * 1024) {
+        objectMime = obj.ContentType;
+        if (obj.ContentLength && obj.ContentLength > MAX_PHOTO_BYTES) {
+          await r2.client
+            .send(new DeleteObjectCommand({ Bucket: r2.bucket, Key: dto.s3Key }))
+            .catch(() => null);
           throw new BadRequestException('Uploaded object exceeds maximum size of 10 MB.');
         }
+        rawBuffer = await readLimitedS3Body(obj.Body, MAX_PHOTO_BYTES);
       } catch (err: any) {
-        if (err instanceof BadRequestException) throw err;
+        if (err instanceof BadRequestException) {
+          await r2.client
+            .send(new DeleteObjectCommand({ Bucket: r2.bucket, Key: dto.s3Key }))
+            .catch(() => null);
+          throw err;
+        }
         throw new NotFoundException('Uploaded photograph object not found in private storage.');
+      }
+
+      try {
+        const sanitized = await verifyAndSanitizeR2Image(
+          rawBuffer,
+          dto.mimeType || objectMime,
+        );
+        verifiedMime = sanitized.detectedMime;
+        verifiedWidth = sanitized.widthPx ?? verifiedWidth;
+        verifiedHeight = sanitized.heightPx ?? verifiedHeight;
+
+        if (sanitized.sanitizedBuffer) {
+          await r2.client.send(
+            new PutObjectCommand({
+              Bucket: r2.bucket,
+              Key: dto.s3Key,
+              Body: sanitized.sanitizedBuffer,
+              ContentType: sanitized.detectedMime,
+              Metadata: { sanitized: 'true' },
+            }),
+          );
+        }
+      } catch (err: any) {
+        await r2.client
+          .send(new DeleteObjectCommand({ Bucket: r2.bucket, Key: dto.s3Key }))
+          .catch(() => null);
+        if (err instanceof BadRequestException) throw err;
+        throw new BadRequestException(
+          'Uploaded photograph failed server image verification and was removed.',
+        );
       }
     }
 
@@ -630,8 +583,8 @@ export class ProfilesService {
           mimeType: verifiedMime,
           displayOrder: dto.displayOrder ?? activeCount,
           isPrimary: makePrimary,
-          widthPx: dto.widthPx ?? null,
-          heightPx: dto.heightPx ?? null,
+          widthPx: verifiedWidth,
+          heightPx: verifiedHeight,
           moderationStatus: 'approved',
         },
       });
@@ -833,11 +786,11 @@ export class ProfilesService {
     });
 
     let calculatedAge: number | null = null;
-    const rawDob = (account as any)?.dateOfBirth;
+    const rawDob = (account as any)?.eligibility?.dateOfBirth ?? (account as any)?.dateOfBirth;
     if (rawDob && profile.ageDisplayMode !== 'hidden') {
-      const dob = new Date(rawDob);
-      const diffMs = Date.now() - dob.getTime();
-      calculatedAge = Math.floor(diffMs / (365.25 * 24 * 60 * 60 * 1000));
+      const normalizedDob =
+        typeof rawDob === 'string' && rawDob.includes('T') ? new Date(rawDob) : rawDob;
+      calculatedAge = calculateAgeYears(normalizedDob);
     }
 
     return {
@@ -881,9 +834,21 @@ export class ProfilesService {
       },
     });
 
+    const targetAccount = targetProfile?.account as any;
+    const targetElig = targetAccount?.eligibility;
+    const isTargetEligible =
+      !targetAccount ||
+      (!targetAccount.deletedAt &&
+        targetAccount.accountStatus === 'active' &&
+        (!targetElig ||
+          (targetElig.ageStatus === 'approved' &&
+            targetElig.studentStatus === 'approved' &&
+            targetElig.discoveryEligible === true &&
+            (!targetElig.validUntil || new Date(targetElig.validUntil) > new Date()))));
+
     if (
       !targetProfile ||
-      (targetProfile.account as any)?.deletedAt ||
+      !isTargetEligible ||
       !targetProfile.isPublished ||
       targetProfile.isPaused ||
       targetProfile.profileStatus !== 'live'
@@ -907,11 +872,13 @@ export class ProfilesService {
     const hydrated = await this.hydrateProfileMedia(targetProfile);
 
     let calculatedAge: number | null = null;
-    const targetDob = (targetProfile.account as any)?.dateOfBirth;
+    const targetDob =
+      (targetProfile.account as any)?.eligibility?.dateOfBirth ??
+      (targetProfile.account as any)?.dateOfBirth;
     if (targetDob && targetProfile.ageDisplayMode !== 'hidden') {
-      const dob = new Date(targetDob);
-      const diffMs = Date.now() - dob.getTime();
-      calculatedAge = Math.floor(diffMs / (365.25 * 24 * 60 * 60 * 1000));
+      const normalizedDob =
+        typeof targetDob === 'string' && targetDob.includes('T') ? new Date(targetDob) : targetDob;
+      calculatedAge = calculateAgeYears(normalizedDob);
     }
 
     return {

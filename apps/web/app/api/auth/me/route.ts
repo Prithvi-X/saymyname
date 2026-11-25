@@ -14,6 +14,8 @@ export async function GET(request: NextRequest) {
 
   if (!hasSessionCookie) {
     const response = NextResponse.json({ authenticated: false, user: null }, { status: 401 });
+    response.headers.set('Cache-Control', 'private, no-store, no-cache, must-revalidate, max-age=0');
+    response.headers.set('Vary', 'Cookie');
     if (!request.cookies.get(CSRF_COOKIE)?.value) {
       attachCsrfCookie(request, response);
     }

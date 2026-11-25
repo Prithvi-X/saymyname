@@ -126,22 +126,65 @@ export interface PhotoReorderDto {
   photoIds: string[];
 }
 
+export interface DiscoveryCandidatePhotoDto {
+  id: string;
+  photoUrl: string | null;
+  displayOrder: number;
+  isPrimary: boolean;
+}
+
+export interface DiscoveryCandidatePromptDto {
+  id?: string;
+  promptId?: string;
+  promptText: string;
+  answerText: string;
+}
+
 export interface DiscoveryCandidateDto {
   profileId: string;
   displayName: string;
-  age?: number | null;
+  age: number | null;
+  ageVisible?: boolean;
   programmeFamily: ProgrammeFamily;
-  bio?: string | null;
+  termOrYear?: string | null;
   locationCity?: string | null;
-  photos: ProfilePhotoDto[];
+  locationState?: string | null;
+  intention?: string | null;
+  bio?: string | null;
+  photos: DiscoveryCandidatePhotoDto[];
   interests: string[];
-  promptAnswers: ProfilePromptAnswerDto[];
+  promptAnswers: DiscoveryCandidatePromptDto[];
+  isVerified?: boolean;
+  sharedInterests?: string[];
+}
+
+export interface DiscoveryFeedResponseDto {
+  candidates: DiscoveryCandidateDto[];
+  nextCursor: string | null;
+  hasMore: boolean;
+  count: number;
+  pageSize: number;
+  viewerState: 'ready' | 'paused' | 'profile_incomplete';
+  preferencesApplied?: {
+    minAge: number;
+    maxAge: number;
+    allowedProgrammes: string[];
+    dormantDistanceIgnored: boolean;
+  };
 }
 
 export interface LikeResponseDto {
   likeId: string;
   isMutualMatch: boolean;
   matchId?: string | null;
+  conversationId?: string | null;
+  message?: string;
+  matchedProfile?: {
+    profileId: string;
+    displayName: string;
+    programmeFamily: ProgrammeFamily;
+    primaryPhotoUrl?: string | null;
+  } | null;
 }
 
 export interface MatchDto {
