@@ -124,7 +124,20 @@ export class AddPhotoDto {
   @ApiPropertyOptional({ example: 1350 })
   @IsOptional()
   @IsInt()
+  @Min(1)
   heightPx?: number;
+
+  @ApiPropertyOptional({ example: 1048576, description: 'File size in bytes (max 10MB)' })
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  @Max(10485760)
+  fileSizeBytes?: number;
+
+  @ApiPropertyOptional({ description: 'Optional base64 payload for direct server binary validation' })
+  @IsOptional()
+  @IsString()
+  fileBufferBase64?: string;
 }
 
 export class UpdatePreferencesDto {
@@ -134,10 +147,10 @@ export class UpdatePreferencesDto {
   @Min(18)
   minAge?: number;
 
-  @ApiPropertyOptional({ example: 30, maximum: 50 })
+  @ApiPropertyOptional({ example: 30, maximum: 65 })
   @IsOptional()
   @IsInt()
-  @Max(50)
+  @Max(65)
   maxAge?: number;
 
   @ApiPropertyOptional({ example: ['data_science_applications', 'electronic_systems'] })
@@ -189,4 +202,19 @@ export class PublishProfileDto {
   @IsOptional()
   @IsBoolean()
   acceptGuidelinesConsent?: boolean;
+
+  @ApiPropertyOptional({
+    example: 'v1.0',
+    description: 'Guidelines version being accepted',
+  })
+  @IsOptional()
+  @IsString()
+  consentVersion?: string;
+}
+
+export class ReorderPhotosDto {
+  @ApiProperty({ example: ['photo-1', 'photo-2'], description: 'Ordered list of photo IDs' })
+  @IsArray()
+  @IsString({ each: true })
+  photoIds!: string[];
 }

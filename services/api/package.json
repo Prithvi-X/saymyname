@@ -5,7 +5,7 @@
   "scripts": {
     "prebuild": "node ./scripts/prebuild.js",
     "build": "tsc",
-    "test": "node --test dist/test/identity.test.js dist/test/security-prod.test.js dist/test/profiles.test.js dist/test/dating.test.js dist/test/calling.test.js dist/test/together.test.js",
+    "test": "node --test dist/test/identity.test.js dist/test/security-prod.test.js dist/test/profiles.test.js dist/test/phase3-1-profile.test.js dist/test/dating.test.js dist/test/calling.test.js dist/test/together.test.js",
     "start": "node dist/src/main.js",
     "typecheck": "tsc --noEmit"
   },

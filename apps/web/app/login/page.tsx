@@ -105,7 +105,7 @@ function LoginFormContent() {
             placeholder="name@study.iitm.ac.in"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            helperText="Campus @iitm.ac.in and external emails are not eligible for Phase 1."
+            helperText="Use your IIT Madras BS study email (@study.iitm.ac.in, @ds.study.iitm.ac.in, or @es.study.iitm.ac.in)."
           />
 
           <Input

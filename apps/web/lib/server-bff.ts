@@ -7,11 +7,7 @@ export const CSRF_COOKIE = 'smn_csrf';
 
 export function getBackendBaseUrl(): string {
   const defaultLocal = 'http://127.0.0.1:4000';
-  const origin =
-    process.env.API_BACKEND_URL ||
-    (process.env.NODE_ENV === 'production'
-      ? process.env.NEXT_PUBLIC_API_ORIGIN || defaultLocal
-      : defaultLocal);
+  const origin = process.env.API_BACKEND_URL || defaultLocal;
   return `${origin.replace(/\/$/, '')}/api/v1`;
 }
 

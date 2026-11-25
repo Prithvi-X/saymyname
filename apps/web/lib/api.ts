@@ -450,6 +450,45 @@ class ApiClient {
     });
   }
 
+  async reorderPhotos(photoIds: string[]) {
+    return this.request<any>('/api/bff/v1/profiles/me/photos/reorder', {
+      method: 'PUT',
+      body: JSON.stringify({ photoIds }),
+    });
+  }
+
+  async getPreferences() {
+    return this.request<{
+      minAge: number;
+      maxAge: number;
+      allowedProgrammes: string[];
+      maxDistanceKm?: number | null;
+      showInDiscovery: boolean;
+    }>('/api/bff/v1/profiles/me/preferences');
+  }
+
+  async getProfilePreview() {
+    return this.request<{
+      id: string;
+      displayName: string;
+      age?: number | null;
+      programmeFamily: string;
+      termOrYear?: string | null;
+      locationCity?: string | null;
+      locationState?: string | null;
+      intention?: string | null;
+      bio?: string | null;
+      photos: { id: string; photoUrl: string | null; displayOrder: number; isPrimary: boolean }[];
+      interests: string[];
+      promptAnswers: { id: string; promptId: string; promptText: string; answerText: string }[];
+      isVerified: boolean;
+    }>('/api/bff/v1/profiles/me/preview');
+  }
+
+  async getPublicProfile(profileId: string) {
+    return this.request<any>(`/api/bff/v1/profiles/${profileId}/public`);
+  }
+
   async updatePreferences(payload: {
     minAge?: number;
     maxAge?: number;

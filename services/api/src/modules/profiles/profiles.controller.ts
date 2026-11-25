@@ -19,6 +19,7 @@ import {
   UpdatePreferencesDto,
   PresignPhotoDto,
   PublishProfileDto,
+  ReorderPhotosDto,
 } from './dto/profile.dto';
 import { JwtAuthGuard, AuthenticatedRequest } from '../identity/guards/jwt-auth.guard';
 
@@ -73,16 +74,40 @@ export class ProfilesController {
     return this.profilesService.setPrimaryPhoto(req.user.sub, photoId);
   }
 
+  @Put('me/photos/reorder')
+  @ApiOperation({ summary: 'Reorder portrait photos within profile (index 0 is primary)' })
+  reorderPhotos(@Req() req: AuthenticatedRequest, @Body() dto: ReorderPhotosDto) {
+    return this.profilesService.reorderPhotos(req.user.sub, dto.photoIds);
+  }
+
   @Delete('me/photos/:id')
   @ApiOperation({ summary: 'Remove a portrait photo from profile' })
   removePhoto(@Req() req: AuthenticatedRequest, @Param('id') photoId: string) {
     return this.profilesService.removePhoto(req.user.sub, photoId);
   }
 
+  @Get('me/preferences')
+  @ApiOperation({ summary: 'Retrieve private dating discovery filters and preferences' })
+  getPreferences(@Req() req: AuthenticatedRequest) {
+    return this.profilesService.getPreferences(req.user.sub);
+  }
+
   @Put('me/preferences')
   @ApiOperation({ summary: 'Update dating discovery filters and preferences' })
   updatePreferences(@Req() req: AuthenticatedRequest, @Body() dto: UpdatePreferencesDto) {
     return this.profilesService.updatePreferences(req.user.sub, dto);
+  }
+
+  @Get('me/preview')
+  @ApiOperation({ summary: 'Preview own profile exactly as peers view it in Discovery' })
+  getPreviewProfile(@Req() req: AuthenticatedRequest) {
+    return this.profilesService.getPreviewProfile(req.user.sub);
+  }
+
+  @Get(':id/public')
+  @ApiOperation({ summary: 'Get public profile for active peer in Discovery' })
+  getPublicProfile(@Req() req: AuthenticatedRequest, @Param('id') id: string) {
+    return this.profilesService.getPublicProfile(req.user.sub, id);
   }
 
   @Post('me/publish')

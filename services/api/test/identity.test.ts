@@ -392,4 +392,29 @@ describe('Identity, Verification & Security Domain Tests (Phase 2)', () => {
       (err: any) => err.status === 404,
     );
   });
+
+  test('returns 503 ServiceUnavailableException on login when the database is unreachable', async () => {
+    const cryptoService = new CryptoService();
+    const brokenPrisma = {
+      account: {
+        findUnique: async () => {
+          throw new Error('ECONNREFUSED localhost:5433');
+        },
+      },
+    };
+    const identityService = new IdentityService(
+      brokenPrisma as any,
+      cryptoService,
+      new VerificationService(brokenPrisma as any),
+    );
+
+    await assert.rejects(
+      async () =>
+        identityService.login({
+          email: 'learner@study.iitm.ac.in',
+          password: 'ValidPassword123!',
+        }),
+      (err: any) => err.status === 503,
+    );
+  });
 });

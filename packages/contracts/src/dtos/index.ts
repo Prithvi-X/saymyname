@@ -98,10 +98,38 @@ export interface ProfilePromptAnswerDto {
   answerText: string;
 }
 
+export interface PublicProfileDto {
+  id: string;
+  displayName: string;
+  age?: number | null;
+  programmeFamily: ProgrammeFamily;
+  termOrYear?: string | null;
+  locationCity?: string | null;
+  locationState?: string | null;
+  intention?: string | null;
+  bio?: string | null;
+  photos: ProfilePhotoDto[];
+  interests: string[];
+  promptAnswers: ProfilePromptAnswerDto[];
+  isVerified: boolean;
+}
+
+export interface DatingPreferencesDto {
+  minAge: number;
+  maxAge: number;
+  allowedProgrammes: string[];
+  maxDistanceKm?: number | null;
+  showInDiscovery: boolean;
+}
+
+export interface PhotoReorderDto {
+  photoIds: string[];
+}
+
 export interface DiscoveryCandidateDto {
   profileId: string;
   displayName: string;
-  age: number;
+  age?: number | null;
   programmeFamily: ProgrammeFamily;
   bio?: string | null;
   locationCity?: string | null;
