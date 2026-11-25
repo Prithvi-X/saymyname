@@ -38,7 +38,7 @@ export default function BottomNav() {
 
   return (
     <nav
-      className="nav-mobile-bar fixed bottom-0 left-0 right-0 h-[62px] bg-coal border-t border-edge items-center justify-around z-40 shadow-lg font-ui pb-[env(safe-area-inset-bottom,0px)]"
+      className="nav-mobile-bar smn-glass-nav fixed bottom-0 left-0 right-0 h-[62px] border-t border-edge/80 items-center justify-around z-40 font-ui pb-[env(safe-area-inset-bottom,0px)]"
       aria-label="Mobile Navigation Bar"
     >
       {tabs.map((tab) => {

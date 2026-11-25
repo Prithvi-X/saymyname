@@ -495,7 +495,7 @@ function OnboardingContent() {
     user?.eligibility?.studentStatus === 'needs_information';
 
   return (
-    <div className="min-h-[calc(100vh-140px)] bg-void text-chalk font-ui py-10 px-4">
+    <div className="min-h-[calc(100vh-140px)] bg-void smn-ambient-calm smn-stage-wrap text-chalk font-ui py-10 px-4">
       <div className="max-w-3xl mx-auto">
         {/* Progress Indicator Header */}
         <div className="mb-8">
@@ -558,7 +558,7 @@ function OnboardingContent() {
 
         {/* STEP 1: REGISTRATION */}
         {view === 'register' && (
-          <div className="bg-coal border border-edge rounded-[12px] p-6 sm:p-8 shadow-md">
+          <div className="bg-coal border border-edge rounded-[12px] p-6 sm:p-8 smn-surface-elevated">
             <p className="text-xs sm:text-sm text-silver mb-6 leading-relaxed">
               Approved institutional BS study email required. Email validation is only the first
               screen—age (18+) and current enrolment review are completed separately. No photo is
@@ -632,7 +632,7 @@ function OnboardingContent() {
 
         {/* STEP 2: EMAIL OTP VERIFICATION */}
         {view === 'otp' && (
-          <div className="bg-coal border border-edge rounded-[12px] p-6 sm:p-8 shadow-md">
+          <div className="bg-coal border border-edge rounded-[12px] p-6 sm:p-8 smn-surface-elevated">
             <p className="text-xs sm:text-sm text-silver mb-5 leading-relaxed">
               Enter the 6-digit verification code sent to{' '}
               <strong className="text-chalk">{email || user?.email}</strong>. Codes expire after
@@ -678,7 +678,7 @@ function OnboardingContent() {
 
         {/* STEP 3: AGE ELIGIBILITY (18+ STRICT BOUNDARY, NO GOV ID COLLECTION) */}
         {view === 'age' && (
-          <div className="bg-coal border border-edge rounded-[12px] p-6 sm:p-8 shadow-md">
+          <div className="bg-coal border border-edge rounded-[12px] p-6 sm:p-8 smn-surface-elevated">
             <p className="text-xs sm:text-sm text-silver mb-5 leading-relaxed">
               SayMyName is strictly for adults aged 18 and older (Document 01 §3.5). Self-declared
               birth dates create an age eligibility case queued for verification—never displayed
@@ -705,7 +705,7 @@ function OnboardingContent() {
 
         {/* STEP 4: STUDENT PROGRAMME & PATHWAY CASE */}
         {view === 'student' && (
-          <div className="bg-coal border border-edge rounded-[12px] p-6 sm:p-8 shadow-md">
+          <div className="bg-coal border border-edge rounded-[12px] p-6 sm:p-8 smn-surface-elevated">
             <p className="text-xs sm:text-sm text-silver mb-5 leading-relaxed">
               Select your active IIT Madras non-campus BS programme family and academic pathway.
               Optionally attach non-government-ID institutional enrolment proof into private R2
@@ -802,7 +802,7 @@ function OnboardingContent() {
         {/* VERIFICATION PENDING / NEEDS INFO / REJECTED + OPTIONAL DRAFT SAVE */}
         {view === 'review' && (
           <div className="space-y-6">
-            <div className="bg-coal border border-edge rounded-[12px] p-6 sm:p-8 shadow-md">
+            <div className="bg-coal border border-edge rounded-[12px] p-6 sm:p-8 smn-surface-elevated">
               <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
                 <h2 className="text-lg font-semibold text-chalk">Verification Status</h2>
                 {ageRejected || studentRejected ? (

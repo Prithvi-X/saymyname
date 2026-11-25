@@ -445,12 +445,17 @@ export class IdentityService {
    */
   async login(dto: LoginDto) {
     const email = normalizeInstitutionalEmail(dto.email);
-    const account = await this.prisma.account
-      .findUnique({
+    let account: any;
+    try {
+      account = await this.prisma.account.findUnique({
         where: { email },
         include: { eligibility: true, profile: true },
-      })
-      .catch(() => null);
+      });
+    } catch {
+      throw new ServiceUnavailableException(
+        'Authentication service is temporarily unavailable. Check database connectivity and try again.',
+      );
+    }
 
     // Run PBKDF2 timing-equal check even when missing/passwordless to normalize timing
     const hashToCheck = account?.passwordHash || DUMMY_PASSWORD_HASH;
@@ -458,7 +463,7 @@ export class IdentityService {
 
     if (!account || !account.passwordHash || !passwordMatches) {
       throw new UnauthorizedException(
-        'Invalid institutional email or password. If your account predates password login, use Forgot Password to set one.',
+        'Email or password did not match. If your account was created before password sign-in was added, use Forgot Password below to set one.',
       );
     }
 

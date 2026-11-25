@@ -358,3 +358,142 @@ button {
     padding-bottom: 76px;
   }
 }
+
+/* ==========================================================================
+   Visual Refinement: Ambient Depth & Selective Glassmorphism (Document 10)
+   Principle: Add depth, not decoration. Dark restrained Mineral Night layer.
+   ========================================================================== */
+
+.smn-stage-wrap {
+  position: relative;
+  overflow-x: clip;
+}
+
+.smn-ambient-hero {
+  background-image:
+    radial-gradient(52% 48% at 77% 22%, rgba(225, 138, 98, 0.068), transparent 72%),
+    radial-gradient(46% 42% at 18% 8%, rgba(133, 128, 196, 0.052), transparent 74%);
+}
+
+.smn-ambient-calm {
+  background-image:
+    radial-gradient(58% 42% at 50% -4%, rgba(133, 128, 196, 0.062), rgba(225, 138, 98, 0.024) 46%, transparent 78%);
+}
+
+.smn-ambient-discover {
+  background-image:
+    radial-gradient(64% 34% at 50% -6%, rgba(200, 169, 126, 0.038), rgba(133, 128, 196, 0.025) 48%, transparent 76%);
+}
+
+.smn-surface-elevated {
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.045),
+    0 10px 28px rgba(0, 0, 0, 0.34);
+}
+
+.smn-glass-nav {
+  background-color: rgba(18, 22, 27, 0.94);
+  box-shadow:
+    inset 0 -1px 0 rgba(255, 255, 255, 0.035),
+    0 6px 20px rgba(0, 0, 0, 0.28);
+}
+
+@supports (backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px)) {
+  .smn-glass-nav {
+    background-color: rgba(18, 22, 27, 0.82);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+  }
+}
+
+.smn-glass-overlay {
+  background-color: rgba(22, 27, 34, 0.96);
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  box-shadow:
+    0 24px 64px rgba(0, 0, 0, 0.65),
+    inset 0 1px 0 rgba(255, 255, 255, 0.06);
+}
+
+@supports (backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px)) {
+  .smn-glass-overlay {
+    background-color: rgba(22, 27, 34, 0.88);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+  }
+}
+
+.smn-glass-control {
+  background-color: rgba(11, 13, 16, 0.78);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.06),
+    0 2px 8px rgba(0, 0, 0, 0.35);
+}
+
+@supports (backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px)) {
+  .smn-glass-control {
+    background-color: rgba(11, 13, 16, 0.62);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+  }
+}
+
+@media (max-width: 767px) {
+  @supports (backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px)) {
+    .smn-glass-nav {
+      backdrop-filter: blur(6px);
+      -webkit-backdrop-filter: blur(6px);
+    }
+    .smn-glass-overlay {
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+    }
+  }
+}
+
+.smn-hero-plane-a {
+  border: 1px solid rgba(255, 255, 255, 0.045);
+  background: linear-gradient(155deg, rgba(255, 255, 255, 0.025), rgba(18, 22, 27, 0.08) 55%, transparent 85%);
+}
+
+.smn-hero-plane-b {
+  border: 1px solid rgba(225, 138, 98, 0.08);
+  background: radial-gradient(circle at 25% 20%, rgba(225, 138, 98, 0.055), transparent 68%);
+}
+
+@keyframes smn-dialog-enter {
+  from {
+    opacity: 0;
+    transform: translateY(6px) scale(0.985);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.smn-dialog-enter {
+  animation: smn-dialog-enter 180ms cubic-bezier(0.2, 0.7, 0.2, 1) forwards;
+}
+
+@keyframes smn-ambient-breathe {
+  0%, 100% {
+    opacity: 0.78;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+.smn-ambient-breathe {
+  animation: smn-ambient-breathe 14s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .smn-dialog-enter,
+  .smn-ambient-breathe {
+    animation: none !important;
+    opacity: 1 !important;
+    transform: none !important;
+  }
+}

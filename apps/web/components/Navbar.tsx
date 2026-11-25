@@ -56,15 +56,15 @@ export default function Navbar() {
   ];
 
   return (
-    <header className="bg-coal border-b border-edge sticky top-0 z-50 shadow-sm font-ui select-none">
-      <div className="flex items-center justify-between gap-2 px-3 sm:px-7 h-[66px]">
+    <header className="smn-glass-nav border-b border-edge/80 sticky top-0 z-50 font-ui select-none">
+      <div className="flex items-center justify-between gap-2 px-3 lg:px-7 h-[66px]">
         {/* Brand Logo & Desktop Navigation Tabs */}
-        <div className="flex items-center gap-6 lg:gap-8 min-w-0 shrink-0">
+        <div className="flex items-center gap-3 lg:gap-8 min-w-0">
           <Logo size="md" symbolConcept="A" />
 
           {isActiveMember ? (
             <nav
-              className="hidden md:flex items-center gap-1"
+              className="hidden md:flex items-center gap-0.5 lg:gap-1"
               aria-label="Member Navigation"
             >
               {memberNavItems.map((tab) => {
@@ -74,7 +74,7 @@ export default function Navbar() {
                   <Link
                     key={tab.href}
                     href={tab.href}
-                    className={`inline-flex items-center gap-2 px-3.5 py-2 rounded-[6px] text-xs lg:text-sm font-medium transition-colors duration-120 ${
+                    className={`inline-flex items-center gap-1.5 lg:gap-2 px-2 lg:px-3.5 py-2 rounded-[6px] text-xs lg:text-sm font-medium transition-colors duration-120 whitespace-nowrap ${
                       isActive
                         ? 'bg-slate text-chalk border border-edge font-semibold shadow-xs'
                         : 'text-silver hover:text-chalk hover:bg-iron/60 border border-transparent'
@@ -134,10 +134,10 @@ export default function Navbar() {
                   href="/profile"
                   className="flex items-center gap-1.5 sm:gap-2 group focus-visible:outline-2 focus-visible:outline-iris rounded-[6px]"
                 >
-                  <span className="hidden sm:inline-flex">
+                  <span className="hidden lg:inline-flex">
                     <Avatar size="sm" name={cleanDisplayName || 'Member'} verified={false} />
                   </span>
-                  <span className="hidden sm:inline text-xs lg:text-sm font-semibold text-chalk group-hover:text-silver transition-colors max-w-[130px] truncate">
+                  <span className="hidden lg:inline text-xs lg:text-sm font-semibold text-chalk group-hover:text-silver transition-colors max-w-[130px] truncate">
                     {cleanDisplayName || 'Member'}
                   </span>
                   <Badge variant="verified" size="sm">
@@ -217,7 +217,7 @@ export default function Navbar() {
         <nav
           id="mobile-public-drawer"
           aria-label="Mobile Public Navigation"
-          className="md:hidden border-t border-edge bg-coal px-4 py-4 flex flex-col gap-2"
+          className="md:hidden border-t border-edge/80 bg-coal/95 backdrop-blur-md px-4 py-4 flex flex-col gap-2"
         >
           <Link
             href="/eligibility"
