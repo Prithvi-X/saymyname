@@ -5,7 +5,7 @@
   "scripts": {
     "prebuild": "node ./scripts/prebuild.js",
     "build": "tsc",
-    "test": "node --test dist/test/identity.test.js dist/test/security-prod.test.js dist/test/profiles.test.js dist/test/dating.test.js dist/test/calling.test.js dist/test/together.test.js",
+    "test": "node --test dist/test/identity.test.js dist/test/security-prod.test.js dist/test/profiles.test.js dist/test/phase3-1-profile.test.js dist/test/dating.test.js dist/test/phase3-2-discovery.test.js dist/test/phase3-2-closure.test.js dist/test/phase3-3-likes.test.js dist/test/phase3-4-matches.test.js dist/test/calling.test.js dist/test/together.test.js",
     "start": "node dist/src/main.js",
     "typecheck": "tsc --noEmit"
   },
@@ -24,7 +24,8 @@
     "class-validator": "^0.14.1",
     "helmet": "^8.0.0",
     "reflect-metadata": "^0.2.2",
-    "rxjs": "^7.8.1"
+    "rxjs": "^7.8.1",
+    "sharp": "^0.35.5"
   },
   "devDependencies": {
     "@types/express": "^5.0.0",

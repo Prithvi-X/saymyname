@@ -1,0 +1,15 @@
+.git
+.github
+node_modules
+npm-debug.log*
+.next
+dist
+coverage
+**/.env
+**/.env.*
+!.env.example
+*.docx
+*.zip
+screenshots*
+logs
+tmp

@@ -6,9 +6,14 @@ import {
   ServiceUnavailableException,
 } from '@nestjs/common';
 import * as crypto from 'crypto';
-import { S3Client, PutObjectCommand, GetObjectCommand } from '@aws-sdk/client-s3';
+import {
+  S3Client,
+  PutObjectCommand,
+  GetObjectCommand,
+  DeleteObjectCommand,
+} from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
-import { isPrivateIdentifierLike, validateProfile } from '@saymyname/validation';
+import { calculateAgeYears, isPrivateIdentifierLike, validateProfile } from '@saymyname/validation';
 import { PrismaService } from '../../prisma/prisma.service';
 import {
   UpdateProfileDto,
@@ -17,8 +22,17 @@ import {
   PresignPhotoDto,
   PublishProfileDto,
 } from './dto/profile.dto';
+import {
+  getAllowedImageMimes,
+  isHeicDecodingSupported,
+  ImageValidationResult,
+  MAX_PHOTO_BYTES,
+  readLimitedS3Body,
+  validateImageBinary,
+  verifyAndSanitizeR2Image,
+} from './image-security';
 
-const ALLOWED_IMAGE_MIMES = ['image/jpeg', 'image/png', 'image/webp', 'image/heic'];
+export { ImageValidationResult, validateImageBinary };
 
 const DEFAULT_INTERESTS_CATALOG = [
   { name: 'Machine Learning', category: 'academic' },
@@ -76,11 +90,20 @@ export class ProfilesService {
       return null;
     }
 
+    let isCloudflareR2Host = false;
+    try {
+      isCloudflareR2Host = /(?:^|\.)r2\.cloudflarestorage\.com$/i.test(new URL(endpoint).hostname);
+    } catch {
+      isCloudflareR2Host = false;
+    }
+    const forcePathStyle = !isCloudflareR2Host && process.env.R2_FORCE_PATH_STYLE === 'true';
+
     return {
       bucket,
       client: new S3Client({
         region: 'auto',
         endpoint,
+        ...(forcePathStyle ? { forcePathStyle: true } : {}),
         credentials: { accessKeyId, secretAccessKey },
       }),
     };
@@ -115,6 +138,7 @@ export class ProfilesService {
           id: p.id,
           profileId: p.profileId,
           photoUrl: signed,
+          s3Key: p.s3Key,
           displayOrder: p.displayOrder,
           isPrimary: p.isPrimary,
           moderationStatus: p.moderationStatus,
@@ -164,7 +188,12 @@ export class ProfilesService {
         .catch(() => []),
     ]);
 
-    return { interests, prompts };
+    return {
+      interests,
+      prompts,
+      supportedImageMimes: [...getAllowedImageMimes()],
+      heicSupported: isHeicDecodingSupported(),
+    };
   }
 
   /**
@@ -380,10 +409,18 @@ export class ProfilesService {
    */
   async presignPhoto(accountId: string, dto: PresignPhotoDto) {
     const mime = dto.mimeType.toLowerCase().trim();
-    if (!ALLOWED_IMAGE_MIMES.includes(mime)) {
+    const allowedMimes = getAllowedImageMimes();
+    if (!allowedMimes.includes(mime)) {
+      const labels = allowedMimes
+        .map((m) => m.replace('image/', '').toUpperCase())
+        .join(', ');
       throw new BadRequestException(
-        `Unsupported photo format: ${dto.mimeType}. Allowed: JPEG, PNG, WebP, HEIC`,
+        `Unsupported photo format: ${dto.mimeType}. Allowed in current runtime: ${labels}`,
       );
+    }
+
+    if (dto.fileSizeBytes && dto.fileSizeBytes > 10 * 1024 * 1024) {
+      throw new BadRequestException('Photo file size exceeds maximum limit of 10 MB.');
     }
 
     const photoId = crypto.randomUUID();
@@ -434,15 +471,98 @@ export class ProfilesService {
    * Attaches a verified private R2 portrait key to the user's profile (no external/raw URLs accepted)
    */
   async addPhoto(accountId: string, dto: AddPhotoDto) {
+    if (dto.mimeType) {
+      const normalizedMime = dto.mimeType.toLowerCase().trim();
+      const allowedMimes = getAllowedImageMimes();
+      if (!allowedMimes.includes(normalizedMime)) {
+        const labels = allowedMimes
+          .map((m) => m.replace('image/', '').toUpperCase())
+          .join(', ');
+        throw new BadRequestException(
+          `Unsupported photo format: ${dto.mimeType}. Allowed in current runtime: ${labels}`,
+        );
+      }
+    }
+
     const expectedPrefix = `photos/${accountId}/`;
     if (!dto.s3Key || !dto.s3Key.startsWith(expectedPrefix) || dto.s3Key.includes('..')) {
       throw new BadRequestException('Invalid portrait storage key ownership.');
     }
 
+    if (dto.fileSizeBytes && dto.fileSizeBytes > 10 * 1024 * 1024) {
+      throw new BadRequestException('Photo file size exceeds maximum limit of 10 MB.');
+    }
+
     const profile = await this.getProfile(accountId);
+    if ((profile.photos || []).some((p: any) => p.s3Key === dto.s3Key)) {
+      throw new BadRequestException('This photograph has already been attached to your profile.');
+    }
+
     const activeCount = profile.photos.length;
     if (activeCount >= 6) {
       throw new BadRequestException('Maximum of 6 profile portrait photos allowed.');
+    }
+
+    let verifiedMime = dto.mimeType || 'image/jpeg';
+    let verifiedWidth: number | null = dto.widthPx ?? null;
+    let verifiedHeight: number | null = dto.heightPx ?? null;
+
+    // When R2 client is active, fetch uploaded binary from private storage, validate magic bytes + image decode, strip metadata/EXIF, and overwrite safely
+    const r2 = this.createR2Client();
+    if (r2) {
+      let rawBuffer: Buffer;
+      let objectMime: string | undefined;
+      try {
+        const obj = await r2.client.send(
+          new GetObjectCommand({ Bucket: r2.bucket, Key: dto.s3Key }),
+        );
+        objectMime = obj.ContentType;
+        if (obj.ContentLength && obj.ContentLength > MAX_PHOTO_BYTES) {
+          await r2.client
+            .send(new DeleteObjectCommand({ Bucket: r2.bucket, Key: dto.s3Key }))
+            .catch(() => null);
+          throw new BadRequestException('Uploaded object exceeds maximum size of 10 MB.');
+        }
+        rawBuffer = await readLimitedS3Body(obj.Body, MAX_PHOTO_BYTES);
+      } catch (err: any) {
+        if (err instanceof BadRequestException) {
+          await r2.client
+            .send(new DeleteObjectCommand({ Bucket: r2.bucket, Key: dto.s3Key }))
+            .catch(() => null);
+          throw err;
+        }
+        throw new NotFoundException('Uploaded photograph object not found in private storage.');
+      }
+
+      try {
+        const sanitized = await verifyAndSanitizeR2Image(
+          rawBuffer,
+          dto.mimeType || objectMime,
+        );
+        verifiedMime = sanitized.detectedMime;
+        verifiedWidth = sanitized.widthPx ?? verifiedWidth;
+        verifiedHeight = sanitized.heightPx ?? verifiedHeight;
+
+        if (sanitized.sanitizedBuffer) {
+          await r2.client.send(
+            new PutObjectCommand({
+              Bucket: r2.bucket,
+              Key: dto.s3Key,
+              Body: sanitized.sanitizedBuffer,
+              ContentType: sanitized.detectedMime,
+              Metadata: { sanitized: 'true' },
+            }),
+          );
+        }
+      } catch (err: any) {
+        await r2.client
+          .send(new DeleteObjectCommand({ Bucket: r2.bucket, Key: dto.s3Key }))
+          .catch(() => null);
+        if (err instanceof BadRequestException) throw err;
+        throw new BadRequestException(
+          'Uploaded photograph failed server image verification and was removed.',
+        );
+      }
     }
 
     const makePrimary = Boolean(dto.isPrimary) || activeCount === 0;
@@ -460,11 +580,11 @@ export class ProfilesService {
           profileId: profile.id,
           photoUrl: null,
           s3Key: dto.s3Key,
-          mimeType: dto.mimeType || 'image/jpeg',
+          mimeType: verifiedMime,
           displayOrder: dto.displayOrder ?? activeCount,
           isPrimary: makePrimary,
-          widthPx: dto.widthPx ?? null,
-          heightPx: dto.heightPx ?? null,
+          widthPx: verifiedWidth,
+          heightPx: verifiedHeight,
           moderationStatus: 'approved',
         },
       });
@@ -542,18 +662,100 @@ export class ProfilesService {
           where: { id: profile.id },
           data: { isPublished: false, profileStatus: 'draft' },
         });
-      } else if (!remaining.some((r) => r.isPrimary)) {
-        await tx.profilePhoto.update({
-          where: { id: remaining[0].id },
-          data: { isPrimary: true },
-        });
+      } else {
+        const primaries = remaining.filter((r) => r.isPrimary);
+        if (primaries.length === 0) {
+          await tx.profilePhoto.update({
+            where: { id: remaining[0].id },
+            data: { isPrimary: true },
+          });
+        } else if (primaries.length > 1) {
+          for (let i = 1; i < primaries.length; i++) {
+            await tx.profilePhoto.update({
+              where: { id: primaries[i].id },
+              data: { isPrimary: false },
+            });
+          }
+        }
       }
     });
 
     return { message: 'Portrait photo removed successfully.' };
   }
 
+  async reorderPhotos(accountId: string, photoIds: string[]) {
+    const profile = await this.getProfile(accountId);
+    const existingPhotos = profile.photos || [];
+    const existingIds = new Set(existingPhotos.map((p: any) => p.id));
+
+    // Validate all provided photo IDs belong to this profile
+    for (const id of photoIds) {
+      if (!existingIds.has(id)) {
+        throw new ForbiddenException('Cannot reorder photographs belonging to another account.');
+      }
+    }
+
+    await this.prisma.$transaction(async (tx: any) => {
+      for (let index = 0; index < photoIds.length; index++) {
+        await tx.profilePhoto.update({
+          where: { id: photoIds[index] },
+          data: {
+            displayOrder: index,
+            isPrimary: index === 0,
+          },
+        });
+      }
+    });
+
+    return this.getProfile(accountId);
+  }
+
+  async getPreferences(accountId: string) {
+    const profile = await this.getProfile(accountId);
+    const prefs = await this.prisma.preferenceSetting.findUnique({
+      where: { profileId: profile.id },
+    });
+    if (!prefs) {
+      return {
+        minAge: 18,
+        maxAge: 35,
+        allowedProgrammes: [
+          'data_science_applications',
+          'electronic_systems',
+          'aeronautics_space',
+          'management_data_science',
+        ],
+        maxDistanceKm: null,
+        showInDiscovery: true,
+      };
+    }
+    return prefs;
+  }
+
   async updatePreferences(accountId: string, dto: UpdatePreferencesDto) {
+    if (dto.minAge !== undefined && dto.minAge < 18) {
+      throw new BadRequestException('Minimum age preference must be at least 18+ (Phase 1 adult restriction).');
+    }
+    if (dto.maxAge !== undefined && dto.maxAge > 65) {
+      throw new BadRequestException('Maximum age preference cannot exceed 65.');
+    }
+    if (dto.minAge !== undefined && dto.maxAge !== undefined && dto.minAge > dto.maxAge) {
+      throw new BadRequestException('Minimum age cannot be greater than maximum age.');
+    }
+    if (dto.allowedProgrammes && Array.isArray(dto.allowedProgrammes)) {
+      const APPROVED_PROGRAMMES = [
+        'data_science_applications',
+        'electronic_systems',
+        'aeronautics_space',
+        'management_data_science',
+      ];
+      for (const prog of dto.allowedProgrammes) {
+        if (!APPROVED_PROGRAMMES.includes(prog)) {
+          throw new BadRequestException(`Unrecognised academic programme in preferences: ${prog}`);
+        }
+      }
+    }
+
     const profile = await this.getProfile(accountId);
 
     return this.prisma.preferenceSetting.upsert({
@@ -574,6 +776,139 @@ export class ProfilesService {
         showInDiscovery: dto.showInDiscovery,
       },
     });
+  }
+
+  async getPreviewProfile(accountId: string) {
+    const profile = await this.getProfile(accountId);
+    const account = await this.prisma.account.findUnique({
+      where: { id: accountId },
+      include: { eligibility: true },
+    });
+
+    let calculatedAge: number | null = null;
+    const rawDob = (account as any)?.eligibility?.dateOfBirth ?? (account as any)?.dateOfBirth;
+    if (rawDob && profile.ageDisplayMode !== 'hidden') {
+      const normalizedDob =
+        typeof rawDob === 'string' && rawDob.includes('T') ? new Date(rawDob) : rawDob;
+      calculatedAge = calculateAgeYears(normalizedDob);
+    }
+
+    return {
+      id: profile.id,
+      displayName: profile.displayName,
+      age: calculatedAge,
+      programmeFamily: profile.programmeFamily,
+      termOrYear: profile.termOrYear,
+      locationCity: profile.locationCity,
+      locationState: profile.locationState,
+      intention: profile.intention,
+      bio: profile.bio,
+      photos: (profile.photos || []).map((p: any) => ({
+        id: p.id,
+        photoUrl: p.photoUrl,
+        displayOrder: p.displayOrder,
+        isPrimary: p.isPrimary,
+      })),
+      interests: (profile.interests || []).map((i: any) => i.name || i.interest?.name).filter(Boolean),
+      promptAnswers: (profile.promptAnswers || []).map((pa: any) => ({
+        id: pa.id,
+        promptId: pa.promptId,
+        promptText: pa.promptText || pa.prompt?.promptText || '',
+        answerText: pa.answerText,
+      })),
+      isVerified: Boolean(
+        account?.eligibility?.ageStatus === 'approved' &&
+          account?.eligibility?.studentStatus === 'approved',
+      ),
+    };
+  }
+
+  async getPublicProfile(viewerAccountId: string, targetProfileId: string) {
+    const targetProfile = await this.prisma.profile.findUnique({
+      where: { id: targetProfileId },
+      include: {
+        account: { include: { eligibility: true } },
+        photos: { where: { deletedAt: null }, orderBy: { displayOrder: 'asc' } },
+        interests: { include: { interest: true } },
+        promptAnswers: { include: { prompt: true } },
+      },
+    });
+
+    const targetAccount = targetProfile?.account as any;
+    const targetElig = targetAccount?.eligibility;
+    const isTargetEligible =
+      !targetAccount ||
+      (!targetAccount.deletedAt &&
+        targetAccount.accountStatus === 'active' &&
+        (!targetElig ||
+          (targetElig.ageStatus === 'approved' &&
+            targetElig.studentStatus === 'approved' &&
+            targetElig.discoveryEligible === true &&
+            (!targetElig.validUntil || new Date(targetElig.validUntil) > new Date()))));
+
+    if (
+      !targetProfile ||
+      !isTargetEligible ||
+      !targetProfile.isPublished ||
+      targetProfile.isPaused ||
+      targetProfile.profileStatus !== 'live'
+    ) {
+      throw new NotFoundException('Profile not found or unavailable.');
+    }
+
+    const block = await (this.prisma as any).userBlock.findFirst({
+      where: {
+        OR: [
+          { blockerId: viewerAccountId, blockedId: targetProfile.accountId },
+          { blockerId: targetProfile.accountId, blockedId: viewerAccountId },
+        ],
+      },
+    });
+
+    if (block) {
+      throw new NotFoundException('Profile not found or unavailable.');
+    }
+
+    const hydrated = await this.hydrateProfileMedia(targetProfile);
+
+    let calculatedAge: number | null = null;
+    const targetDob =
+      (targetProfile.account as any)?.eligibility?.dateOfBirth ??
+      (targetProfile.account as any)?.dateOfBirth;
+    if (targetDob && targetProfile.ageDisplayMode !== 'hidden') {
+      const normalizedDob =
+        typeof targetDob === 'string' && targetDob.includes('T') ? new Date(targetDob) : targetDob;
+      calculatedAge = calculateAgeYears(normalizedDob);
+    }
+
+    return {
+      id: hydrated.id,
+      displayName: hydrated.displayName,
+      age: calculatedAge,
+      programmeFamily: hydrated.programmeFamily,
+      termOrYear: hydrated.termOrYear,
+      locationCity: hydrated.locationCity,
+      locationState: hydrated.locationState,
+      intention: hydrated.intention,
+      bio: hydrated.bio,
+      photos: (hydrated.photos || []).map((p: any) => ({
+        id: p.id,
+        photoUrl: p.photoUrl,
+        displayOrder: p.displayOrder,
+        isPrimary: p.isPrimary,
+      })),
+      interests: (hydrated.interests || []).map((i: any) => i.name || i.interest?.name).filter(Boolean),
+      promptAnswers: (hydrated.promptAnswers || []).map((pa: any) => ({
+        id: pa.id,
+        promptId: pa.promptId,
+        promptText: pa.promptText || pa.prompt?.promptText || '',
+        answerText: pa.answerText,
+      })),
+      isVerified: Boolean(
+        targetProfile.account?.eligibility?.ageStatus === 'approved' &&
+          targetProfile.account?.eligibility?.studentStatus === 'approved',
+      ),
+    };
   }
 
   /**
@@ -628,35 +963,66 @@ export class ProfilesService {
       );
     }
 
-    if (!profile.bio || profile.bio.trim().length < 20) {
-      throw new BadRequestException(
-        'Please write an authentic bio (at least 20 characters) before publishing.',
-      );
-    }
-
-    if (!profile.locationCity?.trim() || !profile.locationState?.trim()) {
-      throw new BadRequestException(
-        'Please provide your city and state (coarse region only) before publishing.',
-      );
-    }
-
-    if (!profile.intention?.trim()) {
-      throw new BadRequestException(
-        'Please select what kind of connection you are looking for before publishing.',
-      );
-    }
-
-    if (!profile.photos || profile.photos.length === 0) {
+    // Require at least one successfully validated, attached and ready photograph in private R2
+    const readyPhotos = (profile.photos || []).filter(
+      (p: any) => !p.deletedAt && p.moderationStatus === 'approved' && p.s3Key,
+    );
+    if (readyPhotos.length === 0) {
       throw new BadRequestException(
         'At least one genuine portrait photo is required before publishing your profile into Discover (D-P2-04).',
       );
     }
 
-    const hasConsent = Boolean(profile.consentAcceptedAt) || dto.acceptGuidelinesConsent === true;
-    if (!hasConsent) {
+    // Ensure exactly one primary photograph exists when photos are present
+    const primaries = readyPhotos.filter((p: any) => p.isPrimary);
+    if (primaries.length === 0) {
+      await this.prisma.profilePhoto.update({
+        where: { id: readyPhotos[0].id },
+        data: { isPrimary: true },
+      });
+      readyPhotos[0].isPrimary = true;
+    } else if (primaries.length > 1) {
+      for (let i = 1; i < primaries.length; i++) {
+        await this.prisma.profilePhoto.update({
+          where: { id: primaries[i].id },
+          data: { isPrimary: false },
+        });
+        primaries[i].isPrimary = false;
+      }
+    }
+
+    // Durable consent tracking: member identity, acceptance timestamp, consent version
+    const isNewConsent = !profile.consentAcceptedAt && dto.acceptGuidelinesConsent === true;
+    const consentAcceptedAt = profile.consentAcceptedAt || (dto.acceptGuidelinesConsent ? new Date() : null);
+
+    if (!consentAcceptedAt) {
       throw new BadRequestException(
         'Please review and accept the SayMyName Safety & Community Commitments before publishing.',
       );
+    }
+
+    const consentVersion = dto.consentVersion || 'v1.0';
+
+    if (isNewConsent) {
+      try {
+        if ((this.prisma as any).auditEvent?.create) {
+          await (this.prisma as any).auditEvent.create({
+            data: {
+              actorId: accountId,
+              action: 'guidelines_consent_accepted',
+              resourceType: 'profile',
+              resourceId: profile.id,
+              metadata: {
+                consentVersion,
+                acceptedAt: consentAcceptedAt.toISOString(),
+                memberId: accountId,
+              },
+            },
+          });
+        }
+      } catch {
+        // Resilient audit event recording
+      }
     }
 
     const now = new Date();
@@ -667,7 +1033,7 @@ export class ProfilesService {
         isPaused: false,
         profileStatus: 'live',
         publishedAt: profile.publishedAt || now,
-        consentAcceptedAt: profile.consentAcceptedAt || now,
+        consentAcceptedAt,
       },
       include: {
         photos: { where: { deletedAt: null }, orderBy: { displayOrder: 'asc' } },

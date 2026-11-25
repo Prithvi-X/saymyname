@@ -4,11 +4,13 @@ import {
   ForbiddenException,
   NotFoundException,
   ServiceUnavailableException,
+  Optional,
 } from '@nestjs/common';
 import * as crypto from 'crypto';
 import { S3Client, PutObjectCommand, GetObjectCommand } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { PrismaService } from '../../prisma/prisma.service';
+import { MatchAuthorizationService } from '../safety/match-authorization.service';
 import {
   AgeVerificationAdapter,
   StudentEnrolmentAdapter,
@@ -31,8 +33,14 @@ export class VerificationService {
   private readonly ageAdapter: AgeVerificationAdapter = new ManualReviewAgeAdapter();
   private readonly studentAdapter: StudentEnrolmentAdapter =
     new ManualReviewStudentEnrolmentAdapter();
+  private readonly matchAuth: MatchAuthorizationService;
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    @Optional() matchAuthService?: MatchAuthorizationService,
+  ) {
+    this.matchAuth = matchAuthService ?? new MatchAuthorizationService(this.prisma);
+  }
 
   private createR2Client(): { client: S3Client; bucket: string } | null {
     const endpoint = process.env.R2_ENDPOINT;
@@ -62,6 +70,10 @@ export class VerificationService {
     const evaluation = await this.ageAdapter.evaluateSubmission({
       dateOfBirth: dto.dateOfBirth,
     });
+    const dobMatch = dto.dateOfBirth?.trim().match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    const parsedDob = dobMatch
+      ? new Date(Date.UTC(Number(dobMatch[1]), Number(dobMatch[2]) - 1, Number(dobMatch[3])))
+      : null;
 
     if (evaluation.status === 'rejected') {
       await this.prisma.$transaction(async (tx) => {
@@ -71,12 +83,14 @@ export class VerificationService {
             accountId,
             ageStatus: 'rejected',
             studentStatus: 'not_started',
+            dateOfBirth: parsedDob,
             discoveryEligible: false,
             verifiedBy: null,
             verifiedAt: null,
           },
           update: {
             ageStatus: 'rejected',
+            dateOfBirth: parsedDob,
             discoveryEligible: false,
             verifiedBy: null,
             verifiedAt: null,
@@ -85,6 +99,11 @@ export class VerificationService {
         await tx.account.update({
           where: { id: accountId },
           data: { accountStatus: 'pending_verification' },
+        });
+        await this.matchAuth.invalidateActiveMatchesForAccount(tx, accountId, {
+          reasonCode: 'verification_revoked',
+          actorId: accountId,
+          metadata: { checkType: 'age', decision: 'rejected' },
         });
         await tx.verificationCase.create({
           data: {
@@ -120,12 +139,14 @@ export class VerificationService {
           accountId,
           ageStatus: 'pending',
           studentStatus: 'not_started',
+          dateOfBirth: parsedDob,
           discoveryEligible: false,
           verifiedBy: null,
           verifiedAt: null,
         },
         update: {
           ageStatus: 'pending',
+          dateOfBirth: parsedDob,
           discoveryEligible: false,
           ageVerifiedAt: null,
           verifiedAt: null,
@@ -137,6 +158,12 @@ export class VerificationService {
       await tx.account.update({
         where: { id: accountId },
         data: { accountStatus: 'pending_verification' },
+      });
+
+      await this.matchAuth.invalidateActiveMatchesForAccount(tx, accountId, {
+        reasonCode: 'verification_revoked',
+        actorId: accountId,
+        metadata: { checkType: 'age', decision: 'pending' },
       });
 
       const vCase = await tx.verificationCase.create({
@@ -263,6 +290,12 @@ export class VerificationService {
       await tx.account.update({
         where: { id: accountId },
         data: { accountStatus: 'pending_verification' },
+      });
+
+      await this.matchAuth.invalidateActiveMatchesForAccount(tx, accountId, {
+        reasonCode: 'verification_revoked',
+        actorId: accountId,
+        metadata: { checkType: 'age', decision: 'pending' },
       });
 
       const vCase = await tx.verificationCase.create({
@@ -650,10 +683,27 @@ export class VerificationService {
       const updatedAccount = await tx.account.update({
         where: { id: vCase.accountId },
         data: {
-          accountStatus: canDiscover ? 'active' : 'pending_verification',
+          accountStatus:
+            vCase.account.accountStatus === 'suspended' ||
+            vCase.account.accountStatus === 'disabled'
+              ? vCase.account.accountStatus
+              : canDiscover
+                ? 'active'
+                : 'pending_verification',
         },
         select: { id: true, accountStatus: true },
       });
+
+      if (!canDiscover) {
+        await this.matchAuth.invalidateActiveMatchesForAccount(tx, vCase.accountId, {
+          reasonCode: 'verification_revoked',
+          actorId: vCase.accountId,
+          metadata: {
+            checkType: vCase.checkType,
+            decision: dto.decision,
+          },
+        });
+      }
 
       await tx.auditEvent.create({
         data: {

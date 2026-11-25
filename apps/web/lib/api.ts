@@ -64,28 +64,140 @@ export interface DiscoveryCandidate {
   profileId: string;
   displayName: string;
   age: number | null;
+  ageVisible?: boolean;
   programmeFamily: ProgrammeFamily;
   bio: string;
-  locationCity?: string;
-  locationState?: string;
-  currentTerm?: string;
+  locationCity?: string | null;
+  locationState?: string | null;
+  currentTerm?: string | null;
+  intention?: string | null;
   avatarColor?: string;
-  photos: { id: string; photoUrl: string | null; isPrimary: boolean }[];
+  isVerified?: boolean;
+  sharedInterests?: string[];
+  photos: { id: string; photoUrl: string | null; displayOrder?: number; isPrimary: boolean }[];
   interests: string[];
-  promptAnswers: { id?: string; promptText: string; answerText: string }[];
+  promptAnswers: { id?: string; promptId?: string; promptText: string; answerText: string }[];
+}
+
+export interface DiscoveryFeedResponse {
+  candidates: DiscoveryCandidate[];
+  nextCursor: string | null;
+  hasMore: boolean;
+  count: number;
+  pageSize: number;
+  viewerState: 'ready' | 'paused' | 'profile_incomplete';
+  preferencesApplied?: {
+    minAge: number;
+    maxAge: number;
+    allowedProgrammes: string[];
+    dormantDistanceIgnored: boolean;
+  };
 }
 
 export interface LikeResponse {
   likeId: string;
   isMutualMatch: boolean;
-  matchId?: string;
+  matchId?: string | null;
+  conversationId?: string | null;
+  message?: string;
+  matchedProfile?: {
+    profileId: string;
+    displayName: string;
+    programmeFamily: ProgrammeFamily;
+    primaryPhotoUrl?: string | null;
+  } | null;
+}
+
+export interface ReceivedLikeItem {
+  likeId: string;
+  profileId: string;
+  likedAt: string;
+  profile: DiscoveryCandidate;
+}
+
+export interface ReceivedLikesResponse {
+  items: ReceivedLikeItem[];
+  nextCursor: string | null;
+  hasMore: boolean;
+  count: number;
+  totalActiveCount: number;
+  pageSize: number;
+  viewerState: 'ready' | 'paused' | 'profile_incomplete';
+}
+
+export type SentLikeAvailability = 'pending' | 'unavailable' | 'withdrawn';
+
+export interface SentLikeRecipientPreview {
+  profileId: string | null;
+  displayName: string;
+  age: number | null;
+  ageVisible?: boolean;
+  programmeFamily: ProgrammeFamily | null;
+  currentTerm?: string | null;
+  locationCity?: string | null;
+  locationState?: string | null;
+  intention?: string | null;
+  bio?: string | null;
+  photos: DiscoveryCandidate['photos'];
+  interests: string[];
+  promptAnswers: DiscoveryCandidate['promptAnswers'];
+  isVerified?: boolean;
+}
+
+export interface SentLikeItem {
+  likeId: string;
+  status: string;
+  availability: SentLikeAvailability;
+  statusLabel: string;
+  canWithdraw: boolean;
+  sentAt: string;
+  updatedAt: string;
+  profile: SentLikeRecipientPreview;
+}
+
+export interface SentLikesResponse {
+  items: SentLikeItem[];
+  nextCursor: string | null;
+  hasMore: boolean;
+  count: number;
+  totalActiveCount: number;
+  pageSize: number;
+  viewerState: 'ready' | 'paused' | 'profile_incomplete';
+}
+
+export interface WithdrawLikeResponse {
+  likeId: string;
+  status: string;
+  withdrawn: boolean;
+  alreadyWithdrawn: boolean;
+  message: string;
+}
+
+export type ReportCategory =
+  | 'harassment'
+  | 'inappropriate_content'
+  | 'underage_suspected'
+  | 'fake_profile'
+  | 'spam'
+  | 'offline_safety';
+
+export interface UnmatchResponse {
+  matchId: string;
+  status: 'ended' | string;
+  alreadyEnded: boolean;
+  message: string;
 }
 
 export interface MatchProfile {
   id: string;
+  conversationId: string | null;
+  status: string;
   candidate: DiscoveryCandidate;
   matchedAt: string;
-  lastMessage?: string;
+  matchedAtIso: string;
+  lastMessage?: string | null;
+  lastMessageAt?: string | null;
+  lastMessageIsOwn?: boolean | null;
 }
 
 export interface ChatMessage {
@@ -343,6 +455,8 @@ class ApiClient {
     return this.request<{
       interests: { id: string; name: string; category: string }[];
       prompts: { id: string; promptText: string; category: string }[];
+      supportedImageMimes?: string[];
+      heicSupported?: boolean;
     }>('/api/bff/v1/profiles/catalog');
   }
 
@@ -450,6 +564,45 @@ class ApiClient {
     });
   }
 
+  async reorderPhotos(photoIds: string[]) {
+    return this.request<any>('/api/bff/v1/profiles/me/photos/reorder', {
+      method: 'PUT',
+      body: JSON.stringify({ photoIds }),
+    });
+  }
+
+  async getPreferences() {
+    return this.request<{
+      minAge: number;
+      maxAge: number;
+      allowedProgrammes: string[];
+      maxDistanceKm?: number | null;
+      showInDiscovery: boolean;
+    }>('/api/bff/v1/profiles/me/preferences');
+  }
+
+  async getProfilePreview() {
+    return this.request<{
+      id: string;
+      displayName: string;
+      age?: number | null;
+      programmeFamily: string;
+      termOrYear?: string | null;
+      locationCity?: string | null;
+      locationState?: string | null;
+      intention?: string | null;
+      bio?: string | null;
+      photos: { id: string; photoUrl: string | null; displayOrder: number; isPrimary: boolean }[];
+      interests: string[];
+      promptAnswers: { id: string; promptId: string; promptText: string; answerText: string }[];
+      isVerified: boolean;
+    }>('/api/bff/v1/profiles/me/preview');
+  }
+
+  async getPublicProfile(profileId: string) {
+    return this.request<any>(`/api/bff/v1/profiles/${profileId}/public`);
+  }
+
   async updatePreferences(payload: {
     minAge?: number;
     maxAge?: number;
@@ -481,77 +634,222 @@ class ApiClient {
 
   // --- Dating Discovery ---
 
-  async getCandidates(): Promise<DiscoveryCandidate[]> {
-    const res = await this.request<any>('/api/bff/v1/dating/candidates');
-    const list = Array.isArray(res) ? res : Array.isArray(res?.candidates) ? res.candidates : [];
-    return list.map((c: any) => ({
-      profileId: c.accountId || c.profileId,
+  private mapCandidate(c: any): DiscoveryCandidate {
+    return {
+      profileId: c.profileId,
       displayName: c.displayName,
       age: typeof c.age === 'number' ? c.age : null,
+      ageVisible: typeof c.ageVisible === 'boolean' ? c.ageVisible : typeof c.age === 'number',
       programmeFamily: c.programmeFamily,
       bio: c.bio || '',
-      locationCity: c.locationCity,
-      locationState: c.locationState,
-      currentTerm: c.termOrYear || c.currentTerm,
-      avatarColor: c.avatarColor || '#8580C4',
+      locationCity: c.locationCity ?? null,
+      locationState: c.locationState ?? null,
+      currentTerm: c.termOrYear || c.currentTerm || null,
+      intention: c.intention ?? null,
+      isVerified: Boolean(c.isVerified),
+      sharedInterests: Array.isArray(c.sharedInterests) ? c.sharedInterests : [],
       photos: Array.isArray(c.photos) ? c.photos : [],
       interests: Array.isArray(c.interests) ? c.interests : [],
       promptAnswers: Array.isArray(c.promptAnswers) ? c.promptAnswers : [],
-    }));
+    };
   }
 
-  async likeCandidate(candidateId: string): Promise<LikeResponse> {
+  async getDiscoverFeed(params?: {
+    cursor?: string | null;
+    limit?: number;
+  }): Promise<DiscoveryFeedResponse> {
+    const qs = new URLSearchParams();
+    if (params?.cursor) qs.set('cursor', params.cursor);
+    if (params?.limit) qs.set('limit', String(params.limit));
+    const suffix = qs.toString() ? `?${qs.toString()}` : '';
+    const res = await this.request<any>(`/api/bff/v1/dating/candidates${suffix}`);
+    const rawList = Array.isArray(res) ? res : Array.isArray(res?.candidates) ? res.candidates : [];
+
+    return {
+      candidates: rawList.map((c: any) => this.mapCandidate(c)),
+      nextCursor: typeof res?.nextCursor === 'string' ? res.nextCursor : null,
+      hasMore: Boolean(res?.hasMore),
+      count: typeof res?.count === 'number' ? res.count : rawList.length,
+      pageSize: typeof res?.pageSize === 'number' ? res.pageSize : 10,
+      viewerState: res?.viewerState || 'ready',
+      preferencesApplied: res?.preferencesApplied,
+    };
+  }
+
+  async getCandidates(): Promise<DiscoveryCandidate[]> {
+    const feed = await this.getDiscoverFeed();
+    return feed.candidates;
+  }
+
+  async getCandidateDetail(profileId: string): Promise<DiscoveryCandidate> {
+    const res = await this.request<any>(`/api/bff/v1/dating/candidates/${profileId}`);
+    return this.mapCandidate(res);
+  }
+
+  async likeCandidate(targetProfileId: string, idempotencyKey?: string): Promise<LikeResponse> {
     return this.request<LikeResponse>('/api/bff/v1/dating/likes', {
       method: 'POST',
-      body: JSON.stringify({ toAccountId: candidateId }),
+      headers: idempotencyKey ? { 'Idempotency-Key': idempotencyKey } : undefined,
+      body: JSON.stringify({ targetProfileId }),
     });
   }
 
-  async passCandidate(candidateId: string): Promise<{ success: boolean }> {
-    return this.request<{ success: boolean }>('/api/bff/v1/dating/passes', {
+  async passCandidate(
+    targetProfileId: string,
+    idempotencyKey?: string,
+  ): Promise<{ success: boolean; message?: string }> {
+    return this.request<{ success: boolean; message?: string }>('/api/bff/v1/dating/passes', {
       method: 'POST',
-      body: JSON.stringify({ toAccountId: candidateId }),
+      headers: idempotencyKey ? { 'Idempotency-Key': idempotencyKey } : undefined,
+      body: JSON.stringify({ targetProfileId }),
     });
+  }
+
+  async getReceivedLikes(params?: {
+    cursor?: string | null;
+    limit?: number;
+  }): Promise<ReceivedLikesResponse> {
+    const query = new URLSearchParams();
+    if (params?.cursor) query.set('cursor', params.cursor);
+    if (typeof params?.limit === 'number') query.set('limit', String(params.limit));
+    const qs = query.toString();
+    return this.request<ReceivedLikesResponse>(
+      `/api/bff/v1/dating/likes/received${qs ? `?${qs}` : ''}`,
+    );
+  }
+
+  async getReceivedLikeDetail(likeId: string): Promise<ReceivedLikeItem> {
+    return this.request<ReceivedLikeItem>(`/api/bff/v1/dating/likes/received/${likeId}`);
+  }
+
+  async likeBackReceived(likeId: string, idempotencyKey?: string): Promise<LikeResponse> {
+    return this.request<LikeResponse>(`/api/bff/v1/dating/likes/received/${likeId}/like-back`, {
+      method: 'POST',
+      headers: idempotencyKey ? { 'Idempotency-Key': idempotencyKey } : undefined,
+      body: JSON.stringify({}),
+    });
+  }
+
+  async passReceivedLike(
+    likeId: string,
+    idempotencyKey?: string,
+  ): Promise<{ success: boolean; message?: string }> {
+    return this.request<{ success: boolean; message?: string }>(
+      `/api/bff/v1/dating/likes/received/${likeId}/pass`,
+      {
+        method: 'POST',
+        headers: idempotencyKey ? { 'Idempotency-Key': idempotencyKey } : undefined,
+        body: JSON.stringify({}),
+      },
+    );
+  }
+
+  async getSentLikes(params?: {
+    cursor?: string | null;
+    limit?: number;
+    includeWithdrawn?: boolean;
+  }): Promise<SentLikesResponse> {
+    const query = new URLSearchParams();
+    if (params?.cursor) query.set('cursor', params.cursor);
+    if (typeof params?.limit === 'number') query.set('limit', String(params.limit));
+    if (typeof params?.includeWithdrawn === 'boolean') {
+      query.set('includeWithdrawn', String(params.includeWithdrawn));
+    }
+    const qs = query.toString();
+    return this.request<SentLikesResponse>(
+      `/api/bff/v1/dating/likes/sent${qs ? `?${qs}` : ''}`,
+    );
+  }
+
+  async withdrawLike(likeId: string, idempotencyKey?: string): Promise<WithdrawLikeResponse> {
+    return this.request<WithdrawLikeResponse>(`/api/bff/v1/dating/likes/${likeId}/withdraw`, {
+      method: 'POST',
+      headers: idempotencyKey ? { 'Idempotency-Key': idempotencyKey } : undefined,
+      body: JSON.stringify({}),
+    });
+  }
+
+  private mapMatchSummary(m: any): MatchProfile {
+    const p = m.profile || m.partner || m.candidate || {};
+    const matchedAtIso = m.matchedAt || m.createdAt || new Date().toISOString();
+    const lastMsgText =
+      typeof m.lastMessageText === 'string'
+        ? m.lastMessageText
+        : typeof m.lastMessage === 'string'
+          ? m.lastMessage
+          : (m.lastMessage?.bodyText ?? null);
+
+    return {
+      id: m.matchId || m.id,
+      conversationId: m.conversationId ?? null,
+      status: m.status || 'active',
+      candidate: {
+        profileId: p.profileId || m.matchId || m.id,
+        displayName: p.displayName || 'Verified Match',
+        age: typeof p.age === 'number' ? p.age : null,
+        ageVisible:
+          p.ageVisible !== undefined ? Boolean(p.ageVisible) : typeof p.age === 'number',
+        programmeFamily: p.programmeFamily || ProgrammeFamily.DATA_SCIENCE_APPLICATIONS,
+        bio: p.bio || '',
+        locationCity: p.locationCity ?? null,
+        locationState: p.locationState ?? null,
+        currentTerm: p.currentTerm ?? p.termOrYear ?? null,
+        intention: p.intention ?? null,
+        avatarColor: p.avatarColor || '#8580C4',
+        isVerified: p.isVerified !== false,
+        sharedInterests: Array.isArray(p.sharedInterests) ? p.sharedInterests : [],
+        photos: Array.isArray(p.photos) ? p.photos : [],
+        interests: Array.isArray(p.interests) ? p.interests : [],
+        promptAnswers: Array.isArray(p.promptAnswers) ? p.promptAnswers : [],
+      },
+      matchedAt: matchedAtIso,
+      matchedAtIso,
+      lastMessage: lastMsgText,
+      lastMessageAt: m.lastMessageAt ?? null,
+      lastMessageIsOwn: typeof m.lastMessageIsOwn === 'boolean' ? m.lastMessageIsOwn : null,
+    };
   }
 
   async getMatches(): Promise<MatchProfile[]> {
     const res = await this.request<any[]>('/api/bff/v1/dating/matches');
     if (!Array.isArray(res)) return [];
-    return res.map((m) => {
-      const partner = m.partner || m.candidate || {};
-      return {
-        id: m.id || m.matchId,
-        candidate: {
-          profileId: partner.accountId || partner.profileId || m.matchedAccountId || m.id,
-          displayName: partner.displayName || 'Matched Student',
-          age: typeof partner.age === 'number' ? partner.age : null,
-          programmeFamily: partner.programmeFamily || ProgrammeFamily.DATA_SCIENCE_APPLICATIONS,
-          bio: partner.bio || '',
-          locationCity: partner.locationCity,
-          currentTerm: partner.termOrYear,
-          avatarColor: partner.avatarColor || '#8580C4',
-          photos: partner.photos || [],
-          interests: partner.interests || [],
-          promptAnswers: partner.promptAnswers || [],
-        },
-        matchedAt: m.matchedAt || 'Recently',
-        lastMessage: m.lastMessageText || m.lastMessage,
-      };
-    });
+    return res.map((m) => this.mapMatchSummary(m));
+  }
+
+  async getMatchDetail(matchId: string): Promise<MatchProfile> {
+    const res = await this.request<any>(
+      `/api/bff/v1/dating/matches/${encodeURIComponent(matchId)}`,
+    );
+    return this.mapMatchSummary(res);
+  }
+
+  async unmatch(
+    matchId: string,
+    reason?: string,
+    idempotencyKey?: string,
+  ): Promise<UnmatchResponse> {
+    return this.request<UnmatchResponse>(
+      `/api/bff/v1/dating/matches/${encodeURIComponent(matchId)}/unmatch`,
+      {
+        method: 'POST',
+        headers: idempotencyKey ? { 'Idempotency-Key': idempotencyKey } : undefined,
+        body: JSON.stringify(reason ? { reason } : {}),
+      },
+    );
   }
 
   // --- Bilateral Messaging ---
 
   async getMessages(conversationId: string): Promise<ChatMessage[]> {
     const res = await this.request<any[]>(
-      `/api/bff/v1/messaging/conversations/${conversationId}/messages`,
+      `/api/bff/v1/messaging/conversations/${encodeURIComponent(conversationId)}/messages`,
     );
     if (!Array.isArray(res)) return [];
     return res.map((msg) => ({
       id: msg.id,
       conversationId: msg.conversationId || conversationId,
-      senderId: msg.senderAccountId || msg.senderId,
-      senderName: msg.senderName || 'Student',
+      senderId: msg.isOwn ? 'self' : 'partner',
+      senderName: msg.senderName || (msg.isOwn ? 'You' : 'Match'),
       text: msg.bodyText || msg.text || '',
       createdAt: msg.createdAt
         ? new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
@@ -569,7 +867,7 @@ class ApiClient {
     }
 
     const res = await this.request<any>(
-      `/api/bff/v1/messaging/conversations/${conversationId}/messages`,
+      `/api/bff/v1/messaging/conversations/${encodeURIComponent(conversationId)}/messages`,
       {
         method: 'POST',
         body: JSON.stringify({ bodyText: trimmed }),
@@ -579,7 +877,7 @@ class ApiClient {
     return {
       id: res.id || `msg-${Date.now()}`,
       conversationId,
-      senderId: res.senderAccountId || 'self',
+      senderId: 'self',
       senderName: res.senderName || 'You',
       text: res.bodyText || trimmed,
       createdAt: res.createdAt
@@ -592,17 +890,63 @@ class ApiClient {
 
   // --- Safety & Moderation ---
 
-  async blockUser(targetUserId: string, reason: string) {
+  async blockCandidate(targetProfileId: string, reason?: string) {
     return this.request<{ success: boolean; message: string }>('/api/bff/v1/safety/block', {
       method: 'POST',
-      body: JSON.stringify({ targetUserId, reason }),
+      body: JSON.stringify({ targetProfileId, reason }),
     });
   }
 
-  async reportUser(targetUserId: string, reason: string, details?: string) {
+  async reportCandidate(
+    targetProfileId: string,
+    reportCategory: ReportCategory,
+    description?: string,
+    idempotencyKey?: string,
+  ) {
+    return this.request<{
+      success: boolean;
+      reportId?: string;
+      alreadyReported?: boolean;
+      message: string;
+    }>('/api/bff/v1/safety/report', {
+      method: 'POST',
+      headers: idempotencyKey ? { 'Idempotency-Key': idempotencyKey } : undefined,
+      body: JSON.stringify({ targetProfileId, reportCategory, description }),
+    });
+  }
+
+  async blockUser(targetAccountOrId: string, reason: string) {
+    return this.request<{ success: boolean; message: string }>('/api/bff/v1/safety/block', {
+      method: 'POST',
+      body: JSON.stringify({ blockedId: targetAccountOrId, reason }),
+    });
+  }
+
+  async reportUser(targetAccountOrId: string, categoryOrReason: string, details?: string) {
+    const categories = new Set([
+      'harassment',
+      'inappropriate_content',
+      'underage_suspected',
+      'fake_profile',
+      'spam',
+      'offline_safety',
+    ]);
+    const reportCategory = categories.has(categoryOrReason)
+      ? categoryOrReason
+      : 'inappropriate_content';
+    const description = categories.has(categoryOrReason)
+      ? details
+      : details
+        ? `${categoryOrReason}: ${details}`
+        : categoryOrReason;
+
     return this.request<{ success: boolean; message: string }>('/api/bff/v1/safety/report', {
       method: 'POST',
-      body: JSON.stringify({ targetUserId, reason, details }),
+      body: JSON.stringify({
+        reportedId: targetAccountOrId,
+        reportCategory,
+        description,
+      }),
     });
   }
 }

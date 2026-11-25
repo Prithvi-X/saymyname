@@ -1,34 +1,68 @@
-import { IsString, IsNotEmpty, IsOptional } from 'class-validator';
+import { IsString, IsNotEmpty, IsOptional, IsUUID, IsIn, MaxLength } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
+export const ALLOWED_REPORT_CATEGORIES = [
+  'harassment',
+  'inappropriate_content',
+  'underage_suspected',
+  'fake_profile',
+  'spam',
+  'offline_safety',
+] as const;
+
 export class BlockUserDto {
-  @ApiProperty({ example: 'a1111111-1111-1111-1111-111111111111', description: 'Account ID to block' })
+  @ApiPropertyOptional({
+    example: 'a1111111-1111-1111-1111-111111111111',
+    description: 'Opaque target profileId (preferred from Discover/Profile UI)',
+  })
+  @IsOptional()
+  @IsUUID()
+  targetProfileId?: string;
+
+  @ApiPropertyOptional({
+    example: 'a1111111-1111-1111-1111-111111111111',
+    description: 'Target accountId (for match/admin contexts)',
+  })
+  @IsOptional()
   @IsString()
-  @IsNotEmpty()
-  blockedId: string;
+  blockedId?: string;
 
   @ApiPropertyOptional({ example: 'Unwanted interaction' })
   @IsOptional()
   @IsString()
+  @MaxLength(300)
   reason?: string;
 }
 
 export class ReportUserDto {
-  @ApiProperty({ example: 'a1111111-1111-1111-1111-111111111111', description: 'Reported Account ID' })
+  @ApiPropertyOptional({
+    example: 'a1111111-1111-1111-1111-111111111111',
+    description: 'Opaque reported target profileId (preferred from Discover/Profile UI)',
+  })
+  @IsOptional()
+  @IsUUID()
+  targetProfileId?: string;
+
+  @ApiPropertyOptional({
+    example: 'a1111111-1111-1111-1111-111111111111',
+    description: 'Reported accountId',
+  })
+  @IsOptional()
   @IsString()
-  @IsNotEmpty()
-  reportedId: string;
+  reportedId?: string;
 
   @ApiProperty({
     example: 'harassment',
-    enum: ['harassment', 'inappropriate_content', 'underage_suspected', 'fake_profile', 'spam', 'offline_safety'],
+    enum: ALLOWED_REPORT_CATEGORIES,
   })
   @IsString()
   @IsNotEmpty()
+  @IsIn(ALLOWED_REPORT_CATEGORIES)
   reportCategory: string;
 
   @ApiPropertyOptional({ example: 'Sent unsolicited inappropriate messages.' })
   @IsOptional()
   @IsString()
+  @MaxLength(1000)
   description?: string;
 }

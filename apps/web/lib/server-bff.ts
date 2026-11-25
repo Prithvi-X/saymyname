@@ -7,11 +7,7 @@ export const CSRF_COOKIE = 'smn_csrf';
 
 export function getBackendBaseUrl(): string {
   const defaultLocal = 'http://127.0.0.1:4000';
-  const origin =
-    process.env.API_BACKEND_URL ||
-    (process.env.NODE_ENV === 'production'
-      ? process.env.NEXT_PUBLIC_API_ORIGIN || defaultLocal
-      : defaultLocal);
+  const origin = process.env.API_BACKEND_URL || defaultLocal;
   return `${origin.replace(/\/$/, '')}/api/v1`;
 }
 
@@ -226,6 +222,9 @@ export async function forwardAuthenticatedRequest(
   }
 
   const response = NextResponse.json(parsed, { status: backendRes.status });
+  response.headers.set('Cache-Control', 'private, no-store, no-cache, must-revalidate, max-age=0');
+  response.headers.set('Pragma', 'no-cache');
+  response.headers.set('Vary', 'Cookie');
 
   if (backendRes.status === 401) {
     clearAuthCookies(request, response);

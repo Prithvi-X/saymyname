@@ -1,4 +1,4 @@
-import { Controller, Post, Body, UseGuards, Req } from '@nestjs/common';
+import { Controller, Post, Body, Headers, UseGuards, Req } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth, ApiResponse } from '@nestjs/swagger';
 import { SafetyService } from './safety.service';
 import { BlockUserDto, ReportUserDto } from './dto/safety.dto';
@@ -21,7 +21,11 @@ export class SafetyController {
   @Post('report')
   @ApiOperation({ summary: 'Report a profile or chat violation to Trust & Safety team' })
   @ApiResponse({ status: 200, description: 'Report registered for moderation investigation' })
-  reportUser(@Req() req: AuthenticatedRequest, @Body() dto: ReportUserDto) {
-    return this.safetyService.reportUser(req.user.sub, dto);
+  reportUser(
+    @Req() req: AuthenticatedRequest,
+    @Body() dto: ReportUserDto,
+    @Headers('idempotency-key') idempotencyKey?: string,
+  ) {
+    return this.safetyService.reportUser(req.user.sub, dto, idempotencyKey);
   }
 }

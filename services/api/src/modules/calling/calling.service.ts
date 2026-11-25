@@ -3,9 +3,12 @@ import {
   BadRequestException,
   NotFoundException,
   ForbiddenException,
+  ConflictException,
+  Optional,
 } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { CryptoService } from '../identity/security/crypto.service';
+import { MatchAuthorizationService } from '../safety/match-authorization.service';
 import {
   CallStatus,
   MessageType,
@@ -49,15 +52,34 @@ export class CallingService {
   private readonly livekitApiKey: string;
   private readonly livekitApiSecret: string;
   private readonly mockCallSessions: Map<string, MockCallSession> = new Map();
+  private readonly matchAuth: MatchAuthorizationService;
 
   constructor(
     private readonly prisma: PrismaService,
     private readonly cryptoService: CryptoService,
+    @Optional() matchAuthService?: MatchAuthorizationService,
   ) {
     void this.prisma;
+    this.matchAuth = matchAuthService ?? new MatchAuthorizationService(this.prisma);
     this.livekitUrl = process.env.LIVEKIT_URL || 'wss://saymyname-fwlu8ud3.livekit.cloud';
     this.livekitApiKey = process.env.LIVEKIT_API_KEY || 'devkey_saymyname_livekit';
     this.livekitApiSecret = process.env.LIVEKIT_API_SECRET || 'devsecret_saymyname_livekit_super_secure';
+  }
+
+  private async runInTx<T>(fn: (tx: any) => Promise<T>): Promise<T> {
+    const prismaAny = this.prisma as any;
+    if (typeof prismaAny?.$transaction === 'function') {
+      return prismaAny.$transaction((tx: any) => fn(tx));
+    }
+    return fn(prismaAny);
+  }
+
+  private hasDbCallSessions(): boolean {
+    const prismaAny = this.prisma as any;
+    return (
+      typeof prismaAny?.callSession?.create === 'function' &&
+      typeof prismaAny?.callSession?.findUnique === 'function'
+    );
   }
 
   /**
@@ -128,6 +150,8 @@ export class CallingService {
       throw new BadRequestException('Voice note duration exceeds 60 seconds limit');
     }
 
+    await this.matchAuth.assertAuthorizedForConversation(userId, dto.conversationId);
+
     const messageId = crypto.randomUUID();
     const now = new Date();
 
@@ -152,35 +176,65 @@ export class CallingService {
     const callSessionId = crypto.randomUUID();
     const livekitRoomId = `saymyname_call_${dto.conversationId.slice(0, 8)}_${Date.now()}`;
 
-    // Resolve receiver from actual conversation members in database
-    let receiverId = '';
-    const conversation = await this.prisma.conversation?.findUnique?.({
-      where: { id: dto.conversationId },
-      include: { members: true },
-    })?.catch(() => null);
+    const sessionRecord = await this.runInTx(async (tx) => {
+      const auth = await this.matchAuth.assertAuthorizedForConversation(
+        userId,
+        dto.conversationId,
+        { tx },
+      );
 
-    if (conversation && conversation.members && conversation.members.length >= 2) {
-      const other = conversation.members.find((m: any) => m.accountId !== userId);
-      if (other) receiverId = other.accountId;
-    }
-    if (!receiverId) {
-      receiverId = userId === 'a1111111-1111-1111-1111-111111111111' ? 'a2222222-2222-2222-2222-222222222222' : 'a1111111-1111-1111-1111-111111111111';
-    }
+      let receiverId = auth.partnerAccountId || '';
+      if (!receiverId && auth.legacyUnitMock) {
+        receiverId =
+          userId === 'a1111111-1111-1111-1111-111111111111'
+            ? 'a2222222-2222-2222-2222-222222222222'
+            : 'a1111111-1111-1111-1111-111111111111';
+      }
+      if (!receiverId) {
+        throw new ForbiddenException('Call recipient could not be authorized for this match.');
+      }
 
-    const sessionRecord: MockCallSession = {
-      id: callSessionId,
-      conversationId: dto.conversationId,
-      callerId: userId,
-      receiverId,
-      callStatus: CallStatus.INITIATED,
-      livekitRoomId,
-      startedAt: null,
-      endedAt: null,
-      durationSeconds: 0,
-      createdAt: new Date(),
-    };
+      if (this.hasDbCallSessions() && typeof tx?.callSession?.create === 'function') {
+        const created = await tx.callSession.create({
+          data: {
+            id: callSessionId,
+            conversationId: dto.conversationId,
+            callerId: userId,
+            receiverId,
+            callStatus: CallStatus.INITIATED,
+            livekitRoomId,
+            durationSeconds: 0,
+          },
+        });
+        return {
+          id: created.id,
+          conversationId: created.conversationId,
+          callerId: created.callerId,
+          receiverId: created.receiverId,
+          callStatus: created.callStatus as CallStatus,
+          livekitRoomId: created.livekitRoomId,
+          startedAt: created.startedAt,
+          endedAt: created.endedAt,
+          durationSeconds: created.durationSeconds ?? 0,
+          createdAt: created.createdAt,
+        } satisfies MockCallSession;
+      }
 
-    this.mockCallSessions.set(callSessionId, sessionRecord);
+      const mockRecord: MockCallSession = {
+        id: callSessionId,
+        conversationId: dto.conversationId,
+        callerId: userId,
+        receiverId,
+        callStatus: CallStatus.INITIATED,
+        livekitRoomId,
+        startedAt: null,
+        endedAt: null,
+        durationSeconds: 0,
+        createdAt: new Date(),
+      };
+      this.mockCallSessions.set(callSessionId, mockRecord);
+      return mockRecord;
+    });
 
     const callerToken = this.generateLivekitJwt(userId, livekitRoomId, 'Caller');
 
@@ -204,30 +258,62 @@ export class CallingService {
    * Receiver responds to call invitation (accept, decline, busy)
    */
   async respondToCall(userId: string, callId: string, dto: CallRespondDto): Promise<CallTokenResponseDto> {
-    const session = this.mockCallSessions.get(callId);
-    if (!session) {
-      throw new NotFoundException('Call session not found');
-    }
+    return this.runInTx(async (tx) => {
+      const dbMode = this.hasDbCallSessions() && typeof tx?.callSession?.findUnique === 'function';
+      const session: MockCallSession | null = dbMode
+        ? await tx.callSession.findUnique({ where: { id: callId } })
+        : (this.mockCallSessions.get(callId) ?? null);
 
-    if (session.receiverId !== userId && session.callerId !== userId) {
-      throw new ForbiddenException('You are not a participant in this call session');
-    }
+      if (!session) {
+        throw new NotFoundException('Call session not found');
+      }
 
-    if (dto.action === 'accept') {
-      session.callStatus = CallStatus.ACCEPTED;
-      session.startedAt = new Date();
-      const token = this.generateLivekitJwt(userId, session.livekitRoomId, 'Receiver');
+      if (session.receiverId !== userId && session.callerId !== userId) {
+        throw new ForbiddenException('You are not a participant in this call session');
+      }
 
-      return {
-        callSessionId: session.id,
-        livekitRoomId: session.livekitRoomId,
-        token,
-        callStatus: CallStatus.ACCEPTED,
-        livekitUrl: this.livekitUrl,
-      };
-    } else {
-      session.callStatus = CallStatus.REJECTED;
-      session.endedAt = new Date();
+      await this.matchAuth.assertAuthorizedForConversation(userId, session.conversationId, { tx });
+
+      if (['ended', 'rejected', 'missed'].includes(String(session.callStatus))) {
+        throw new ConflictException('Call invitation is no longer active.');
+      }
+
+      if (dto.action === 'accept') {
+        if (session.receiverId !== userId) {
+          throw new ForbiddenException('Only the invited recipient may accept this call.');
+        }
+
+        const startedAt = new Date();
+        if (dbMode && typeof tx.callSession?.update === 'function') {
+          await tx.callSession.update({
+            where: { id: session.id },
+            data: { callStatus: CallStatus.ACCEPTED, startedAt },
+          });
+        } else {
+          session.callStatus = CallStatus.ACCEPTED;
+          session.startedAt = startedAt;
+        }
+        const token = this.generateLivekitJwt(userId, session.livekitRoomId, 'Receiver');
+
+        return {
+          callSessionId: session.id,
+          livekitRoomId: session.livekitRoomId,
+          token,
+          callStatus: CallStatus.ACCEPTED,
+          livekitUrl: this.livekitUrl,
+        };
+      }
+
+      const endedAt = new Date();
+      if (dbMode && typeof tx.callSession?.update === 'function') {
+        await tx.callSession.update({
+          where: { id: session.id },
+          data: { callStatus: CallStatus.REJECTED, endedAt },
+        });
+      } else {
+        session.callStatus = CallStatus.REJECTED;
+        session.endedAt = endedAt;
+      }
 
       return {
         callSessionId: session.id,
@@ -235,14 +321,18 @@ export class CallingService {
         token: '',
         callStatus: CallStatus.REJECTED,
       };
-    }
+    });
   }
 
   /**
    * Terminates active call and calculates total duration
    */
   async endCall(userId: string, callId: string): Promise<{ success: boolean; durationSeconds: number; callStatus: CallStatus }> {
-    const session = this.mockCallSessions.get(callId);
+    const dbMode = this.hasDbCallSessions();
+    const session: MockCallSession | null = dbMode
+      ? await (this.prisma as any).callSession.findUnique({ where: { id: callId } })
+      : (this.mockCallSessions.get(callId) ?? null);
+
     if (!session) {
       throw new NotFoundException('Call session not found');
     }
@@ -251,17 +341,25 @@ export class CallingService {
       throw new ForbiddenException('You are not a participant in this call session');
     }
 
-    session.callStatus = CallStatus.ENDED;
-    session.endedAt = new Date();
-    if (session.startedAt) {
-      session.durationSeconds = Math.max(1, Math.round((session.endedAt.getTime() - session.startedAt.getTime()) / 1000));
+    const endedAt = new Date();
+    const durationSeconds = session.startedAt
+      ? Math.max(1, Math.round((endedAt.getTime() - new Date(session.startedAt).getTime()) / 1000))
+      : 0;
+
+    if (dbMode) {
+      await (this.prisma as any).callSession.update({
+        where: { id: session.id },
+        data: { callStatus: CallStatus.ENDED, endedAt, durationSeconds },
+      });
     } else {
-      session.durationSeconds = 0;
+      session.callStatus = CallStatus.ENDED;
+      session.endedAt = endedAt;
+      session.durationSeconds = durationSeconds;
     }
 
     return {
       success: true,
-      durationSeconds: session.durationSeconds,
+      durationSeconds,
       callStatus: CallStatus.ENDED,
     };
   }
@@ -270,7 +368,11 @@ export class CallingService {
    * Retrieves call session status
    */
   async getCallSession(userId: string, callId: string): Promise<CallSessionDto> {
-    const session = this.mockCallSessions.get(callId);
+    const dbMode = this.hasDbCallSessions();
+    const session: MockCallSession | null = dbMode
+      ? await (this.prisma as any).callSession.findUnique({ where: { id: callId } })
+      : (this.mockCallSessions.get(callId) ?? null);
+
     if (!session) {
       throw new NotFoundException('Call session not found');
     }
@@ -279,14 +381,16 @@ export class CallingService {
       throw new ForbiddenException('Not authorized to access this call session');
     }
 
+    await this.matchAuth.assertAuthorizedForConversation(userId, session.conversationId);
+
     return {
       id: session.id,
       conversationId: session.conversationId,
       callerId: session.callerId,
       receiverId: session.receiverId,
-      callStatus: session.callStatus,
+      callStatus: session.callStatus as CallStatus,
       livekitRoomId: session.livekitRoomId,
-      startedAt: session.startedAt ? session.startedAt.toISOString() : null,
+      startedAt: session.startedAt ? new Date(session.startedAt).toISOString() : null,
       durationSeconds: session.durationSeconds || 0,
     };
   }
