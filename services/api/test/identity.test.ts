@@ -417,4 +417,33 @@ describe('Identity, Verification & Security Domain Tests (Phase 2)', () => {
       (err: any) => err.status === 503,
     );
   });
+
+  test('fails closed with 503 instead of mock case IDs when verification persistence fails', async () => {
+    const failingPrisma = {
+      $transaction: async () => {
+        const err: any = new Error('Simulated P2028 pgbouncer transaction failure');
+        err.code = 'P2028';
+        throw err;
+      },
+      accountEligibility: {
+        findUnique: async () => null,
+      },
+    };
+    const svc = new VerificationService(failingPrisma as any);
+    const adultDob = `${new Date().getUTCFullYear() - 20}-05-10`;
+
+    await assert.rejects(
+      async () => svc.submitAgeVerification('acc-1', { dateOfBirth: adultDob }),
+      (err: any) => err.status === 503 && String(err.message).includes('P2028'),
+    );
+
+    await assert.rejects(
+      async () =>
+        svc.submitStudentEnrolmentVerification('acc-1', {
+          programmeFamily: ProgrammeFamily.DATA_SCIENCE_APPLICATIONS,
+          pathwayCode: 'diploma',
+        }),
+      (err: any) => err.status === 503 && String(err.message).includes('P2028'),
+    );
+  });
 });

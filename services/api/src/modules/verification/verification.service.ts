@@ -60,6 +60,32 @@ export class VerificationService {
     };
   }
 
+  private throwVerificationPersistenceError(step: string, err: unknown): never {
+    if (
+      err instanceof ForbiddenException ||
+      err instanceof BadRequestException ||
+      err instanceof NotFoundException ||
+      err instanceof ServiceUnavailableException
+    ) {
+      throw err;
+    }
+    const prismaCode =
+      err && typeof err === 'object' && 'code' in err && typeof (err as any).code === 'string'
+        ? (err as any).code
+        : undefined;
+    const errName =
+      err && typeof err === 'object' && 'name' in err && typeof (err as any).name === 'string'
+        ? (err as any).name
+        : 'Error';
+    const errMsg = err instanceof Error ? err.message : String(err);
+    console.error(
+      `[VerificationService] ${step} transaction failed (${prismaCode || errName}): ${errMsg}`,
+    );
+    throw new ServiceUnavailableException(
+      `Unable to save ${step} (${prismaCode || errName}).`,
+    );
+  }
+
   /**
    * Step 3: Age Verification Submission (D-P2-01)
    * Self-declared DOB never grants ageStatus = 'approved'; valid 18+ assertions move to pending review.
@@ -186,15 +212,7 @@ export class VerificationService {
       });
 
       return { eligibility, vCase };
-    }).catch(() => ({
-      eligibility: {
-        accountId,
-        ageStatus: 'pending',
-        studentStatus: 'not_started',
-        discoveryEligible: false,
-      },
-      vCase: { id: 'mock-age-case-id', status: 'pending' },
-    }));
+    }).catch((err) => this.throwVerificationPersistenceError('age verification check', err));
 
     return {
       message:
@@ -338,22 +356,7 @@ export class VerificationService {
       });
 
       return { eligibility, vCase };
-    }).catch((err) => {
-      if (err instanceof ForbiddenException || err instanceof BadRequestException) {
-        throw err;
-      }
-      return {
-        eligibility: {
-          accountId,
-          ageStatus: current?.ageStatus || 'pending',
-          studentStatus: 'pending',
-          programmeFamily: evaluation.programmeFamily,
-          pathwayCode: evaluation.pathwayCode,
-          discoveryEligible: false,
-        },
-        vCase: { id: 'mock-student-case-id', status: 'pending' },
-      };
-    });
+    }).catch((err) => this.throwVerificationPersistenceError('student enrolment check', err));
 
     return {
       message:
