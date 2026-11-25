@@ -187,6 +187,71 @@ export interface LikeResponseDto {
   } | null;
 }
 
+export interface ReceivedLikeItemDto {
+  likeId: string;
+  profileId: string;
+  likedAt: string;
+  profile: DiscoveryCandidateDto;
+}
+
+export interface ReceivedLikesResponseDto {
+  items: ReceivedLikeItemDto[];
+  nextCursor: string | null;
+  hasMore: boolean;
+  count: number;
+  totalActiveCount: number;
+  pageSize: number;
+  viewerState: 'ready' | 'paused' | 'profile_incomplete';
+}
+
+export type SentLikeAvailability = 'pending' | 'unavailable' | 'withdrawn';
+
+export interface SentLikeRecipientPreviewDto {
+  profileId: string | null;
+  displayName: string;
+  age: number | null;
+  ageVisible: boolean;
+  programmeFamily: ProgrammeFamily | null;
+  currentTerm?: string | null;
+  locationCity?: string | null;
+  locationState?: string | null;
+  intention?: string | null;
+  bio?: string | null;
+  photos: DiscoveryCandidatePhotoDto[];
+  interests: string[];
+  promptAnswers: DiscoveryCandidatePromptDto[];
+  isVerified?: boolean;
+}
+
+export interface SentLikeItemDto {
+  likeId: string;
+  status: string;
+  availability: SentLikeAvailability;
+  statusLabel: string;
+  canWithdraw: boolean;
+  sentAt: string;
+  updatedAt: string;
+  profile: SentLikeRecipientPreviewDto;
+}
+
+export interface SentLikesResponseDto {
+  items: SentLikeItemDto[];
+  nextCursor: string | null;
+  hasMore: boolean;
+  count: number;
+  totalActiveCount: number;
+  pageSize: number;
+  viewerState: 'ready' | 'paused' | 'profile_incomplete';
+}
+
+export interface WithdrawLikeResponseDto {
+  likeId: string;
+  status: string;
+  withdrawn: boolean;
+  alreadyWithdrawn: boolean;
+  message: string;
+}
+
 export interface MatchDto {
   id: string;
   userLowId: string;
@@ -194,6 +259,24 @@ export interface MatchDto {
   status: MatchStatus;
   createdAt: string;
   endedAt?: string | null;
+}
+
+export interface MatchSummaryDto {
+  matchId: string;
+  conversationId: string | null;
+  status: MatchStatus | 'active' | 'ended';
+  matchedAt: string;
+  lastMessageText?: string | null;
+  lastMessageAt?: string | null;
+  lastMessageIsOwn?: boolean | null;
+  profile: DiscoveryCandidateDto;
+}
+
+export interface UnmatchResponseDto {
+  matchId: string;
+  status: 'ended';
+  alreadyEnded: boolean;
+  message: string;
 }
 
 export interface MessageDto {

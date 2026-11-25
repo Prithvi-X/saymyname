@@ -135,3 +135,129 @@ export function decodeDiscoveryCursor(
 
   return parsed;
 }
+
+export type LikesCursorScope = 'likes_received' | 'likes_sent';
+
+export interface LikesCursorPayload {
+  v: 1;
+  sub: string;
+  scope: LikesCursorScope;
+  ts: string;
+  lid: string;
+  exp: number;
+}
+
+const LIKES_CURSOR_TTL_MS = 24 * 60 * 60 * 1000;
+
+export function encodeLikesCursor(
+  accountId: string,
+  scope: LikesCursorScope,
+  createdAtIso: string,
+  likeId: string,
+  now: Date = new Date(),
+): string {
+  const payload: LikesCursorPayload = {
+    v: 1,
+    sub: accountId,
+    scope,
+    ts: createdAtIso,
+    lid: likeId,
+    exp: now.getTime() + LIKES_CURSOR_TTL_MS,
+  };
+
+  const encoded = Buffer.from(JSON.stringify(payload), 'utf8').toString('base64url');
+  const sig = crypto
+    .createHmac('sha256', resolveDiscoveryCursorSecret())
+    .update(encoded)
+    .digest('base64url');
+
+  return `${encoded}.${sig}`;
+}
+
+export function decodeLikesCursor(
+  token: string,
+  expectedAccountId: string,
+  expectedScope: LikesCursorScope,
+  now: Date = new Date(),
+): LikesCursorPayload {
+  if (!token || typeof token !== 'string') {
+    throw new BadRequestException({
+      code: 'INVALID_CURSOR',
+      message: 'Likes pagination cursor is missing.',
+    });
+  }
+
+  const parts = token.split('.');
+  if (parts.length !== 2 || !parts[0] || !parts[1]) {
+    throw new BadRequestException({
+      code: 'INVALID_CURSOR',
+      message: 'Malformed likes pagination cursor.',
+    });
+  }
+
+  const [encoded, providedSig] = parts;
+  const expectedSig = crypto
+    .createHmac('sha256', resolveDiscoveryCursorSecret())
+    .update(encoded)
+    .digest('base64url');
+
+  const providedBuf = Buffer.from(providedSig, 'utf8');
+  const expectedBuf = Buffer.from(expectedSig, 'utf8');
+  if (
+    providedBuf.length !== expectedBuf.length ||
+    !crypto.timingSafeEqual(providedBuf, expectedBuf)
+  ) {
+    throw new BadRequestException({
+      code: 'INVALID_CURSOR',
+      message: 'Likes pagination cursor signature verification failed.',
+    });
+  }
+
+  let parsed: LikesCursorPayload;
+  try {
+    parsed = JSON.parse(Buffer.from(encoded, 'base64url').toString('utf8'));
+  } catch {
+    throw new BadRequestException({
+      code: 'INVALID_CURSOR',
+      message: 'Likes pagination cursor payload is unreadable.',
+    });
+  }
+
+  if (
+    !parsed ||
+    parsed.v !== 1 ||
+    typeof parsed.sub !== 'string' ||
+    (parsed.scope !== 'likes_received' && parsed.scope !== 'likes_sent') ||
+    typeof parsed.ts !== 'string' ||
+    typeof parsed.lid !== 'string' ||
+    typeof parsed.exp !== 'number' ||
+    Number.isNaN(new Date(parsed.ts).getTime())
+  ) {
+    throw new BadRequestException({
+      code: 'INVALID_CURSOR',
+      message: 'Likes pagination cursor payload is incomplete.',
+    });
+  }
+
+  if (parsed.sub !== expectedAccountId) {
+    throw new ForbiddenException(
+      'Likes pagination cursor does not belong to the authenticated member.',
+    );
+  }
+
+  if (parsed.scope !== expectedScope) {
+    throw new BadRequestException({
+      code: 'INVALID_CURSOR',
+      message: 'Likes pagination cursor scope mismatch.',
+    });
+  }
+
+  if (parsed.exp <= now.getTime()) {
+    throw new BadRequestException({
+      code: 'CURSOR_EXPIRED',
+      message: 'Your likes session refreshed. Reloading cleanly.',
+    });
+  }
+
+  return parsed;
+}

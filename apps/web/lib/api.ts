@@ -108,6 +108,71 @@ export interface LikeResponse {
   } | null;
 }
 
+export interface ReceivedLikeItem {
+  likeId: string;
+  profileId: string;
+  likedAt: string;
+  profile: DiscoveryCandidate;
+}
+
+export interface ReceivedLikesResponse {
+  items: ReceivedLikeItem[];
+  nextCursor: string | null;
+  hasMore: boolean;
+  count: number;
+  totalActiveCount: number;
+  pageSize: number;
+  viewerState: 'ready' | 'paused' | 'profile_incomplete';
+}
+
+export type SentLikeAvailability = 'pending' | 'unavailable' | 'withdrawn';
+
+export interface SentLikeRecipientPreview {
+  profileId: string | null;
+  displayName: string;
+  age: number | null;
+  ageVisible?: boolean;
+  programmeFamily: ProgrammeFamily | null;
+  currentTerm?: string | null;
+  locationCity?: string | null;
+  locationState?: string | null;
+  intention?: string | null;
+  bio?: string | null;
+  photos: DiscoveryCandidate['photos'];
+  interests: string[];
+  promptAnswers: DiscoveryCandidate['promptAnswers'];
+  isVerified?: boolean;
+}
+
+export interface SentLikeItem {
+  likeId: string;
+  status: string;
+  availability: SentLikeAvailability;
+  statusLabel: string;
+  canWithdraw: boolean;
+  sentAt: string;
+  updatedAt: string;
+  profile: SentLikeRecipientPreview;
+}
+
+export interface SentLikesResponse {
+  items: SentLikeItem[];
+  nextCursor: string | null;
+  hasMore: boolean;
+  count: number;
+  totalActiveCount: number;
+  pageSize: number;
+  viewerState: 'ready' | 'paused' | 'profile_incomplete';
+}
+
+export interface WithdrawLikeResponse {
+  likeId: string;
+  status: string;
+  withdrawn: boolean;
+  alreadyWithdrawn: boolean;
+  message: string;
+}
+
 export type ReportCategory =
   | 'harassment'
   | 'inappropriate_content'
@@ -116,11 +181,23 @@ export type ReportCategory =
   | 'spam'
   | 'offline_safety';
 
+export interface UnmatchResponse {
+  matchId: string;
+  status: 'ended' | string;
+  alreadyEnded: boolean;
+  message: string;
+}
+
 export interface MatchProfile {
   id: string;
+  conversationId: string | null;
+  status: string;
   candidate: DiscoveryCandidate;
   matchedAt: string;
-  lastMessage?: string;
+  matchedAtIso: string;
+  lastMessage?: string | null;
+  lastMessageAt?: string | null;
+  lastMessageIsOwn?: boolean | null;
 }
 
 export interface ChatMessage {
@@ -628,44 +705,151 @@ class ApiClient {
     });
   }
 
+  async getReceivedLikes(params?: {
+    cursor?: string | null;
+    limit?: number;
+  }): Promise<ReceivedLikesResponse> {
+    const query = new URLSearchParams();
+    if (params?.cursor) query.set('cursor', params.cursor);
+    if (typeof params?.limit === 'number') query.set('limit', String(params.limit));
+    const qs = query.toString();
+    return this.request<ReceivedLikesResponse>(
+      `/api/bff/v1/dating/likes/received${qs ? `?${qs}` : ''}`,
+    );
+  }
+
+  async getReceivedLikeDetail(likeId: string): Promise<ReceivedLikeItem> {
+    return this.request<ReceivedLikeItem>(`/api/bff/v1/dating/likes/received/${likeId}`);
+  }
+
+  async likeBackReceived(likeId: string, idempotencyKey?: string): Promise<LikeResponse> {
+    return this.request<LikeResponse>(`/api/bff/v1/dating/likes/received/${likeId}/like-back`, {
+      method: 'POST',
+      headers: idempotencyKey ? { 'Idempotency-Key': idempotencyKey } : undefined,
+      body: JSON.stringify({}),
+    });
+  }
+
+  async passReceivedLike(
+    likeId: string,
+    idempotencyKey?: string,
+  ): Promise<{ success: boolean; message?: string }> {
+    return this.request<{ success: boolean; message?: string }>(
+      `/api/bff/v1/dating/likes/received/${likeId}/pass`,
+      {
+        method: 'POST',
+        headers: idempotencyKey ? { 'Idempotency-Key': idempotencyKey } : undefined,
+        body: JSON.stringify({}),
+      },
+    );
+  }
+
+  async getSentLikes(params?: {
+    cursor?: string | null;
+    limit?: number;
+    includeWithdrawn?: boolean;
+  }): Promise<SentLikesResponse> {
+    const query = new URLSearchParams();
+    if (params?.cursor) query.set('cursor', params.cursor);
+    if (typeof params?.limit === 'number') query.set('limit', String(params.limit));
+    if (typeof params?.includeWithdrawn === 'boolean') {
+      query.set('includeWithdrawn', String(params.includeWithdrawn));
+    }
+    const qs = query.toString();
+    return this.request<SentLikesResponse>(
+      `/api/bff/v1/dating/likes/sent${qs ? `?${qs}` : ''}`,
+    );
+  }
+
+  async withdrawLike(likeId: string, idempotencyKey?: string): Promise<WithdrawLikeResponse> {
+    return this.request<WithdrawLikeResponse>(`/api/bff/v1/dating/likes/${likeId}/withdraw`, {
+      method: 'POST',
+      headers: idempotencyKey ? { 'Idempotency-Key': idempotencyKey } : undefined,
+      body: JSON.stringify({}),
+    });
+  }
+
+  private mapMatchSummary(m: any): MatchProfile {
+    const p = m.profile || m.partner || m.candidate || {};
+    const matchedAtIso = m.matchedAt || m.createdAt || new Date().toISOString();
+    const lastMsgText =
+      typeof m.lastMessageText === 'string'
+        ? m.lastMessageText
+        : typeof m.lastMessage === 'string'
+          ? m.lastMessage
+          : (m.lastMessage?.bodyText ?? null);
+
+    return {
+      id: m.matchId || m.id,
+      conversationId: m.conversationId ?? null,
+      status: m.status || 'active',
+      candidate: {
+        profileId: p.profileId || m.matchId || m.id,
+        displayName: p.displayName || 'Verified Match',
+        age: typeof p.age === 'number' ? p.age : null,
+        ageVisible:
+          p.ageVisible !== undefined ? Boolean(p.ageVisible) : typeof p.age === 'number',
+        programmeFamily: p.programmeFamily || ProgrammeFamily.DATA_SCIENCE_APPLICATIONS,
+        bio: p.bio || '',
+        locationCity: p.locationCity ?? null,
+        locationState: p.locationState ?? null,
+        currentTerm: p.currentTerm ?? p.termOrYear ?? null,
+        intention: p.intention ?? null,
+        avatarColor: p.avatarColor || '#8580C4',
+        isVerified: p.isVerified !== false,
+        sharedInterests: Array.isArray(p.sharedInterests) ? p.sharedInterests : [],
+        photos: Array.isArray(p.photos) ? p.photos : [],
+        interests: Array.isArray(p.interests) ? p.interests : [],
+        promptAnswers: Array.isArray(p.promptAnswers) ? p.promptAnswers : [],
+      },
+      matchedAt: matchedAtIso,
+      matchedAtIso,
+      lastMessage: lastMsgText,
+      lastMessageAt: m.lastMessageAt ?? null,
+      lastMessageIsOwn: typeof m.lastMessageIsOwn === 'boolean' ? m.lastMessageIsOwn : null,
+    };
+  }
+
   async getMatches(): Promise<MatchProfile[]> {
     const res = await this.request<any[]>('/api/bff/v1/dating/matches');
     if (!Array.isArray(res)) return [];
-    return res.map((m) => {
-      const partner = m.partner || m.candidate || {};
-      return {
-        id: m.id || m.matchId,
-        candidate: {
-          profileId: partner.accountId || partner.profileId || m.matchedAccountId || m.id,
-          displayName: partner.displayName || 'Matched Student',
-          age: typeof partner.age === 'number' ? partner.age : null,
-          programmeFamily: partner.programmeFamily || ProgrammeFamily.DATA_SCIENCE_APPLICATIONS,
-          bio: partner.bio || '',
-          locationCity: partner.locationCity,
-          currentTerm: partner.termOrYear,
-          avatarColor: partner.avatarColor || '#8580C4',
-          photos: partner.photos || [],
-          interests: partner.interests || [],
-          promptAnswers: partner.promptAnswers || [],
-        },
-        matchedAt: m.matchedAt || 'Recently',
-        lastMessage: m.lastMessageText || m.lastMessage,
-      };
-    });
+    return res.map((m) => this.mapMatchSummary(m));
+  }
+
+  async getMatchDetail(matchId: string): Promise<MatchProfile> {
+    const res = await this.request<any>(
+      `/api/bff/v1/dating/matches/${encodeURIComponent(matchId)}`,
+    );
+    return this.mapMatchSummary(res);
+  }
+
+  async unmatch(
+    matchId: string,
+    reason?: string,
+    idempotencyKey?: string,
+  ): Promise<UnmatchResponse> {
+    return this.request<UnmatchResponse>(
+      `/api/bff/v1/dating/matches/${encodeURIComponent(matchId)}/unmatch`,
+      {
+        method: 'POST',
+        headers: idempotencyKey ? { 'Idempotency-Key': idempotencyKey } : undefined,
+        body: JSON.stringify(reason ? { reason } : {}),
+      },
+    );
   }
 
   // --- Bilateral Messaging ---
 
   async getMessages(conversationId: string): Promise<ChatMessage[]> {
     const res = await this.request<any[]>(
-      `/api/bff/v1/messaging/conversations/${conversationId}/messages`,
+      `/api/bff/v1/messaging/conversations/${encodeURIComponent(conversationId)}/messages`,
     );
     if (!Array.isArray(res)) return [];
     return res.map((msg) => ({
       id: msg.id,
       conversationId: msg.conversationId || conversationId,
-      senderId: msg.senderAccountId || msg.senderId,
-      senderName: msg.senderName || 'Student',
+      senderId: msg.isOwn ? 'self' : 'partner',
+      senderName: msg.senderName || (msg.isOwn ? 'You' : 'Match'),
       text: msg.bodyText || msg.text || '',
       createdAt: msg.createdAt
         ? new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
@@ -683,7 +867,7 @@ class ApiClient {
     }
 
     const res = await this.request<any>(
-      `/api/bff/v1/messaging/conversations/${conversationId}/messages`,
+      `/api/bff/v1/messaging/conversations/${encodeURIComponent(conversationId)}/messages`,
       {
         method: 'POST',
         body: JSON.stringify({ bodyText: trimmed }),
@@ -693,7 +877,7 @@ class ApiClient {
     return {
       id: res.id || `msg-${Date.now()}`,
       conversationId,
-      senderId: res.senderAccountId || 'self',
+      senderId: 'self',
       senderName: res.senderName || 'You',
       text: res.bodyText || trimmed,
       createdAt: res.createdAt
@@ -717,14 +901,18 @@ class ApiClient {
     targetProfileId: string,
     reportCategory: ReportCategory,
     description?: string,
+    idempotencyKey?: string,
   ) {
-    return this.request<{ success: boolean; reportId?: string; message: string }>(
-      '/api/bff/v1/safety/report',
-      {
-        method: 'POST',
-        body: JSON.stringify({ targetProfileId, reportCategory, description }),
-      },
-    );
+    return this.request<{
+      success: boolean;
+      reportId?: string;
+      alreadyReported?: boolean;
+      message: string;
+    }>('/api/bff/v1/safety/report', {
+      method: 'POST',
+      headers: idempotencyKey ? { 'Idempotency-Key': idempotencyKey } : undefined,
+      body: JSON.stringify({ targetProfileId, reportCategory, description }),
+    });
   }
 
   async blockUser(targetAccountOrId: string, reason: string) {

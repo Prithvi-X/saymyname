@@ -20,9 +20,25 @@ export class MessagingService {
     this.matchAuth = matchAuthService ?? new MatchAuthorizationService(this.prisma);
   }
 
-  private async assertActiveMatchConversationMember(accountId: string, conversationId: string) {
+  private async runInTx<T>(fn: (tx: any) => Promise<T>): Promise<T> {
+    const prismaAny = this.prisma as any;
+    if (typeof prismaAny?.$transaction === 'function') {
+      return prismaAny.$transaction((tx: any) => fn(tx));
+    }
+    return fn(prismaAny);
+  }
+
+  private async assertActiveMatchConversationMember(
+    accountId: string,
+    conversationId: string,
+    tx?: any,
+  ) {
     try {
-      return await this.matchAuth.assertAuthorizedForConversation(accountId, conversationId);
+      return await this.matchAuth.assertAuthorizedForConversation(
+        accountId,
+        conversationId,
+        tx ? { tx } : undefined,
+      );
     } catch (err: any) {
       if (
         err instanceof ForbiddenException ||
@@ -76,13 +92,20 @@ export class MessagingService {
         if (!bothActive) {
           continue;
         }
-        const otherMember = c.members.find((mem) => mem.accountId !== accountId);
+        const lastMsg = c.messages?.[0] || null;
         activeConversations.push({
           conversationId: c.id,
           matchId: c.matchId,
           lastMessageAt: c.lastMessageAt || c.createdAt,
-          lastMessage: c.messages[0] || null,
-          partnerAccountId: otherMember?.accountId || null,
+          lastMessage: lastMsg
+            ? {
+                id: lastMsg.id,
+                sequenceNo: Number(lastMsg.sequenceNo),
+                bodyText: lastMsg.bodyText,
+                isOwn: lastMsg.senderAccountId === accountId,
+                createdAt: lastMsg.createdAt,
+              }
+            : null,
         });
       }
 
@@ -98,15 +121,29 @@ export class MessagingService {
   async getMessages(accountId: string, conversationId: string) {
     await this.assertActiveMatchConversationMember(accountId, conversationId);
 
-    return this.prisma.message.findMany({
+    const rows = await this.prisma.message.findMany({
       where: { conversationId },
       orderBy: { sequenceNo: 'asc' },
       take: 100,
     });
+
+    return (rows || []).map((message: any) => ({
+      id: message.id,
+      conversationId: message.conversationId,
+      sequenceNo: Number(message.sequenceNo),
+      senderName: message.senderAccountId === accountId ? 'You' : undefined,
+      isOwn: message.senderAccountId === accountId,
+      messageType: message.messageType,
+      bodyText: message.bodyText,
+      mediaUrl: message.mediaUrl ?? null,
+      durationSeconds: message.durationSeconds ?? null,
+      deliveryState: message.deliveryState,
+      createdAt: message.createdAt,
+    }));
   }
 
   /**
-   * 3. Send 1:1 message
+   * 3. Send 1:1 message (atomically verified against active Match row lock)
    */
   async sendMessage(accountId: string, conversationId: string, dto: SendMessageDto) {
     if (!dto.bodyText || dto.bodyText.trim().length === 0) {
@@ -116,17 +153,17 @@ export class MessagingService {
       throw new BadRequestException('Message body exceeds 1,000 characters limit (Document 04 §6.1).');
     }
 
-    await this.assertActiveMatchConversationMember(accountId, conversationId);
+    return this.runInTx(async (tx) => {
+      await this.assertActiveMatchConversationMember(accountId, conversationId, tx);
 
-    const lastMsg = await this.prisma.message.findFirst({
-      where: { conversationId },
-      orderBy: { sequenceNo: 'desc' },
-      select: { sequenceNo: true },
-    });
+      const lastMsg = await tx.message.findFirst({
+        where: { conversationId },
+        orderBy: { sequenceNo: 'desc' },
+        select: { sequenceNo: true },
+      });
 
-    const sequenceNo = BigInt((lastMsg ? Number(lastMsg.sequenceNo) : 0) + 1);
+      const sequenceNo = BigInt((lastMsg ? Number(lastMsg.sequenceNo) : 0) + 1);
 
-    const message = await this.prisma.$transaction(async (tx) => {
       const created = await tx.message.create({
         data: {
           conversationId,
@@ -143,18 +180,17 @@ export class MessagingService {
         data: { lastMessageAt: new Date() },
       });
 
-      return created;
+      return {
+        id: created.id,
+        conversationId,
+        sequenceNo: Number(created.sequenceNo),
+        senderName: 'You',
+        isOwn: true,
+        messageType: created.messageType,
+        bodyText: created.bodyText,
+        deliveryState: created.deliveryState,
+        createdAt: created.createdAt,
+      };
     });
-
-    return {
-      id: message.id,
-      conversationId,
-      sequenceNo: Number(message.sequenceNo),
-      senderAccountId: message.senderAccountId,
-      messageType: message.messageType,
-      bodyText: message.bodyText,
-      deliveryState: message.deliveryState,
-      createdAt: message.createdAt,
-    };
   }
 }

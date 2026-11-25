@@ -141,12 +141,15 @@ export class SafetyService {
   }
 
   /**
-   * 2. Report User / Harm Case
+   * 2. Report User / Harm Case (with idempotency & recent pending deduplication)
    */
-  async reportUser(reporterId: string, dto: ReportUserDto) {
+  async reportUser(reporterId: string, dto: ReportUserDto, idempotencyKey?: string) {
     if (!ALLOWED_CATEGORY_SET.has(dto.reportCategory)) {
       throw new BadRequestException('Invalid report category.');
     }
+
+    const cleanDescription = dto.description?.trim() || null;
+    const cleanKey = idempotencyKey?.trim() || null;
 
     try {
       const targetAccountId = await this.resolveTargetAccountId(
@@ -159,21 +162,72 @@ export class SafetyService {
         throw new BadRequestException('You cannot report your own profile.');
       }
 
+      const prismaAny = this.prisma as any;
+      if (cleanKey && typeof prismaAny.idempotencyRecord?.findUnique === 'function') {
+        const scopedKey = `${reporterId}:report:${cleanKey}`;
+        const existingIdem = await prismaAny.idempotencyRecord.findUnique({
+          where: { idempotencyKey: scopedKey },
+        });
+        if (existingIdem) {
+          return existingIdem.responseBody;
+        }
+      }
+
+      if (typeof prismaAny.report?.findFirst === 'function') {
+        const tenMinsAgo = new Date(Date.now() - 10 * 60 * 1000);
+        const recentDuplicate = await prismaAny.report.findFirst({
+          where: {
+            reporterId,
+            reportedId: targetAccountId,
+            reportCategory: dto.reportCategory,
+            status: 'pending',
+            createdAt: { gte: tenMinsAgo },
+          },
+          orderBy: { createdAt: 'desc' },
+        });
+        if (recentDuplicate && (recentDuplicate.description ?? null) === cleanDescription) {
+          return {
+            success: true,
+            reportId: recentDuplicate.id,
+            alreadyReported: true,
+            message: 'Your report has already been submitted and queued for confidential review.',
+          };
+        }
+      }
+
       const report = await this.prisma.report.create({
         data: {
           reporterId,
           reportedId: targetAccountId,
           reportCategory: dto.reportCategory,
-          description: dto.description?.trim() || null,
+          description: cleanDescription,
           status: 'pending',
         },
       });
 
-      return {
+      const responseBody = {
         success: true,
         reportId: report.id,
+        alreadyReported: false,
         message: 'Report submitted. Our trust & safety moderation team will investigate.',
       };
+
+      if (cleanKey && typeof prismaAny.idempotencyRecord?.create === 'function') {
+        await prismaAny.idempotencyRecord
+          .create({
+            data: {
+              idempotencyKey: `${reporterId}:report:${cleanKey}`,
+              accountId: reporterId,
+              requestHash: `${reporterId}:${targetAccountId}:${dto.reportCategory}`,
+              responseStatus: 200,
+              responseBody,
+              expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
+            },
+          })
+          .catch(() => null);
+      }
+
+      return responseBody;
     } catch (err: any) {
       if (err instanceof BadRequestException || err instanceof NotFoundException) {
         throw err;

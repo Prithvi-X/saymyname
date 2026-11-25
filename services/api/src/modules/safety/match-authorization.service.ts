@@ -29,6 +29,7 @@ export interface AuthorizedConversationContext {
 
 const MIN_DISCOVERY_AGE = 18;
 const CLOSED_ACCESS_ERROR = 'This connection or conversation is no longer active.';
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 @Injectable()
 export class MatchAuthorizationService {
@@ -36,6 +37,13 @@ export class MatchAuthorizationService {
 
   private hasDbLookup(db: any, model: string, method = 'findUnique'): boolean {
     return typeof db?.[model]?.[method] === 'function';
+  }
+
+  private async lockMatchForShare(db: any, matchId: string | undefined): Promise<void> {
+    if (typeof db?.$queryRaw !== 'function' || !matchId || !UUID_PATTERN.test(matchId)) {
+      return;
+    }
+    await db.$queryRaw`SELECT id::text AS id FROM dating.matches WHERE id = ${matchId}::uuid FOR SHARE`;
   }
 
   /**
@@ -235,6 +243,22 @@ export class MatchAuthorizationService {
       throw new ForbiddenException('You are not authorized for this match.');
     }
 
+    if (options?.tx && match?.id) {
+      await this.lockMatchForShare(db, match.id);
+      if (hasMatchLookup) {
+        const refreshed = await db.match.findUnique({
+          where: { id: match.id },
+          include: { conversation: true },
+        });
+        if (refreshed) {
+          match = refreshed;
+          if (refreshed.conversation) {
+            conversation = refreshed.conversation;
+          }
+        }
+      }
+    }
+
     if (conversation.status !== 'active' || match.status !== 'active') {
       throw new ForbiddenException(CLOSED_ACCESS_ERROR);
     }
@@ -307,22 +331,38 @@ export class MatchAuthorizationService {
       };
     }
 
-    if (match.status !== 'active') {
+    let authoritativeMatch = match;
+    if (options?.tx && match?.id) {
+      await this.lockMatchForShare(db, match.id);
+      const refreshed = await db.match.findUnique({
+        where: { id: match.id },
+        include: { conversation: true },
+      });
+      if (refreshed) {
+        authoritativeMatch = refreshed;
+      }
+    }
+
+    if (authoritativeMatch.status !== 'active') {
       throw new ForbiddenException(CLOSED_ACCESS_ERROR);
     }
 
-    if (match.conversation && match.conversation.status !== 'active') {
+    if (authoritativeMatch.conversation && authoritativeMatch.conversation.status !== 'active') {
       throw new ForbiddenException(CLOSED_ACCESS_ERROR);
     }
 
-    const blocked = await this.hasBidirectionalBlock(db, match.userLowId, match.userHighId);
+    const blocked = await this.hasBidirectionalBlock(
+      db,
+      authoritativeMatch.userLowId,
+      authoritativeMatch.userHighId,
+    );
     if (blocked) {
       throw new ForbiddenException('Interaction unavailable because a safety block is active.');
     }
 
     const bothActive = await this.verifyParticipantAccountsActive(db, [
-      match.userLowId,
-      match.userHighId,
+      authoritativeMatch.userLowId,
+      authoritativeMatch.userHighId,
     ]);
     if (!bothActive) {
       throw new ForbiddenException(CLOSED_ACCESS_ERROR);
@@ -330,10 +370,12 @@ export class MatchAuthorizationService {
 
     return {
       legacyUnitMock: false,
-      match,
-      conversation: match.conversation || null,
+      match: authoritativeMatch,
+      conversation: authoritativeMatch.conversation || null,
       partnerAccountId:
-        match.userLowId === accountId ? match.userHighId : match.userLowId,
+        authoritativeMatch.userLowId === accountId
+          ? authoritativeMatch.userHighId
+          : authoritativeMatch.userLowId,
     };
   }
 

@@ -21,12 +21,11 @@ import {
   removeCandidateById,
   REPORT_CATEGORY_OPTIONS,
 } from '../../../lib/discover-state';
-import { Badge, Button, Dialog, EmptyState } from '../../../components/ui';
+import { Badge, Button, Dialog, EmptyState, IntervalEmptyComposition } from '../../../components/ui';
 import {
   CompassIcon,
   FlagIcon,
   HeartIcon,
-  LockIcon,
   ShieldIcon,
   UserIcon,
   XIcon,
@@ -385,28 +384,35 @@ export default function DiscoverPage() {
 
   return (
     <main className="min-h-[calc(100vh-64px)] bg-stage text-chalk smn-ambient-discover smn-stage-wrap">
-      <div className="max-w-[1160px] mx-auto px-4 sm:px-6 py-5 sm:py-6 pb-28 md:pb-10">
+      <div className="max-w-[1280px] mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8 pb-28 md:pb-12">
         {/* Top Architectural Header */}
-        <header className="flex flex-col sm:flex-row sm:items-end justify-between gap-3 pb-4 mb-5 border-b border-edge">
-          <div>
+        <header className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 pb-5 mb-6 border-b border-edge">
+          <div className="min-w-0">
             <div className="flex items-center gap-2.5 mb-2">
               <span className="inline-block w-2 h-2 bg-iris" aria-hidden="true" />
-              <span className="text-[11px] font-semibold uppercase tracking-[0.12em] text-ash">
-                Discover
+              <span className="text-[11px] font-semibold uppercase tracking-[0.14em] text-ash">
+                Discover · Verified BS Cohort
               </span>
             </div>
             <h1 className="text-2xl sm:text-3xl font-semibold text-chalk tracking-tight">
               Verified Peers
             </h1>
-            <p className="text-sm text-silver mt-1">
+            <p className="text-sm text-silver mt-1 max-w-2xl">
               Reciprocal matches within the four approved IIT Madras non-campus BS programmes.
             </p>
           </div>
 
-          <div className="flex items-center gap-2.5 self-start sm:self-auto">
+          <div className="flex flex-wrap items-center gap-3 self-start sm:self-auto">
+            {appliedPrefs && (
+              <span className="inline-flex items-center px-3 h-9 rounded-[6px] bg-coal border border-edge/80 text-xs text-silver">
+                Age {appliedPrefs.minAge}&ndash;{appliedPrefs.maxAge} &middot;{' '}
+                {appliedPrefs.allowedProgrammes.length}{' '}
+                {appliedPrefs.allowedProgrammes.length === 1 ? 'track' : 'tracks'}
+              </span>
+            )}
             <Link
               href="/profile"
-              className="inline-flex items-center gap-2 h-9 px-3.5 rounded-[6px] bg-coal border border-edge text-xs font-medium text-silver hover:text-chalk hover:bg-iron transition-colors"
+              className="inline-flex items-center gap-2 h-9 px-3.5 rounded-[6px] bg-iron border border-edge text-xs font-medium text-chalk hover:bg-slate transition-colors"
             >
               <span>Preferences &amp; Profile</span>
             </Link>
@@ -460,39 +466,29 @@ export default function DiscoverPage() {
             icon={<CompassIcon size={22} />}
           />
         ) : viewerState === 'paused' ? (
-          <div
-            data-testid="discover-paused-state"
-            className="max-w-xl mx-auto bg-coal border border-edge rounded-[12px] p-7 sm:p-9 text-center flex flex-col items-center gap-4"
-          >
-            <div className="w-12 h-12 rounded-[8px] bg-iron border border-edge flex items-center justify-center text-warning">
-              <LockIcon size={22} />
-            </div>
-            <Badge variant="warning">Discovery Paused</Badge>
-            <h2 className="text-xl font-semibold text-chalk">
-              Your profile visibility is currently paused
-            </h2>
-            <p className="text-sm text-silver leading-relaxed max-w-md">
-              You are hidden from other members&apos; Discover feeds and cannot send new Likes while paused. Your existing mutual matches and conversations remain safe.
-            </p>
-            <div className="flex flex-wrap items-center justify-center gap-3 pt-2">
-              <Button
-                variant="primary"
-                size="md"
-                isLoading={isResuming}
-                onClick={handleResumeDiscovery}
-                data-testid="resume-discovery-btn"
-              >
-                Resume Discovery
-              </Button>
-              <Button
-                variant="secondary"
-                size="md"
-                onClick={() => router.push('/profile')}
-              >
-                Edit Profile &amp; Filters
-              </Button>
-            </div>
-          </div>
+          <IntervalEmptyComposition
+            variant="paused"
+            testId="discover-paused-state"
+            eyebrow="Discovery Paused"
+            title="Your profile visibility is currently paused"
+            description="You are hidden from other members' Discover feeds and cannot send new Likes while paused. Your existing mutual matches and conversations remain safe."
+            primaryAction={{
+              label: 'Resume Discovery',
+              onClick: handleResumeDiscovery,
+              isLoading: isResuming,
+              variant: 'primary',
+              testId: 'resume-discovery-btn',
+            }}
+            secondaryAction={{
+              label: 'Edit Profile & Filters',
+              onClick: () => router.push('/profile'),
+              variant: 'secondary',
+            }}
+            facts={[
+              { label: 'Feed visibility', value: 'Hidden from peers' },
+              { label: 'Existing chats', value: 'Active matches preserved' },
+            ]}
+          />
         ) : viewerState === 'profile_incomplete' ? (
           <EmptyState
             title="Complete your profile before browsing"
@@ -502,38 +498,48 @@ export default function DiscoverPage() {
             icon={<UserIcon size={22} />}
           />
         ) : !currentCandidate ? (
-          <div
-            data-testid="discover-empty-state"
-            className="max-w-xl mx-auto bg-coal border border-edge rounded-[12px] p-7 sm:p-9 text-center flex flex-col items-center gap-4"
-          >
-            <div className="w-12 h-12 rounded-[8px] bg-iron border border-edge flex items-center justify-center text-iris">
-              <CompassIcon size={22} />
-            </div>
-            <h2 className="text-xl font-semibold text-chalk">
-              No more verified peers match right now
-            </h2>
-            <p className="text-sm text-silver leading-relaxed max-w-md">
-              {isNarrowFilters
+          <IntervalEmptyComposition
+            variant="discover"
+            testId="discover-empty-state"
+            eyebrow="Batch Complete"
+            title="No more verified peers match right now"
+            description={
+              isNarrowFilters
                 ? 'You have reached the end of your current reciprocal matches. Broadening your age range or programme filters in Profile can surface more verified peers.'
-                : 'You have reviewed everyone currently matching your reciprocal age and programme preferences. New verified students join regularly.'}
-            </p>
-            <div className="flex flex-wrap items-center justify-center gap-3 pt-2">
-              <Button
-                variant="secondary"
-                size="md"
-                onClick={() => router.push('/profile')}
-              >
-                Adjust Filters
-              </Button>
-              <Button
-                variant="tertiary"
-                size="md"
-                onClick={loadInitialFeed}
-              >
-                Refresh Feed
-              </Button>
-            </div>
-          </div>
+                : 'You have reviewed everyone currently matching your reciprocal age and programme preferences. New verified students join regularly.'
+            }
+            primaryAction={{
+              label: 'Adjust Filters',
+              onClick: () => router.push('/profile'),
+              variant: 'secondary',
+            }}
+            secondaryAction={{
+              label: 'Refresh Feed',
+              onClick: loadInitialFeed,
+              variant: 'tertiary',
+            }}
+            facts={
+              appliedPrefs
+                ? [
+                    {
+                      label: 'Active age range',
+                      value: `${appliedPrefs.minAge}–${appliedPrefs.maxAge}`,
+                    },
+                    {
+                      label: 'Selected tracks',
+                      value: `${appliedPrefs.allowedProgrammes.length} ${
+                        appliedPrefs.allowedProgrammes.length === 1 ? 'programme' : 'programmes'
+                      }`,
+                    },
+                  ]
+                : [
+                    {
+                      label: 'Matching rule',
+                      value: 'Reciprocal 18+ IITM BS',
+                    },
+                  ]
+            }
+          />
         ) : (
           /* Main Active Candidate Experience */
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
@@ -568,7 +574,7 @@ export default function DiscoverPage() {
 
               {/* Architectural Portrait Frame (0px internal frame radius per Document 10) */}
               <div
-                className="relative w-full aspect-[4/3.6] max-h-[420px] sm:max-h-[450px] bg-stage overflow-hidden select-none"
+                className="relative w-full aspect-[4/4.2] max-h-[520px] sm:max-h-[540px] bg-stage overflow-hidden select-none"
                 tabIndex={0}
                 onKeyDown={(e) => {
                   if (e.key === 'ArrowLeft') handlePrevPhoto();
@@ -671,13 +677,47 @@ export default function DiscoverPage() {
                 </div>
               </div>
 
+              {/* Interactive Thumbnail Strip (Shown only when multiple portraits exist) */}
+              {candidatePhotos.length > 1 && (
+                <div className="px-4 sm:px-5 pt-3 flex items-center gap-2 border-b border-edge/60 pb-3 bg-stage/60">
+                  {candidatePhotos.map((p, idx) => (
+                    <button
+                      key={`thumb-${p.id}`}
+                      type="button"
+                      onClick={() => setPhotoIndex(idx)}
+                      aria-label={`Select portrait ${idx + 1}`}
+                      className={`relative w-12 h-12 rounded-[6px] overflow-hidden border transition-all ${
+                        idx === photoIndex
+                          ? 'border-iris ring-1 ring-iris/50'
+                          : 'border-edge opacity-65 hover:opacity-100'
+                      }`}
+                    >
+                      {p.photoUrl && !brokenPhotoIds[p.id] ? (
+                        <img
+                          src={p.photoUrl}
+                          alt=""
+                          className="w-full h-full object-cover block"
+                        />
+                      ) : (
+                        <span className="w-full h-full flex items-center justify-center bg-iron text-[10px] text-ash">
+                          {idx + 1}
+                        </span>
+                      )}
+                    </button>
+                  ))}
+                  <span className="ml-auto text-[11px] text-ash hidden sm:inline">
+                    Arrow keys navigate photos
+                  </span>
+                </div>
+              )}
+
               {/* Candidate Identity & Action Dock */}
-              <div className="p-4 sm:p-5 flex flex-col gap-4">
-                <div className="flex flex-col gap-2">
+              <div className="p-5 sm:p-6 flex flex-col gap-5">
+                <div className="flex flex-col gap-2.5">
                   <div className="flex flex-wrap items-baseline justify-between gap-2">
                     <h2
                       data-testid="candidate-heading"
-                      className="text-2xl font-semibold text-chalk tracking-tight"
+                      className="text-[1.75rem] sm:text-[2rem] leading-[1.12] font-semibold text-chalk tracking-tight"
                     >
                       {formatCandidateHeading(
                         currentCandidate.displayName,
@@ -695,15 +735,17 @@ export default function DiscoverPage() {
                     </button>
                   </div>
 
-                  <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-ash">
+                  <div className="flex flex-wrap items-center gap-2 pt-0.5 text-xs">
                     {currentCandidate.currentTerm && (
-                      <span>{currentCandidate.currentTerm}</span>
+                      <span className="px-2.5 py-1 rounded-[4px] bg-iron border border-edge/80 text-chalk font-medium">
+                        {currentCandidate.currentTerm}
+                      </span>
                     )}
                     {formatCoarseLocation(
                       currentCandidate.locationCity,
                       currentCandidate.locationState,
                     ) && (
-                      <span>
+                      <span className="px-2.5 py-1 rounded-[4px] bg-iron/60 border border-edge/60 text-silver">
                         {formatCoarseLocation(
                           currentCandidate.locationCity,
                           currentCandidate.locationState,
@@ -711,12 +753,12 @@ export default function DiscoverPage() {
                       </span>
                     )}
                     {formatIntentionLabel(currentCandidate.intention) && (
-                      <span className="text-silver">
+                      <span className="px-2.5 py-1 rounded-[4px] bg-iron/60 border border-edge/60 text-silver">
                         Looking for: {formatIntentionLabel(currentCandidate.intention)}
                       </span>
                     )}
                     {!currentCandidate.ageVisible && (
-                      <span className="text-ash">Age set to private</span>
+                      <span className="text-ash px-1">Age set to private</span>
                     )}
                   </div>
                 </div>
@@ -792,36 +834,36 @@ export default function DiscoverPage() {
               </div>
             </section>
 
-            {/* Right Context Rail (5 Cols Desktop, Stacks Below on Mobile) */}
-            <aside className="lg:col-span-5 flex flex-col gap-5">
-              {/* Biography Panel */}
-              <div className="bg-coal border border-edge rounded-[12px] p-5 smn-surface-elevated flex flex-col gap-2.5">
-                <span className="text-[11px] font-semibold uppercase tracking-[0.1em] text-ash">
-                  About
+            {/* Right Editorial Context Column (5 Cols Desktop, Sticky Alignment) */}
+            <aside className="lg:col-span-5 lg:sticky lg:top-[84px] flex flex-col gap-6">
+              {/* Primary Biography Surface */}
+              <div className="bg-coal border border-edge rounded-[12px] p-6 smn-surface-elevated flex flex-col gap-3">
+                <span className="text-[11px] font-semibold uppercase tracking-[0.12em] text-ash">
+                  About {currentCandidate.displayName}
                 </span>
-                <p className="text-sm text-silver leading-relaxed whitespace-pre-line">
+                <p className="text-[15px] text-silver leading-[1.65] whitespace-pre-line">
                   {currentCandidate.bio?.trim()
                     ? currentCandidate.bio
                     : 'No written biography added yet.'}
                 </p>
               </div>
 
-              {/* Conversation Prompts */}
+              {/* Conversation Prompts — Open Architectural Flow (not nested box cards) */}
               {currentCandidate.promptAnswers.length > 0 && (
-                <div className="bg-coal border border-edge rounded-[12px] p-5 smn-surface-elevated flex flex-col gap-3.5">
-                  <span className="text-[11px] font-semibold uppercase tracking-[0.1em] text-ash">
+                <div className="flex flex-col gap-4 px-1">
+                  <span className="text-[11px] font-semibold uppercase tracking-[0.12em] text-ash">
                     Conversation Prompts
                   </span>
-                  <div className="flex flex-col gap-3">
+                  <div className="flex flex-col gap-5">
                     {currentCandidate.promptAnswers.map((pa, idx) => (
                       <div
                         key={pa.id || `${currentCandidate.profileId}-p-${idx}`}
-                        className="p-3.5 rounded-[8px] bg-iron border border-edge/80"
+                        className="border-l-2 border-iris/75 pl-4 py-0.5 flex flex-col gap-1.5"
                       >
-                        <p className="text-xs font-medium text-iris mb-1">
+                        <p className="text-xs font-medium text-iris">
                           {pa.promptText}
                         </p>
-                        <p className="text-sm text-chalk leading-relaxed">
+                        <p className="text-[15px] text-chalk leading-relaxed">
                           &ldquo;{pa.answerText}&rdquo;
                         </p>
                       </div>
@@ -832,14 +874,14 @@ export default function DiscoverPage() {
 
               {/* Interests & Shared Context */}
               {currentCandidate.interests.length > 0 && (
-                <div className="bg-coal border border-edge rounded-[12px] p-5 smn-surface-elevated flex flex-col gap-3">
+                <div className="pt-5 border-t border-edge/80 flex flex-col gap-3 px-1">
                   <div className="flex items-center justify-between gap-2">
-                    <span className="text-[11px] font-semibold uppercase tracking-[0.1em] text-ash">
+                    <span className="text-[11px] font-semibold uppercase tracking-[0.12em] text-ash">
                       Interests
                     </span>
                     {currentCandidate.sharedInterests &&
                       currentCandidate.sharedInterests.length > 0 && (
-                        <span className="text-[11px] text-iris font-medium">
+                        <span className="text-xs text-iris font-medium">
                           {currentCandidate.sharedInterests.length} shared with you
                         </span>
                       )}
@@ -851,12 +893,15 @@ export default function DiscoverPage() {
                       return (
                         <span
                           key={interest}
-                          className={`inline-flex items-center px-2.5 py-1 rounded-[4px] text-xs font-medium border ${
+                          className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-[4px] text-xs font-medium border ${
                             isShared
-                              ? 'bg-[#1C1C2E] border-iris/50 text-chalk'
+                              ? 'bg-iris/[0.12] border-iris/60 text-chalk'
                               : 'bg-iron border-edge text-silver'
                           }`}
                         >
+                          {isShared && (
+                            <span className="w-1.5 h-1.5 bg-iris shrink-0" aria-hidden="true" />
+                          )}
                           {interest}
                         </span>
                       );
@@ -865,13 +910,13 @@ export default function DiscoverPage() {
                 </div>
               )}
 
-              {/* Discovery Session Batch & Filter Context */}
-              <div className="bg-coal border border-edge rounded-[12px] p-4 flex flex-col gap-2.5">
+              {/* Discovery Session Batch & Filter Bar */}
+              <div className="rounded-[8px] bg-iron/55 border border-edge/80 px-4 py-3.5 flex flex-col gap-3">
                 <div className="flex items-center justify-between gap-2 text-xs text-silver">
                   <span>In active batch: {queue.length}</span>
                   {appliedPrefs && (
                     <span className="text-ash">
-                      Age {appliedPrefs.minAge}&ndash;{appliedPrefs.maxAge}
+                      Reciprocal age {appliedPrefs.minAge}&ndash;{appliedPrefs.maxAge}
                     </span>
                   )}
                 </div>

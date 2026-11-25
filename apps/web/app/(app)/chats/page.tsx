@@ -1,9 +1,17 @@
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
-import Link from 'next/link';
-import { useSearchParams } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { api, MatchProfile, ChatMessage } from '../../../lib/api';
+import { formatCandidateHeading, formatProgrammeLabel, getInitials } from '../../../lib/discover-state';
+import { formatMatchDate } from '../../../lib/matches-state';
+import {
+  Badge,
+  Button,
+  Dialog,
+  IntervalEmptyComposition,
+  Skeleton,
+} from '../../../components/ui';
 import {
   PhoneIcon,
   GameIcon,
@@ -12,32 +20,41 @@ import {
   ShieldIcon,
   SendIcon,
   MicIcon,
-  CheckIcon,
   LockIcon,
   CalendarIcon,
+  SparklesIcon,
 } from '../../../components/icons';
 
 function ChatsContent() {
+  const router = useRouter();
   const searchParams = useSearchParams();
   const preselectMatchId = searchParams.get('matchId');
+  const preselectConversationId = searchParams.get('conversationId');
 
   const [matches, setMatches] = useState<MatchProfile[]>([]);
   const [activeMatch, setActiveMatch] = useState<MatchProfile | null>(null);
+  const [connectionEndedNotice, setConnectionEndedNotice] = useState(false);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [text, setText] = useState('');
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
+  const [messageError, setMessageError] = useState<string | null>(null);
   const [safetyFeedback, setSafetyFeedback] = useState<string | null>(null);
+  const [mobileShowThread, setMobileShowThread] = useState(false);
 
   // Together Space & Safety Modals
   const [togetherHubOpen, setTogetherHubOpen] = useState(false);
-  const [activeModal, setActiveModal] = useState<'call' | 'game' | 'date' | 'relationship' | 'report' | 'block' | null>(null);
+  const [activeModal, setActiveModal] = useState<
+    'call' | 'game' | 'date' | 'relationship' | 'report' | 'block' | null
+  >(null);
 
   // Call state
   const [callStatus, setCallStatus] = useState<string | null>(null);
 
   // Game state
-  const [gameSelection, setGameSelection] = useState<'word_scramble' | 'iitm_trivia'>('word_scramble');
+  const [gameSelection, setGameSelection] = useState<'word_scramble' | 'iitm_trivia'>(
+    'word_scramble',
+  );
   const [gameActive, setGameActive] = useState(false);
   const [gameScore, setGameScore] = useState(0);
 
@@ -55,11 +72,26 @@ function ChatsContent() {
       try {
         const list = await api.getMatches();
         setMatches(list);
-        if (list.length > 0) {
-          const matched = preselectMatchId
-            ? list.find((m) => m.id === preselectMatchId) || list[0]
-            : list[0];
-          setActiveMatch(matched);
+        if (preselectMatchId || preselectConversationId) {
+          const matched = list.find(
+            (m) =>
+              (preselectMatchId && m.id === preselectMatchId) ||
+              (preselectConversationId && m.conversationId === preselectConversationId),
+          );
+          if (matched) {
+            setConnectionEndedNotice(false);
+            setActiveMatch(matched);
+            setMobileShowThread(true);
+          } else {
+            setConnectionEndedNotice(true);
+            setActiveMatch(null);
+            setMessages([]);
+            setMobileShowThread(true);
+          }
+        } else if (list.length > 0) {
+          setConnectionEndedNotice(false);
+          setActiveMatch(list[0]);
+          setMobileShowThread(true);
         }
       } catch (err) {
         console.error('Failed to load matches:', err);
@@ -68,16 +100,25 @@ function ChatsContent() {
       }
     }
     loadMatches();
-  }, [preselectMatchId]);
+  }, [preselectMatchId, preselectConversationId]);
 
   useEffect(() => {
     if (!activeMatch) return;
+    const targetConvId = activeMatch.conversationId || activeMatch.id;
     async function loadMessages() {
+      setMessageError(null);
       try {
-        const history = await api.getMessages(activeMatch!.id);
+        const history = await api.getMessages(targetConvId);
         setMessages(history);
-      } catch (err) {
-        console.error('Failed to load messages:', err);
+      } catch (err: any) {
+        if (err?.status === 403 || err?.status === 404) {
+          setConnectionEndedNotice(true);
+          setMessages([]);
+          setMatches((prev) => prev.filter((m) => m.id !== activeMatch!.id));
+          setActiveMatch(null);
+        } else {
+          setMessageError(err?.message || 'Unable to load conversation messages right now.');
+        }
       }
     }
     loadMessages();
@@ -88,31 +129,46 @@ function ChatsContent() {
   }, [messages]);
 
   const selectConversation = (match: MatchProfile) => {
+    setConnectionEndedNotice(false);
+    setMessageError(null);
     setActiveMatch(match);
+    setTogetherHubOpen(false);
+    setMobileShowThread(true);
   };
 
   const formatTime = (timeStr: string) => {
     const d = new Date(timeStr);
-    return isNaN(d.getTime()) ? timeStr : d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    return isNaN(d.getTime())
+      ? timeStr
+      : d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   };
 
   const handleSend = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!activeMatch || !text.trim() || sending) return;
+    if (!activeMatch || !text.trim() || sending || connectionEndedNotice) return;
 
     const trimmed = text.trim();
     if (trimmed.length > 1000) {
-      alert('Message exceeds 1,000 character limit.');
+      setMessageError('Message exceeds 1,000 character limit.');
       return;
     }
 
+    const targetConvId = activeMatch.conversationId || activeMatch.id;
     setSending(true);
+    setMessageError(null);
     try {
-      const sent = await api.sendMessage(activeMatch.id, trimmed);
+      const sent = await api.sendMessage(targetConvId, trimmed);
       setMessages((prev) => [...prev, sent]);
       setText('');
     } catch (err: any) {
-      alert(err.message || 'Failed to send message');
+      if (err?.status === 403 || err?.status === 404) {
+        setConnectionEndedNotice(true);
+        setMessages([]);
+        setMatches((prev) => prev.filter((m) => m.id !== activeMatch.id));
+        setActiveMatch(null);
+      } else {
+        setMessageError(err?.message || 'Failed to send message.');
+      }
     } finally {
       setSending(false);
     }
@@ -120,18 +176,31 @@ function ChatsContent() {
 
   const confirmBlock = async () => {
     if (!activeMatch) return;
-    await api.blockUser(activeMatch.candidate.profileId, 'User requested block');
+    await api.blockCandidate(activeMatch.candidate.profileId, 'User blocked from Chats');
     setActiveModal(null);
-    setSafetyFeedback(`Blocked ${activeMatch.candidate.displayName}. Mutual visibility has been severed immediately.`);
-    setMatches((prev) => prev.filter((m) => m.id !== activeMatch.id));
-    setActiveMatch(null);
+    setSafetyFeedback(
+      `Blocked ${activeMatch.candidate.displayName}. Mutual visibility has been severed immediately.`,
+    );
+    const remaining = matches.filter((m) => m.id !== activeMatch.id);
+    setMatches(remaining);
+    setActiveMatch(remaining[0] || null);
+    if (remaining.length === 0) {
+      setMobileShowThread(false);
+    }
   };
 
-  const submitReport = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const submitReport = async (e?: { preventDefault?: () => void }) => {
+    e?.preventDefault?.();
     if (!activeMatch) return;
-    const fullReason = `${reportReason}${reportNotes ? `: ${reportNotes}` : ''}`;
-    await api.reportUser(activeMatch.candidate.profileId, fullReason);
+    const category = reportReason.toLowerCase().includes('harass')
+      ? 'harassment'
+      : reportReason.toLowerCase().includes('spam')
+        ? 'spam'
+        : reportReason.toLowerCase().includes('impersonation')
+          ? 'fake_profile'
+          : 'inappropriate_content';
+    const description = reportNotes ? `${reportReason}: ${reportNotes}` : reportReason;
+    await api.reportCandidate(activeMatch.candidate.profileId, category, description);
     setActiveModal(null);
     setReportNotes('');
     setSafetyFeedback('Report submitted confidentially to student safety moderators.');
@@ -152,506 +221,481 @@ function ChatsContent() {
     setTimeout(() => setSafetyFeedback(null), 3000);
   };
 
+  const conversationStarters = activeMatch
+    ? [
+        `Hey ${activeMatch.candidate.displayName}, glad we matched! How is your term going in ${formatProgrammeLabel(activeMatch.candidate.programmeFamily)}?`,
+        ...(activeMatch.candidate.interests?.slice(0, 1).map(
+          (interest) =>
+            `I noticed we share an interest in ${interest} — what got you into it?`,
+        ) || []),
+        'Want to try a quick cooperative Word Scramble or grab a virtual coffee session sometime this week?',
+      ]
+    : [];
+
   if (loading) {
     return (
-      <div className="container-standard" style={{ paddingTop: '80px', textAlign: 'center' }}>
-        <p style={{ color: 'var(--color-text-secondary)', fontSize: '14px' }}>Loading conversations...</p>
+      <div className="max-w-[1320px] mx-auto px-4 sm:px-6 lg:px-8 pt-7 pb-24 sm:pt-9 md:pb-10 font-ui">
+        <div className="rounded-[12px] border border-edge bg-coal overflow-hidden grid grid-cols-1 md:grid-cols-12 min-h-[580px]">
+          <div className="md:col-span-4 border-r border-edge p-5 flex flex-col gap-3">
+            <Skeleton width="45%" height="20px" />
+            <Skeleton width="100%" height="64px" rounded="control" />
+            <Skeleton width="100%" height="64px" rounded="control" />
+          </div>
+          <div className="md:col-span-8 p-6 flex flex-col justify-between gap-4">
+            <Skeleton width="50%" height="32px" />
+            <Skeleton width="100%" height="280px" rounded="control" />
+            <Skeleton width="100%" height="48px" rounded="control" />
+          </div>
+        </div>
       </div>
     );
   }
 
   return (
-    <div
-      className="container-wide"
-      style={{
-        paddingTop: '20px',
-        paddingBottom: '32px',
-        height: 'calc(100vh - 90px)',
-        minHeight: '620px',
-        display: 'flex',
-        flexDirection: 'column',
-      }}
-    >
+    <div className="max-w-[1320px] mx-auto px-4 sm:px-6 lg:px-8 pt-6 pb-24 sm:pt-8 md:pb-8 font-ui flex flex-col gap-4">
       {safetyFeedback && (
         <div
-          style={{
-            padding: '10px 18px',
-            backgroundColor: 'var(--color-surface-subtle)',
-            border: '1px solid var(--color-brand-primary)',
-            borderRadius: 'var(--radius-md)',
-            color: 'var(--color-brand-primary)',
-            fontSize: '13px',
-            marginBottom: '12px',
-            textAlign: 'center',
-            fontWeight: 500,
-            animation: 'fadeIn 140ms ease-out',
-          }}
+          role="status"
+          className="px-4 py-3 rounded-[8px] bg-coal border border-iris/50 text-sm text-chalk flex items-center justify-between gap-3"
         >
-          {safetyFeedback}
+          <span>{safetyFeedback}</span>
+          <button
+            type="button"
+            onClick={() => setSafetyFeedback(null)}
+            className="text-xs text-ash hover:text-chalk px-2 py-1"
+          >
+            Dismiss
+          </button>
         </div>
       )}
 
       {matches.length === 0 ? (
-        <div className="card-surface" style={{ padding: '64px 28px', textAlign: 'center', margin: 'auto', maxWidth: '520px' }}>
-          <div
-            style={{
-              width: '64px',
-              height: '64px',
-              borderRadius: '50%',
-              backgroundColor: 'var(--color-surface-subtle)',
-              display: 'inline-flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              marginBottom: '18px',
-            }}
-          >
-            <LockIcon size={28} color="var(--color-brand-primary)" />
-          </div>
-          <h2 style={{ fontFamily: 'var(--font-display)', fontSize: '26px', fontWeight: 600, marginBottom: '8px' }}>
-            No Active Conversations
-          </h2>
-          <p style={{ fontSize: '14px', color: 'var(--color-text-secondary)', lineHeight: '22px', marginBottom: '24px' }}>
-            SayMyName strictly prohibits stranger DMs. Messaging unlocks exclusively after mutual likes.
-          </p>
-          <Link href="/discover" className="btn btn-primary">
-            Explore Discovery
-          </Link>
+        <div className="pt-2">
+          {connectionEndedNotice ? (
+            <IntervalEmptyComposition
+              testId="ended-conversation-notice"
+              variant="chats"
+              eyebrow="Connection Closed"
+              title="This connection has ended"
+              description="The mutual match linked to this conversation is no longer active. Messaging and invitations are closed, and new messages cannot be sent."
+              primaryAction={{
+                label: 'Return to Matches',
+                onClick: () => router.push('/matches'),
+                variant: 'primary',
+              }}
+              secondaryAction={{
+                label: 'Explore Discover',
+                onClick: () => router.push('/discover'),
+                variant: 'secondary',
+              }}
+              facts={[
+                { label: 'Channel Status', value: 'Closed cleanly after unmatch or block' },
+                { label: 'Messaging Rule', value: 'Only active bilateral matches may message' },
+              ]}
+            />
+          ) : (
+            <IntervalEmptyComposition
+              variant="chats"
+              eyebrow="Encrypted Match Channels"
+              title="No active conversations yet"
+              description="SayMyName strictly prohibits unsolicited stranger DMs. Messaging unlocks exclusively between two members who have mutually liked each other."
+              primaryAction={{
+                label: 'Explore Discovery',
+                onClick: () => router.push('/discover'),
+                variant: 'primary',
+              }}
+              secondaryAction={{
+                label: 'Check Matches & Likes',
+                onClick: () => router.push('/matches'),
+                variant: 'secondary',
+              }}
+              facts={[
+                { label: 'Messaging rule', value: 'Mutual match required' },
+                { label: 'Default privacy', value: 'No call recording or ads' },
+              ]}
+            />
+          )}
         </div>
       ) : (
-        <div
-          className="card-surface"
-          style={{
-            display: 'flex',
-            flex: 1,
-            overflow: 'hidden',
-          }}
-        >
+        <div className="rounded-[12px] border border-edge bg-coal smn-surface-elevated overflow-hidden flex flex-col md:flex-row min-h-[calc(100vh-170px)] md:h-[calc(100vh-124px)] md:min-h-[600px]">
           {/* Left Sidebar: Conversations List */}
-          <div
-            style={{
-              width: '320px',
-              borderRight: '1px solid var(--color-border-default)',
-              display: 'flex',
-              flexDirection: 'column',
-              backgroundColor: 'var(--color-surface-subtle)',
-              flexShrink: 0,
-            }}
+          <aside
+            aria-label="Conversation channels"
+            className={`${
+              mobileShowThread ? 'hidden md:flex' : 'flex'
+            } w-full md:w-[300px] lg:w-[336px] shrink-0 border-b md:border-b-0 md:border-r border-edge bg-stage/95 flex-col min-h-0`}
           >
-            <div style={{ padding: '18px 20px', borderBottom: '1px solid var(--color-border-default)' }}>
-              <span className="index-stamp" style={{ display: 'block', marginBottom: '2px' }}>Private Channels</span>
-              <h2 style={{ fontFamily: 'var(--font-display)', fontSize: '20px', fontWeight: 600, margin: 0 }}>
-                Conversations
-              </h2>
+            <div className="px-5 py-4 border-b border-edge flex items-center justify-between gap-2">
+              <div>
+                <span className="block text-[10px] font-semibold uppercase tracking-[0.14em] text-ash">
+                  Private Channels
+                </span>
+                <h1 className="text-lg font-semibold text-chalk tracking-tight mt-0.5">
+                  Conversations
+                </h1>
+              </div>
+              <Badge variant="neutral" size="sm">
+                {matches.length} active
+              </Badge>
             </div>
 
-            <div style={{ flex: 1, overflowY: 'auto' }}>
+            <div className="flex-1 overflow-y-auto divide-y divide-edge/40">
               {matches.map((m) => {
                 const isSelected = activeMatch?.id === m.id;
                 const photo = m.candidate.photos?.[0]?.photoUrl;
                 return (
-                  <div
+                  <button
                     key={m.id}
+                    type="button"
                     onClick={() => selectConversation(m)}
-                    style={{
-                      padding: '14px 18px',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '12px',
-                      cursor: 'pointer',
-                      backgroundColor: isSelected ? 'var(--color-surface)' : 'transparent',
-                      borderLeft: isSelected ? '3px solid var(--color-brand-primary)' : '3px solid transparent',
-                      transition: 'background-color var(--duration-fast)',
-                    }}
+                    className={`w-full text-left px-4 py-3.5 flex items-center gap-3 transition-colors border-l-[3px] ${
+                      isSelected
+                        ? 'bg-iron/90 border-iris'
+                        : 'bg-transparent border-transparent hover:bg-coal/80'
+                    }`}
                   >
                     {photo ? (
                       <img
                         src={photo}
                         alt={m.candidate.displayName}
-                        style={{
-                          width: '44px',
-                          height: '44px',
-                          borderRadius: '50%',
-                          objectFit: 'cover',
-                          flexShrink: 0,
-                          border: '1.5px solid var(--color-border-default)',
-                        }}
+                        className="w-11 h-11 rounded-[8px] object-cover shrink-0 border border-edge"
                       />
                     ) : (
-                      <div
-                        style={{
-                          width: '44px',
-                          height: '44px',
-                          borderRadius: '50%',
-                          backgroundColor: m.candidate.avatarColor || '#6E2638',
-                          color: '#FFFFFF',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          fontWeight: 600,
-                          fontSize: '18px',
-                          fontFamily: 'var(--font-display)',
-                          flexShrink: 0,
-                        }}
-                      >
-                        {m.candidate.displayName.charAt(0)}
+                      <div className="w-11 h-11 rounded-[8px] bg-iron border border-edge text-chalk flex items-center justify-center font-semibold text-sm shrink-0">
+                        {getInitials(m.candidate.displayName)}
                       </div>
                     )}
 
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2px' }}>
-                        <span style={{ fontSize: '14px', fontWeight: 600, color: 'var(--color-text-primary)' }}>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="text-sm font-semibold text-chalk truncate">
                           {m.candidate.displayName}
                         </span>
-                        <span className="index-stamp" style={{ fontSize: '9px' }}>
-                          {m.matchedAt}
+                        <span className="text-[10px] text-ash shrink-0">
+                          {formatMatchDate(m.matchedAtIso || m.matchedAt)}
                         </span>
                       </div>
-                      <p
-                        style={{
-                          margin: 0,
-                          fontSize: '12.5px',
-                          color: 'var(--color-text-secondary)',
-                          overflow: 'hidden',
-                          textOverflow: 'ellipsis',
-                          whiteSpace: 'nowrap',
-                        }}
-                      >
+                      <p className="text-xs text-silver truncate mt-0.5">
                         {m.lastMessage || 'Mutual match active'}
                       </p>
                     </div>
-                  </div>
+                  </button>
                 );
               })}
             </div>
-          </div>
+          </aside>
 
           {/* Right Pane: Active Thread Viewport */}
           {activeMatch ? (
-            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', backgroundColor: 'var(--color-surface)', minWidth: 0 }}>
-              {/* Header: Partner Identity & Structured Action Bar */}
-              <div
-                style={{
-                  padding: '12px 24px',
-                  borderBottom: '1px solid var(--color-border-default)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                  backgroundColor: 'var(--color-surface)',
-                  flexWrap: 'wrap',
-                  gap: '12px',
-                }}
-              >
-                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <section
+              aria-label={`Conversation with ${activeMatch.candidate.displayName}`}
+              className={`${
+                mobileShowThread ? 'flex' : 'hidden md:flex'
+              } flex-1 flex-col min-w-0 min-h-0 bg-coal`}
+            >
+              {/* Thread Header */}
+              <div className="px-4 sm:px-6 py-3.5 border-b border-edge bg-stage/70 flex flex-wrap items-center justify-between gap-3">
+                <div className="flex items-center gap-3 min-w-0">
+                  <button
+                    type="button"
+                    onClick={() => setMobileShowThread(false)}
+                    className="md:hidden inline-flex items-center gap-1 px-2.5 h-9 rounded-[6px] border border-edge bg-iron text-xs font-medium text-chalk shrink-0"
+                    aria-label="Back to conversations list"
+                  >
+                    &larr; {matches.length}
+                  </button>
+
                   {activeMatch.candidate.photos?.[0]?.photoUrl ? (
                     <img
                       src={activeMatch.candidate.photos[0].photoUrl}
                       alt={activeMatch.candidate.displayName}
-                      style={{
-                        width: '42px',
-                        height: '42px',
-                        borderRadius: '50%',
-                        objectFit: 'cover',
-                        border: '1px solid var(--color-border-default)',
-                      }}
+                      className="w-10 h-10 rounded-[8px] object-cover border border-edge shrink-0"
                     />
                   ) : (
-                    <div
-                      style={{
-                        width: '42px',
-                        height: '42px',
-                        borderRadius: '50%',
-                        backgroundColor: activeMatch.candidate.avatarColor || '#6E2638',
-                        color: '#FFFFFF',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        fontWeight: 600,
-                        fontSize: '18px',
-                        fontFamily: 'var(--font-display)',
-                      }}
-                    >
-                      {activeMatch.candidate.displayName.charAt(0)}
+                    <div className="w-10 h-10 rounded-[8px] bg-iron border border-edge text-chalk flex items-center justify-center font-semibold text-sm shrink-0">
+                      {getInitials(activeMatch.candidate.displayName)}
                     </div>
                   )}
 
-                  <div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                      <h3 style={{ fontSize: '16px', fontWeight: 600, margin: 0, color: 'var(--color-text-primary)' }}>
-                        {activeMatch.candidate.displayName}, {activeMatch.candidate.age}
-                      </h3>
-                      <span className="badge-verified" style={{ fontSize: '9.5px', padding: '2px 7px' }}>
-                        <CheckIcon size={9} color="var(--color-brand-primary)" />
-                        <span>Verified</span>
-                      </span>
+                  <div className="min-w-0">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <h2 className="text-base font-semibold text-chalk truncate">
+                        {formatCandidateHeading(
+                          activeMatch.candidate.displayName,
+                          activeMatch.candidate.age,
+                        )}
+                      </h2>
+                      <Badge variant="verified" size="sm">
+                        Verified
+                      </Badge>
                       {dateProposed && (
-                        <span className="badge-tag" style={{ fontSize: '10px', color: 'var(--color-brand-primary)', padding: '2px 7px' }}>
-                          ☕ Date Invited
-                        </span>
+                        <Badge variant="programme" size="sm">
+                          Date Invited
+                        </Badge>
                       )}
                     </div>
-                    <p style={{ margin: '1px 0 0 0', fontSize: '11px', color: 'var(--color-accent-warm)', fontWeight: 600 }}>
-                      BS in {activeMatch.candidate.programmeFamily.replace(/_/g, ' ')}
+                    <p className="text-xs text-ash truncate">
+                      {formatProgrammeLabel(activeMatch.candidate.programmeFamily)}
                     </p>
                   </div>
                 </div>
 
-                {/* Structured Communication Controls */}
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  {/* 1:1 LiveKit Call */}
-                  <button
+                {/* Bilateral Communication & Safety Actions */}
+                <div className="flex items-center gap-2 flex-wrap relative">
+                  <Button
+                    variant="secondary"
+                    size="sm"
                     onClick={() => setActiveModal('call')}
-                    className="btn btn-secondary"
-                    style={{ padding: '7px 14px', fontSize: '12.5px' }}
+                    leftIcon={<PhoneIcon size={14} />}
                     title="Audio Call (Requires Bilateral Acceptance)"
                   >
-                    <PhoneIcon size={14} color="var(--color-brand-primary)" />
-                    <span>Call</span>
-                  </button>
+                    Call
+                  </Button>
 
-                  {/* Together Space Hub Trigger */}
-                  <button
-                    onClick={() => setTogetherHubOpen(!togetherHubOpen)}
-                    className="btn btn-subtle"
-                    style={{ padding: '7px 14px', fontSize: '12.5px' }}
-                    title="Together Space: Games, Virtual Dates & Relationship Mode"
-                  >
-                    <GameIcon size={14} color="var(--color-brand-primary)" />
-                    <span>Together Space</span>
-                  </button>
-
-                  {/* Together Space Dropdown Menu */}
-                  {togetherHubOpen && (
-                    <div
-                      style={{
-                        position: 'absolute',
-                        top: '64px',
-                        right: '72px',
-                        backgroundColor: 'var(--color-surface)',
-                        border: '1px solid var(--color-border-default)',
-                        borderRadius: 'var(--radius-lg)',
-                        boxShadow: 'var(--elevation-3)',
-                        width: '240px',
-                        zIndex: 40,
-                        overflow: 'hidden',
-                      }}
+                  <div className="relative">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setTogetherHubOpen((prev) => !prev)}
+                      leftIcon={<GameIcon size={14} />}
+                      className="border border-edge bg-iron/80 text-chalk"
+                      title="Together Space: Games, Virtual Dates & Relationship Mode"
                     >
-                      <button
-                        onClick={() => {
-                          setTogetherHubOpen(false);
-                          setActiveModal('game');
-                        }}
-                        style={{
-                          width: '100%',
-                          padding: '12px 16px',
-                          textAlign: 'left',
-                          fontSize: '13px',
-                          color: 'var(--color-text-primary)',
-                          borderBottom: '1px solid var(--color-border-subtle)',
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: '10px',
-                        }}
-                      >
-                        <GameIcon size={16} color="var(--color-accent-warm)" />
-                        <div>
-                          <div style={{ fontWeight: 600 }}>Word Games & Trivia</div>
-                          <div style={{ fontSize: '11px', color: 'var(--color-text-muted)' }}>Cooperative mini-games</div>
-                        </div>
-                      </button>
+                      Together Space
+                    </Button>
 
-                      <button
-                        onClick={() => {
-                          setTogetherHubOpen(false);
-                          setActiveModal('date');
-                        }}
-                        style={{
-                          width: '100%',
-                          padding: '12px 16px',
-                          textAlign: 'left',
-                          fontSize: '13px',
-                          color: 'var(--color-text-primary)',
-                          borderBottom: '1px solid var(--color-border-subtle)',
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: '10px',
-                        }}
-                      >
-                        <CalendarIcon size={16} color="var(--color-status-info)" />
-                        <div>
-                          <div style={{ fontWeight: 600 }}>Virtual Date</div>
-                          <div style={{ fontSize: '11px', color: 'var(--color-text-muted)' }}>Scheduled coffee session</div>
-                        </div>
-                      </button>
+                    {togetherHubOpen && (
+                      <div className="absolute right-0 mt-2 w-64 rounded-[10px] border border-edge bg-coal shadow-2xl z-40 overflow-hidden divide-y divide-edge">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setTogetherHubOpen(false);
+                            setActiveModal('game');
+                          }}
+                          className="w-full px-4 py-3 text-left hover:bg-iron transition-colors flex items-center gap-3"
+                        >
+                          <GameIcon size={16} color="#E18A62" />
+                          <div>
+                            <div className="text-xs font-semibold text-chalk">
+                              Word Games &amp; Trivia
+                            </div>
+                            <div className="text-[11px] text-ash">
+                              Cooperative mini-games
+                            </div>
+                          </div>
+                        </button>
 
-                      <button
-                        onClick={() => {
-                          setTogetherHubOpen(false);
-                          setActiveModal('relationship');
-                        }}
-                        style={{
-                          width: '100%',
-                          padding: '12px 16px',
-                          textAlign: 'left',
-                          fontSize: '13px',
-                          color: 'var(--color-brand-primary)',
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: '10px',
-                        }}
-                      >
-                        <HeartHandshakeIcon size={16} color="var(--color-brand-primary)" />
-                        <div>
-                          <div style={{ fontWeight: 600 }}>Relationship Mode</div>
-                          <div style={{ fontSize: '11px', color: 'var(--color-text-muted)' }}>Mutual shared space</div>
-                        </div>
-                      </button>
-                    </div>
-                  )}
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setTogetherHubOpen(false);
+                            setActiveModal('date');
+                          }}
+                          className="w-full px-4 py-3 text-left hover:bg-iron transition-colors flex items-center gap-3"
+                        >
+                          <CalendarIcon size={16} color="#8580C4" />
+                          <div>
+                            <div className="text-xs font-semibold text-chalk">
+                              Virtual Date
+                            </div>
+                            <div className="text-[11px] text-ash">
+                              Scheduled coffee session
+                            </div>
+                          </div>
+                        </button>
 
-                  {/* Safety Menu Trigger */}
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setTogetherHubOpen(false);
+                            setActiveModal('relationship');
+                          }}
+                          className="w-full px-4 py-3 text-left hover:bg-iron transition-colors flex items-center gap-3"
+                        >
+                          <HeartHandshakeIcon size={16} color="#8580C4" />
+                          <div>
+                            <div className="text-xs font-semibold text-iris">
+                              Relationship Mode
+                            </div>
+                            <div className="text-[11px] text-ash">
+                              Mutual shared space
+                            </div>
+                          </div>
+                        </button>
+                      </div>
+                    )}
+                  </div>
+
                   <button
+                    type="button"
                     onClick={() => setActiveModal('report')}
-                    className="btn btn-ghost"
-                    style={{ padding: '7px 10px', fontSize: '12px' }}
+                    className="inline-flex items-center justify-center w-9 h-9 rounded-[6px] border border-edge/80 bg-iron/60 text-ash hover:text-warning hover:border-warning/50 transition-colors"
+                    aria-label="Report conversation"
                     title="Report"
                   >
-                    <FlagIcon size={14} color="var(--color-text-secondary)" />
+                    <FlagIcon size={14} />
                   </button>
 
                   <button
+                    type="button"
                     onClick={() => setActiveModal('block')}
-                    className="btn btn-ghost"
-                    style={{ padding: '7px 10px', fontSize: '12px', color: 'var(--color-status-danger)' }}
+                    className="inline-flex items-center justify-center w-9 h-9 rounded-[6px] border border-edge/80 bg-iron/60 text-ash hover:text-danger hover:border-danger/50 transition-colors"
+                    aria-label="Block user"
                     title="Block"
                   >
-                    <ShieldIcon size={14} color="var(--color-status-danger)" />
+                    <ShieldIcon size={14} />
                   </button>
                 </div>
               </div>
 
-              {/* Privacy Notice Banner (Truthful & Concise, No Document jargon) */}
-              <div
-                style={{
-                  padding: '7px 20px',
-                  backgroundColor: 'var(--color-surface-subtle)',
-                  borderBottom: '1px solid var(--color-border-subtle)',
-                  fontSize: '11.5px',
-                  color: 'var(--color-text-secondary)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '8px',
-                }}
-              >
-                <LockIcon size={12} color="var(--color-brand-primary)" />
+              {/* Privacy Notice Banner */}
+              <div className="px-4 sm:px-6 py-2 bg-iron/50 border-b border-edge/70 text-[11px] text-silver flex items-center gap-2">
+                <LockIcon size={12} color="#8580C4" />
                 <span>
-                  Bilateral Mutual Match • Private communication is never recorded by default or used for advertising.
+                  Mutual Match Active • Private communication is never recorded by default or used for advertising.
                 </span>
               </div>
 
-              {/* Message History Thread */}
-              <div
-                style={{
-                  flex: 1,
-                  padding: '24px 20px',
-                  overflowY: 'auto',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  gap: '14px',
-                  backgroundColor: 'var(--color-canvas)',
-                }}
-              >
-                {messages.map((m) => (
-                  <div
-                    key={m.id}
-                    style={{
-                      alignSelf: m.isOwn ? 'flex-end' : 'flex-start',
-                      maxWidth: '72%',
-                      display: 'flex',
-                      flexDirection: 'column',
-                      alignItems: m.isOwn ? 'flex-end' : 'flex-start',
-                    }}
-                  >
-                    <div
-                      style={{
-                        padding: '11px 18px',
-                        borderRadius: m.isOwn ? '18px 18px 3px 18px' : '18px 18px 18px 3px',
-                        backgroundColor: m.isOwn ? 'var(--color-brand-primary)' : 'var(--color-surface)',
-                        color: m.isOwn ? '#FFFFFF' : 'var(--color-text-primary)',
-                        fontSize: '14px',
-                        lineHeight: '21px',
-                        border: m.isOwn ? 'none' : '1px solid var(--color-border-default)',
-                        boxShadow: 'var(--elevation-1)',
-                        wordBreak: 'break-word',
-                      }}
-                    >
-                      {m.text}
+              {/* Message Thread Body */}
+              <div className="flex-1 min-h-[280px] overflow-y-auto px-4 sm:px-6 py-5 bg-void/70 flex flex-col gap-3.5">
+                {messages.length === 0 ? (
+                  /* Intentional First-Conversation Threshold (replaces blank empty container) */
+                  <div className="my-auto max-w-xl mx-auto w-full rounded-[12px] border border-edge bg-coal/90 p-5 sm:p-6 flex flex-col gap-4">
+                    <div className="flex items-start justify-between gap-3 pb-3 border-b border-edge/80">
+                      <div>
+                        <span className="inline-flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-[0.12em] text-iris">
+                          <SparklesIcon size={12} />
+                          <span>Mutual Match Established</span>
+                        </span>
+                        <h3 className="text-lg font-semibold text-chalk mt-1">
+                          Begin chatting with {activeMatch.candidate.displayName}
+                        </h3>
+                        <p className="text-xs text-silver mt-0.5">
+                          {formatProgrammeLabel(activeMatch.candidate.programmeFamily)}
+                          {activeMatch.candidate.currentTerm
+                            ? ` • ${activeMatch.candidate.currentTerm}`
+                            : ''}
+                        </p>
+                      </div>
+                      <Badge variant="verified" size="sm">
+                        Verified
+                      </Badge>
                     </div>
 
-                    <div
-                      style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '4px',
-                        marginTop: '3px',
-                        fontSize: '10px',
-                        color: 'var(--color-text-muted)',
-                        fontFamily: 'var(--font-mono)',
-                      }}
-                    >
-                      <span>{formatTime(m.createdAt)}</span>
-                      {m.isOwn && (
-                        <span>
-                          {m.deliveryState === 'read' ? '✓✓' : m.deliveryState === 'delivered' ? '✓✓' : '✓'}
-                        </span>
+                    {activeMatch.candidate.bio?.trim() && (
+                      <p className="text-xs text-silver leading-relaxed border-l-2 border-edge pl-3">
+                        {activeMatch.candidate.bio}
+                      </p>
+                    )}
+
+                    {activeMatch.candidate.interests &&
+                      activeMatch.candidate.interests.length > 0 && (
+                        <div className="flex flex-wrap gap-1.5">
+                          {activeMatch.candidate.interests.slice(0, 5).map((item) => (
+                            <span
+                              key={item}
+                              className="px-2 py-0.5 rounded-[4px] bg-iron border border-edge text-[11px] text-silver"
+                            >
+                              {item}
+                            </span>
+                          ))}
+                        </div>
                       )}
+
+                    <div className="flex flex-col gap-2 pt-1">
+                      <span className="text-[11px] font-semibold uppercase tracking-[0.1em] text-ash">
+                        Draft a starter (edits before sending)
+                      </span>
+                      <div className="flex flex-col gap-2">
+                        {conversationStarters.map((starter, idx) => (
+                          <button
+                            key={idx}
+                            type="button"
+                            onClick={() => setText(starter)}
+                            className="text-left px-3.5 py-2.5 rounded-[8px] bg-iron/80 border border-edge hover:border-iris/60 text-xs text-chalk transition-colors"
+                          >
+                            &ldquo;{starter}&rdquo;
+                          </button>
+                        ))}
+                      </div>
                     </div>
                   </div>
-                ))}
+                ) : (
+                  messages.map((m) => (
+                    <div
+                      key={m.id}
+                      className={`flex flex-col max-w-[85%] sm:max-w-[72%] ${
+                        m.isOwn ? 'self-end items-end' : 'self-start items-start'
+                      }`}
+                    >
+                      <div
+                        className={`px-4 py-2.5 text-sm leading-relaxed break-words ${
+                          m.isOwn
+                            ? 'bg-iris text-[#0B0D10] font-medium rounded-[10px] rounded-br-[2px]'
+                            : 'bg-iron border border-edge text-chalk rounded-[10px] rounded-bl-[2px]'
+                        }`}
+                      >
+                        {m.text}
+                      </div>
+
+                      <div className="flex items-center gap-1 mt-1 text-[10px] text-ash font-mono">
+                        <span>{formatTime(m.createdAt)}</span>
+                        {m.isOwn && (
+                          <span>
+                            {m.deliveryState === 'read'
+                              ? '✓✓'
+                              : m.deliveryState === 'delivered'
+                                ? '✓✓'
+                                : '✓'}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  ))
+                )}
+                {messageError && (
+                  <div
+                    role="alert"
+                    className="mb-2 px-3 py-2 rounded-[6px] bg-[#2E1417] border border-danger/40 text-xs text-danger"
+                  >
+                    {messageError}
+                  </div>
+                )}
                 <div ref={messagesEndRef} />
               </div>
 
               {/* Crafted Message Composer */}
               <form
                 onSubmit={handleSend}
-                style={{
-                  padding: '16px 20px',
-                  borderTop: '1px solid var(--color-border-default)',
-                  backgroundColor: 'var(--color-surface)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '12px',
-                }}
+                className="px-3 sm:px-5 py-3.5 border-t border-edge bg-stage/90 flex items-center gap-2.5 sm:gap-3"
               >
                 <button
                   type="button"
-                  className="btn btn-secondary btn-round"
-                  style={{ width: '40px', height: '40px' }}
+                  className="w-10 h-10 rounded-[8px] bg-iron border border-edge text-silver hover:text-chalk hover:border-[#465261] flex items-center justify-center shrink-0 transition-colors"
                   title="Voice Note (Presigned 60-second limit)"
-                  onClick={() => alert('Audio voice note presigning ready: 60s limit with audio/webm recording.')}
+                  aria-label="Voice note"
+                  onClick={() =>
+                    alert(
+                      'Audio voice note presigning ready: 60s limit with audio/webm recording.',
+                    )
+                  }
                 >
-                  <MicIcon size={17} color="var(--color-text-secondary)" />
+                  <MicIcon size={17} />
                 </button>
 
-                <div style={{ flex: 1, position: 'relative' }}>
+                <div className="flex-1 min-w-0 relative">
                   <input
                     type="text"
                     value={text}
                     onChange={(e) => setText(e.target.value)}
-                    placeholder={`Write a thoughtful message to ${activeMatch.candidate.displayName}...`}
+                    placeholder={`Message ${activeMatch.candidate.displayName}...`}
                     maxLength={1000}
-                    className="input-field"
-                    style={{ paddingRight: '70px', borderRadius: 'var(--radius-pill)' }}
+                    className="w-full h-10 pl-3.5 pr-16 rounded-[8px] bg-stage border border-edge text-sm text-chalk placeholder:text-ash focus:outline-none focus:border-iris transition-colors"
                   />
                   <span
-                    className="index-stamp"
-                    style={{
-                      position: 'absolute',
-                      right: '16px',
-                      top: '50%',
-                      transform: 'translateY(-50%)',
-                      fontSize: '10px',
-                      color: text.length > 900 ? 'var(--color-status-danger)' : 'var(--color-text-muted)',
-                    }}
+                    className={`hidden sm:inline absolute right-3 top-1/2 -translate-y-1/2 text-[10px] font-mono ${
+                      text.length > 900 ? 'text-danger' : 'text-ash'
+                    }`}
                   >
                     {text.length}/1000
                   </span>
@@ -660,399 +704,344 @@ function ChatsContent() {
                 <button
                   type="submit"
                   disabled={!text.trim() || sending}
-                  className="btn btn-primary btn-round"
-                  style={{ width: '42px', height: '42px' }}
+                  className="h-10 px-4 rounded-[8px] bg-iris text-[#0B0D10] hover:bg-[#9894D1] disabled:opacity-45 disabled:cursor-not-allowed font-semibold text-xs inline-flex items-center justify-center gap-1.5 shrink-0 transition-colors"
                   title="Send Message"
+                  aria-label="Send message"
                 >
-                  <SendIcon size={16} color="#FFFFFF" />
+                  <SendIcon size={15} />
+                  <span className="hidden sm:inline">Send</span>
                 </button>
               </form>
+            </section>
+          ) : connectionEndedNotice ? (
+            <div
+              data-testid="ended-conversation-notice"
+              className="flex-1 flex flex-col items-center justify-center p-8 text-center gap-4"
+            >
+              <div className="max-w-md flex flex-col items-center gap-3">
+                <Badge variant="neutral" size="sm">
+                  Connection Closed
+                </Badge>
+                <h2 className="text-lg font-semibold text-chalk">
+                  This connection is no longer active
+                </h2>
+                <p className="text-sm text-silver leading-relaxed">
+                  Private messaging for this match has closed. Other active connections remain accessible in your list.
+                </p>
+                <div className="flex flex-wrap items-center justify-center gap-2.5 pt-2">
+                  <Button variant="secondary" size="sm" onClick={() => router.push('/matches')}>
+                    Back to Matches
+                  </Button>
+                  {matches[0] && (
+                    <Button variant="primary" size="sm" onClick={() => selectConversation(matches[0])}>
+                      Open Active Chat
+                    </Button>
+                  )}
+                </div>
+              </div>
             </div>
           ) : (
-            <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <p style={{ color: 'var(--color-text-secondary)' }}>Select a conversation to start chatting.</p>
+            <div className="flex-1 flex items-center justify-center p-8 text-sm text-silver">
+              Select a conversation to start chatting.
             </div>
           )}
         </div>
       )}
 
-      {/* AUDIO CALL MODAL (LiveKit WebRTC) */}
-      {activeModal === 'call' && activeMatch && (
-        <div className="dialog-overlay" onClick={() => setActiveModal(null)}>
-          <div className="dialog-modal" onClick={(e) => e.stopPropagation()} style={{ textAlign: 'center' }}>
-            <div
-              style={{
-                width: '64px',
-                height: '64px',
-                borderRadius: '50%',
-                backgroundColor: 'var(--color-surface-subtle)',
-                display: 'inline-flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                marginBottom: '16px',
-              }}
-            >
-              <PhoneIcon size={28} color="var(--color-brand-primary)" />
-            </div>
-
-            <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '22px', fontWeight: 600, marginBottom: '8px' }}>
-              Call with {activeMatch.candidate.displayName}
-            </h3>
-
-            <p style={{ fontSize: '13.5px', lineHeight: '21px', color: 'var(--color-text-secondary)', marginBottom: '20px' }}>
-              Calls require explicit mutual invitation and acceptance before connecting.
-            </p>
-
-            <div className="banner-trust" style={{ marginBottom: '24px', textAlign: 'left' }}>
-              <LockIcon size={16} color="var(--color-brand-primary)" style={{ flexShrink: 0, marginTop: '2px' }} />
-              <span>
-                <strong>No Default Recording</strong>: Voice calls are real-time WebRTC sessions and never recorded without separate informed consent.
-              </span>
-            </div>
-
-            {callStatus ? (
-              <div style={{ marginBottom: '20px' }}>
-                <p style={{ fontSize: '14px', fontWeight: 600, color: 'var(--color-brand-primary)', marginBottom: '14px' }}>
-                  {callStatus}
-                </p>
-                <button onClick={handleEndCall} className="btn btn-danger" style={{ width: '100%' }}>
-                  End Audio Call
-                </button>
-              </div>
-            ) : (
-              <div style={{ display: 'flex', gap: '10px' }}>
-                <button
-                  type="button"
-                  onClick={() => setActiveModal(null)}
-                  className="btn btn-secondary"
-                  style={{ flex: 1 }}
-                >
-                  Cancel
-                </button>
-                <button
-                  type="button"
-                  onClick={handleStartCall}
-                  className="btn btn-primary"
-                  style={{ flex: 1 }}
-                >
-                  Invite to Call
-                </button>
-              </div>
-            )}
+      {/* AUDIO CALL MODAL */}
+      <Dialog
+        isOpen={Boolean(activeModal === 'call' && activeMatch)}
+        onClose={() => setActiveModal(null)}
+        title={activeMatch ? `Call with ${activeMatch.candidate.displayName}` : 'Audio Call'}
+        description="Calls require explicit mutual invitation and acceptance before connecting."
+        maxWidth="sm"
+        footer={
+          callStatus ? (
+            <Button variant="destructive" className="w-full" onClick={handleEndCall}>
+              End Audio Call
+            </Button>
+          ) : (
+            <>
+              <Button variant="secondary" onClick={() => setActiveModal(null)}>
+                Cancel
+              </Button>
+              <Button variant="primary" onClick={handleStartCall}>
+                Invite to Call
+              </Button>
+            </>
+          )
+        }
+      >
+        <div className="flex flex-col gap-4">
+          <div className="rounded-[8px] bg-iron border border-edge p-3.5 text-xs text-silver flex items-start gap-2.5">
+            <LockIcon size={15} color="#8580C4" className="shrink-0 mt-0.5" />
+            <span>
+              <strong className="text-chalk">No Default Recording:</strong> Voice calls are real-time WebRTC sessions and never recorded without separate informed consent.
+            </span>
           </div>
+          {callStatus && (
+            <p className="text-sm font-medium text-iris text-center">{callStatus}</p>
+          )}
         </div>
-      )}
+      </Dialog>
 
       {/* MINI-GAMES MODAL */}
-      {activeModal === 'game' && activeMatch && (
-        <div className="dialog-overlay" onClick={() => setActiveModal(null)}>
-          <div className="dialog-modal" onClick={(e) => e.stopPropagation()}>
-            <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '22px', fontWeight: 600, marginBottom: '8px' }}>
-              Cooperative Mini-Games
-            </h3>
-            <p style={{ fontSize: '13px', color: 'var(--color-text-secondary)', marginBottom: '20px' }}>
-              Low-pressure turn-based games designed for BS students across distance.
-            </p>
-
-            {!gameActive ? (
-              <div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '24px' }}>
-                  <div
-                    onClick={() => setGameSelection('word_scramble')}
-                    style={{
-                      padding: '14px 16px',
-                      borderRadius: 'var(--radius-lg)',
-                      border: gameSelection === 'word_scramble' ? '2px solid var(--color-brand-primary)' : '1px solid var(--color-border-default)',
-                      backgroundColor: gameSelection === 'word_scramble' ? 'var(--color-brand-primary-subtle)' : 'var(--color-surface)',
-                      cursor: 'pointer',
-                    }}
-                  >
-                    <h4 style={{ fontSize: '15px', fontWeight: 600, margin: '0 0 2px 0' }}>🧩 Word Scramble</h4>
-                    <p style={{ fontSize: '12px', margin: 0, color: 'var(--color-text-secondary)' }}>
-                      Unscramble campus and computer science terms cooperatively.
-                    </p>
-                  </div>
-
-                  <div
-                    onClick={() => setGameSelection('iitm_trivia')}
-                    style={{
-                      padding: '14px 16px',
-                      borderRadius: 'var(--radius-lg)',
-                      border: gameSelection === 'iitm_trivia' ? '2px solid var(--color-brand-primary)' : '1px solid var(--color-border-default)',
-                      backgroundColor: gameSelection === 'iitm_trivia' ? 'var(--color-brand-primary-subtle)' : 'var(--color-surface)',
-                      cursor: 'pointer',
-                    }}
-                  >
-                    <h4 style={{ fontSize: '15px', fontWeight: 600, margin: '0 0 2px 0' }}>🏛️ IITM BS Trivia</h4>
-                    <p style={{ fontSize: '12px', margin: 0, color: 'var(--color-text-secondary)' }}>
-                      Curriculum, Chennai landmarks, and term project history.
-                    </p>
-                  </div>
-                </div>
-
-                <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>
-                  <button onClick={() => setActiveModal(null)} className="btn btn-secondary">
-                    Cancel
-                  </button>
-                  <button onClick={() => setGameActive(true)} className="btn btn-primary">
-                    Start {gameSelection === 'word_scramble' ? 'Word Scramble' : 'Trivia'}
-                  </button>
-                </div>
-              </div>
-            ) : (
-              <div style={{ textAlign: 'center', padding: '16px 0' }}>
-                <span className="index-stamp" style={{ color: 'var(--color-accent-warm)', display: 'block', marginBottom: '8px' }}>
-                  Turn 1 • Team Score: {gameScore} pts
-                </span>
-                <h2 style={{ fontFamily: 'var(--font-display)', fontSize: '32px', letterSpacing: '6px', margin: '14px 0', color: 'var(--color-brand-primary)' }}>
-                  A G R D N T E I
-                </h2>
-                <p style={{ fontSize: '13px', color: 'var(--color-text-secondary)', marginBottom: '20px' }}>
-                  Hint: Fundamental optimization algorithm in machine learning.
-                </p>
-
-                <button
-                  onClick={() => {
-                    setGameScore((prev) => prev + 10);
-                    alert('Correct! Answer was GRADIENT. +10 Team Points!');
-                    setGameActive(false);
-                    setActiveModal(null);
-                  }}
-                  className="btn btn-primary"
-                  style={{ width: '100%' }}
-                >
-                  Solve: GRADIENT
-                </button>
-              </div>
-            )}
-          </div>
-        </div>
-      )}
-
-      {/* VIRTUAL DATE PROPOSAL MODAL */}
-      {activeModal === 'date' && activeMatch && (
-        <div className="dialog-overlay" onClick={() => setActiveModal(null)}>
-          <div className="dialog-modal" onClick={(e) => e.stopPropagation()} style={{ textAlign: 'center' }}>
-            <div
-              style={{
-                width: '64px',
-                height: '64px',
-                borderRadius: '50%',
-                backgroundColor: 'var(--color-surface-subtle)',
-                display: 'inline-flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                marginBottom: '16px',
+      <Dialog
+        isOpen={Boolean(activeModal === 'game' && activeMatch)}
+        onClose={() => setActiveModal(null)}
+        title="Cooperative Mini-Games"
+        description="Low-pressure turn-based games designed for BS students across distance."
+        maxWidth="md"
+        footer={
+          !gameActive ? (
+            <>
+              <Button variant="secondary" onClick={() => setActiveModal(null)}>
+                Cancel
+              </Button>
+              <Button variant="primary" onClick={() => setGameActive(true)}>
+                Start {gameSelection === 'word_scramble' ? 'Word Scramble' : 'Trivia'}
+              </Button>
+            </>
+          ) : (
+            <Button
+              variant="primary"
+              className="w-full"
+              onClick={() => {
+                setGameScore((prev) => prev + 10);
+                alert('Correct! Answer was GRADIENT. +10 Team Points!');
+                setGameActive(false);
+                setActiveModal(null);
               }}
             >
-              <CalendarIcon size={28} color="var(--color-brand-primary)" />
-            </div>
+              Solve: GRADIENT
+            </Button>
+          )
+        }
+      >
+        {!gameActive ? (
+          <div className="flex flex-col gap-3">
+            <button
+              type="button"
+              onClick={() => setGameSelection('word_scramble')}
+              className={`text-left p-4 rounded-[8px] border transition-colors ${
+                gameSelection === 'word_scramble'
+                  ? 'border-iris bg-iris/[0.12]'
+                  : 'border-edge bg-iron hover:border-[#465261]'
+              }`}
+            >
+              <div className="text-sm font-semibold text-chalk">Word Scramble</div>
+              <div className="text-xs text-silver mt-0.5">
+                Unscramble campus and computer science terms cooperatively.
+              </div>
+            </button>
 
-            <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '22px', fontWeight: 600, marginBottom: '8px' }}>
-              Virtual Coffee Date
-            </h3>
-            <p style={{ fontSize: '13.5px', lineHeight: '21px', color: 'var(--color-text-secondary)', marginBottom: '20px' }}>
-              Propose a scheduled video chat session with {activeMatch.candidate.displayName}.
+            <button
+              type="button"
+              onClick={() => setGameSelection('iitm_trivia')}
+              className={`text-left p-4 rounded-[8px] border transition-colors ${
+                gameSelection === 'iitm_trivia'
+                  ? 'border-iris bg-iris/[0.12]'
+                  : 'border-edge bg-iron hover:border-[#465261]'
+              }`}
+            >
+              <div className="text-sm font-semibold text-chalk">IITM BS Trivia</div>
+              <div className="text-xs text-silver mt-0.5">
+                Curriculum, Chennai landmarks, and term project history.
+              </div>
+            </button>
+          </div>
+        ) : (
+          <div className="text-center py-4">
+            <span className="text-[11px] font-semibold uppercase tracking-[0.12em] text-terracotta block mb-2">
+              Turn 1 • Team Score: {gameScore} pts
+            </span>
+            <p className="text-3xl font-semibold tracking-[0.25em] text-iris my-3">
+              A G R D N T E I
             </p>
-
-            <div className="card-subtle" style={{ textAlign: 'left', marginBottom: '24px' }}>
-              <div style={{ fontSize: '13px', fontWeight: 600, marginBottom: '4px' }}>Proposed Time</div>
-              <div style={{ fontSize: '14px', color: 'var(--color-text-primary)' }}>This Saturday, 5:00 PM IST</div>
-              <div style={{ fontSize: '11px', color: 'var(--color-text-muted)', marginTop: '2px' }}>
-                Both partners must accept to confirm the calendar invitation.
-              </div>
-            </div>
-
-            <div style={{ display: 'flex', gap: '10px' }}>
-              <button onClick={() => setActiveModal(null)} className="btn btn-secondary" style={{ flex: 1 }}>
-                Cancel
-              </button>
-              <button
-                onClick={() => {
-                  setDateProposed(true);
-                  setActiveModal(null);
-                  setSafetyFeedback('Virtual coffee invitation sent to partner.');
-                  setTimeout(() => setSafetyFeedback(null), 3000);
-                }}
-                className="btn btn-primary"
-                style={{ flex: 1 }}
-              >
-                Send Proposal
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* RELATIONSHIP MODE MODAL (Bilateral Dual Opt-in) */}
-      {activeModal === 'relationship' && activeMatch && (
-        <div className="dialog-overlay" onClick={() => setActiveModal(null)}>
-          <div className="dialog-modal" onClick={(e) => e.stopPropagation()}>
-            <div style={{ textAlign: 'center', marginBottom: '20px' }}>
-              <div
-                style={{
-                  width: '64px',
-                  height: '64px',
-                  borderRadius: '50%',
-                  backgroundColor: 'var(--color-brand-primary-subtle)',
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  marginBottom: '16px',
-                }}
-              >
-                <HeartHandshakeIcon size={32} color="var(--color-brand-primary)" />
-              </div>
-              <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '24px', fontWeight: 600, marginBottom: '8px' }}>
-                Relationship Mode
-              </h3>
-              <p style={{ fontSize: '13px', lineHeight: '20px', color: 'var(--color-text-secondary)' }}>
-                Built for couples who wish to transition from discovery to an intentional, shared private space.
-              </p>
-            </div>
-
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginBottom: '24px' }}>
-              <div className="card-subtle">
-                <h4 style={{ fontSize: '14px', fontWeight: 600, marginBottom: '3px' }}>Dual Affirmative Consent</h4>
-                <p style={{ fontSize: '12px', margin: 0, color: 'var(--color-text-secondary)' }}>
-                  Requires two independent actions. Discovery is automatically paused for both partners.
-                </p>
-              </div>
-
-              <div className="card-subtle">
-                <h4 style={{ fontSize: '14px', fontWeight: 600, marginBottom: '3px' }}>Independent Unilateral Exit</h4>
-                <p style={{ fontSize: '12px', margin: 0, color: 'var(--color-text-secondary)' }}>
-                  Either partner may leave at any time without permission or lock-in. No coercive retention.
-                </p>
-              </div>
-
-              <div className="card-subtle">
-                <h4 style={{ fontSize: '14px', fontWeight: 600, marginBottom: '3px' }}>Zero Surveillance Guarantee</h4>
-                <p style={{ fontSize: '12px', margin: 0, color: 'var(--color-text-secondary)' }}>
-                  SayMyName strictly prohibits partner GPS location tracking, ambient recording, or monitoring tools.
-                </p>
-              </div>
-            </div>
-
-            <div style={{ display: 'flex', gap: '10px' }}>
-              <button onClick={() => setActiveModal(null)} className="btn btn-secondary" style={{ flex: 1 }}>
-                Cancel
-              </button>
-              <button
-                onClick={() => {
-                  setActiveModal(null);
-                  setSafetyFeedback('Relationship Mode proposal sent. Awaiting partner affirmative confirmation.');
-                  setTimeout(() => setSafetyFeedback(null), 3500);
-                }}
-                className="btn btn-primary"
-                style={{ flex: 1 }}
-              >
-                Propose Dual Opt-In
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* CONFIDENTIAL SAFETY REPORT MODAL */}
-      {activeModal === 'report' && activeMatch && (
-        <div className="dialog-overlay" onClick={() => setActiveModal(null)}>
-          <div className="dialog-modal" onClick={(e) => e.stopPropagation()}>
-            <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '22px', fontWeight: 600, marginBottom: '8px' }}>
-              Report Conversation
-            </h3>
-            <p style={{ fontSize: '13px', color: 'var(--color-text-secondary)', marginBottom: '20px' }}>
-              Confidential report reviewed by student safety operators under strict safety protocols.
+            <p className="text-xs text-silver">
+              Hint: Fundamental optimization algorithm in machine learning.
             </p>
-
-            <form onSubmit={submitReport}>
-              <div style={{ marginBottom: '16px' }}>
-                <span className="index-stamp" style={{ display: 'block', marginBottom: '6px' }}>Reason for Report</span>
-                {[
-                  'Inappropriate content or messages',
-                  'Impersonation or false student identity',
-                  'Commercial solicitation or spam',
-                  'Boundary violation or harassment',
-                ].map((reason) => (
-                  <label
-                    key={reason}
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '10px',
-                      padding: '8px 12px',
-                      borderRadius: 'var(--radius-md)',
-                      backgroundColor: reportReason === reason ? 'var(--color-brand-primary-subtle)' : 'transparent',
-                      cursor: 'pointer',
-                      fontSize: '13px',
-                      marginBottom: '4px',
-                    }}
-                  >
-                    <input
-                      type="radio"
-                      name="reportReason"
-                      checked={reportReason === reason}
-                      onChange={() => setReportReason(reason)}
-                      style={{ accentColor: 'var(--color-brand-primary)' }}
-                    />
-                    <span>{reason}</span>
-                  </label>
-                ))}
-              </div>
-
-              <div style={{ marginBottom: '20px' }}>
-                <span className="index-stamp" style={{ display: 'block', marginBottom: '6px' }}>Additional Context (Optional)</span>
-                <textarea
-                  className="input-field"
-                  rows={3}
-                  value={reportNotes}
-                  onChange={(e) => setReportNotes(e.target.value)}
-                  placeholder="Provide details..."
-                />
-              </div>
-
-              <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>
-                <button type="button" onClick={() => setActiveModal(null)} className="btn btn-secondary">
-                  Cancel
-                </button>
-                <button type="submit" className="btn btn-danger">
-                  Submit Report
-                </button>
-              </div>
-            </form>
           </div>
-        </div>
-      )}
+        )}
+      </Dialog>
 
-      {/* UNIVERSAL BLOCK MODAL */}
-      {activeModal === 'block' && activeMatch && (
-        <div className="dialog-overlay" onClick={() => setActiveModal(null)}>
-          <div className="dialog-modal" onClick={(e) => e.stopPropagation()}>
-            <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '22px', fontWeight: 600, color: 'var(--color-status-danger)', marginBottom: '8px' }}>
-              Block {activeMatch.candidate.displayName}?
-            </h3>
-            <p style={{ fontSize: '14px', lineHeight: '22px', color: 'var(--color-text-secondary)', marginBottom: '24px' }}>
-              Universal immediate server-side block. All communication will cease, and all mutual visibility will be permanently severed.
+      {/* VIRTUAL DATE MODAL */}
+      <Dialog
+        isOpen={Boolean(activeModal === 'date' && activeMatch)}
+        onClose={() => setActiveModal(null)}
+        title="Virtual Coffee Date"
+        description={
+          activeMatch
+            ? `Propose a scheduled video chat session with ${activeMatch.candidate.displayName}.`
+            : undefined
+        }
+        maxWidth="sm"
+        footer={
+          <>
+            <Button variant="secondary" onClick={() => setActiveModal(null)}>
+              Cancel
+            </Button>
+            <Button
+              variant="primary"
+              onClick={() => {
+                setDateProposed(true);
+                setActiveModal(null);
+                setSafetyFeedback('Virtual coffee invitation sent to partner.');
+                setTimeout(() => setSafetyFeedback(null), 3000);
+              }}
+            >
+              Send Proposal
+            </Button>
+          </>
+        }
+      >
+        <div className="rounded-[8px] bg-iron border border-edge p-4 flex flex-col gap-1">
+          <span className="text-xs font-semibold text-chalk">Proposed Time</span>
+          <span className="text-sm text-iris font-medium">This Saturday, 5:00 PM IST</span>
+          <span className="text-[11px] text-ash mt-1">
+            Both partners must accept to confirm the calendar invitation.
+          </span>
+        </div>
+      </Dialog>
+
+      {/* RELATIONSHIP MODE MODAL */}
+      <Dialog
+        isOpen={Boolean(activeModal === 'relationship' && activeMatch)}
+        onClose={() => setActiveModal(null)}
+        title="Relationship Mode"
+        description="Built for couples who wish to transition from discovery to an intentional, shared private space."
+        maxWidth="md"
+        footer={
+          <>
+            <Button variant="secondary" onClick={() => setActiveModal(null)}>
+              Cancel
+            </Button>
+            <Button
+              variant="primary"
+              onClick={() => {
+                setActiveModal(null);
+                setSafetyFeedback(
+                  'Relationship Mode proposal sent. Awaiting partner affirmative confirmation.',
+                );
+                setTimeout(() => setSafetyFeedback(null), 3500);
+              }}
+            >
+              Propose Dual Opt-In
+            </Button>
+          </>
+        }
+      >
+        <div className="flex flex-col gap-3">
+          <div className="p-3.5 rounded-[8px] bg-iron border border-edge">
+            <div className="text-xs font-semibold text-chalk">Dual Affirmative Consent</div>
+            <p className="text-xs text-silver mt-1">
+              Requires two independent actions. Discovery is automatically paused for both partners.
             </p>
-
-            <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>
-              <button type="button" onClick={() => setActiveModal(null)} className="btn btn-secondary">
-                Cancel
-              </button>
-              <button type="button" onClick={confirmBlock} className="btn btn-danger">
-                Confirm Block
-              </button>
-            </div>
+          </div>
+          <div className="p-3.5 rounded-[8px] bg-iron border border-edge">
+            <div className="text-xs font-semibold text-chalk">Independent Unilateral Exit</div>
+            <p className="text-xs text-silver mt-1">
+              Either partner may leave at any time without permission or lock-in. No coercive retention.
+            </p>
+          </div>
+          <div className="p-3.5 rounded-[8px] bg-iron border border-edge">
+            <div className="text-xs font-semibold text-chalk">Zero Surveillance Guarantee</div>
+            <p className="text-xs text-silver mt-1">
+              SayMyName strictly prohibits partner GPS tracking, ambient recording, or monitoring tools.
+            </p>
           </div>
         </div>
-      )}
+      </Dialog>
+
+      {/* REPORT MODAL */}
+      <Dialog
+        isOpen={Boolean(activeModal === 'report' && activeMatch)}
+        onClose={() => setActiveModal(null)}
+        title="Report Conversation"
+        description="Confidential report reviewed by student safety operators under strict protocols."
+        maxWidth="md"
+        footer={
+          <>
+            <Button variant="secondary" onClick={() => setActiveModal(null)}>
+              Cancel
+            </Button>
+            <Button variant="destructive" onClick={submitReport}>
+              Submit Report
+            </Button>
+          </>
+        }
+      >
+        <div className="flex flex-col gap-3">
+          {[
+            'Inappropriate content or messages',
+            'Impersonation or false student identity',
+            'Commercial solicitation or spam',
+            'Boundary violation or harassment',
+          ].map((reason) => (
+            <label
+              key={reason}
+              className={`flex items-center gap-3 px-3.5 py-2.5 rounded-[8px] border cursor-pointer text-xs ${
+                reportReason === reason
+                  ? 'border-iris bg-iris/[0.12] text-chalk'
+                  : 'border-edge bg-iron text-silver hover:border-[#465261]'
+              }`}
+            >
+              <input
+                type="radio"
+                name="reportReason"
+                checked={reportReason === reason}
+                onChange={() => setReportReason(reason)}
+                className="accent-iris"
+              />
+              <span>{reason}</span>
+            </label>
+          ))}
+
+          <textarea
+            rows={3}
+            value={reportNotes}
+            onChange={(e) => setReportNotes(e.target.value)}
+            placeholder="Additional context (optional)..."
+            className="w-full p-3 rounded-[8px] bg-stage border border-edge text-xs text-chalk placeholder:text-ash focus:outline-none focus:border-iris resize-none"
+          />
+        </div>
+      </Dialog>
+
+      {/* BLOCK MODAL */}
+      <Dialog
+        isOpen={Boolean(activeModal === 'block' && activeMatch)}
+        onClose={() => setActiveModal(null)}
+        title={activeMatch ? `Block ${activeMatch.candidate.displayName}?` : 'Block user?'}
+        description="Universal immediate server-side block. All communication will cease, and mutual visibility is severed immediately."
+        maxWidth="sm"
+        footer={
+          <>
+            <Button variant="secondary" onClick={() => setActiveModal(null)}>
+              Cancel
+            </Button>
+            <Button variant="destructive" onClick={confirmBlock}>
+              Confirm Block
+            </Button>
+          </>
+        }
+      >
+        <p className="text-xs text-silver leading-relaxed">
+          You can review or manage blocked accounts later from Profile Account &amp; Security controls.
+        </p>
+      </Dialog>
     </div>
   );
 }
 
 export default function ChatsPage() {
   return (
-    <React.Suspense fallback={<div style={{ textAlign: 'center', padding: '40px' }}>Loading conversation...</div>}>
+    <React.Suspense
+      fallback={
+        <div className="max-w-[1320px] mx-auto px-4 sm:px-6 lg:px-8 pt-10 text-sm text-silver">
+          Loading conversations...
+        </div>
+      }
+    >
       <ChatsContent />
     </React.Suspense>
   );

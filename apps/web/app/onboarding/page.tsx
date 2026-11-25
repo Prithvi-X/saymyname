@@ -508,15 +508,19 @@ function OnboardingContent() {
     user?.eligibility?.ageStatus === 'needs_information' ||
     user?.eligibility?.studentStatus === 'needs_information';
 
+  const stepOrder = ['register', 'otp', 'age', 'student', 'profile'] as const;
+  const activeStepKey = view === 'review' ? 'student' : view;
+  const activeStepIdx = stepOrder.indexOf(activeStepKey as any);
+
   return (
-    <div className="min-h-[calc(100vh-140px)] bg-void smn-ambient-calm smn-stage-wrap text-chalk font-ui py-10 px-4">
-      <div className="max-w-3xl mx-auto">
+    <div className="min-h-[calc(100vh-140px)] bg-void smn-ambient-calm smn-stage-wrap text-chalk font-ui py-8 sm:py-10 px-4 sm:px-6 lg:px-8">
+      <div className="max-w-[1200px] mx-auto">
         {/* Progress Indicator Header */}
-        <div className="mb-8">
+        <div className="mb-8 pb-6 border-b border-edge/60">
           <p className="text-[11px] uppercase tracking-[0.14em] text-iris font-semibold mb-1.5">
             Member Onboarding · Phase 1
           </p>
-          <h1 className="text-2xl sm:text-3xl font-semibold text-chalk mb-2">
+          <h1 className="text-2xl sm:text-3xl font-semibold text-chalk tracking-tight mb-2">
             {view === 'register' && 'Create your verified account'}
             {view === 'otp' && 'Confirm institutional email ownership'}
             {view === 'age' && 'Confirm 18+ adult eligibility'}
@@ -525,27 +529,33 @@ function OnboardingContent() {
             {view === 'profile' && 'Build your Discover profile'}
             {view === 'suspended' && 'Account access paused'}
           </h1>
-          <div className="flex flex-wrap sm:grid sm:grid-cols-5 gap-1.5 mt-4">
+          <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 mt-4">
             {[
               { id: 'register', label: '1. Account' },
               { id: 'otp', label: '2. Email' },
               { id: 'age', label: '3. Age 18+' },
               { id: 'student', label: '4. BS Track' },
               { id: 'profile', label: '5. Profile' },
-            ].map((step) => {
+            ].map((step, idx) => {
               const active =
                 view === step.id ||
                 (view === 'review' && step.id === 'student');
+              const completed = activeStepIdx > idx;
               return (
                 <div
                   key={step.id}
-                  className={`px-2.5 py-1.5 rounded-[4px] border text-[11px] font-medium text-center whitespace-nowrap flex-1 min-w-[96px] sm:min-w-0 ${
+                  className={`px-3 py-2 rounded-[6px] border text-xs font-medium flex items-center justify-center gap-1.5 whitespace-nowrap ${
                     active
                       ? 'bg-iron border-iris text-chalk font-semibold'
-                      : 'bg-coal border-edge text-ash'
+                      : completed
+                        ? 'bg-coal border-success/40 text-silver'
+                        : 'bg-coal/60 border-edge text-ash'
                   }`}
                 >
-                  {step.label}
+                  {completed && (
+                    <span className="w-1.5 h-1.5 bg-success shrink-0" aria-hidden="true" />
+                  )}
+                  <span>{step.label}</span>
                 </div>
               );
             })}
@@ -570,373 +580,415 @@ function OnboardingContent() {
           </div>
         )}
 
-        {/* STEP 1: REGISTRATION */}
-        {view === 'register' && (
-          <div className="bg-coal border border-edge rounded-[12px] p-6 sm:p-8 smn-surface-elevated">
-            <p className="text-xs sm:text-sm text-silver mb-6 leading-relaxed">
-              Approved institutional BS study email required. Email validation is only the first
-              screen—age (18+) and current enrolment review are completed separately. No photo is
-              required yet.
-            </p>
-
-            <form onSubmit={handleRegister} className="flex flex-col gap-4" noValidate>
-              <Input
-                label="Approved Institutional BS Email"
-                id="reg-email"
-                type="email"
-                required
-                placeholder="name@study.iitm.ac.in"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                helperText="Accepts @study.iitm.ac.in, @ds.study.iitm.ac.in, or @es.study.iitm.ac.in."
-              />
-
-              <Input
-                label="Preferred Display Name (Optional)"
-                id="reg-displayName"
-                type="text"
-                maxLength={50}
-                placeholder="How peers should address you"
-                value={regDisplayName}
-                onChange={(e) => setRegDisplayName(e.target.value)}
-                helperText="Never enter a student roll number or account ID."
-              />
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <Input
-                  label="Create Password"
-                  id="reg-password"
-                  type="password"
-                  required
-                  minLength={8}
-                  autoComplete="new-password"
-                  placeholder="Min. 8 characters"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                />
-
-                <Input
-                  label="Confirm Password"
-                  id="reg-confirm"
-                  type="password"
-                  required
-                  autoComplete="new-password"
-                  placeholder="Re-enter password"
-                  value={confirmPassword}
-                  onChange={(e) => setConfirmPassword(e.target.value)}
-                />
-              </div>
-
-              <Button type="submit" variant="primary" size="md" isLoading={busy} className="w-full mt-2">
-                Create Account &amp; Send Verification Code
-              </Button>
-            </form>
-
-            <div className="mt-6 pt-4 border-t border-edge text-center text-xs text-silver">
-              Already registered?{' '}
-              <Link
-                href={appendSafeReturnUrl('/login', searchParams.get('returnUrl'))}
-                className="text-iris hover:text-iris-hover font-semibold"
-              >
-                Sign in with password →
-              </Link>
-            </div>
-          </div>
-        )}
-
-        {/* STEP 2: EMAIL OTP VERIFICATION */}
-        {view === 'otp' && (
-          <div className="bg-coal border border-edge rounded-[12px] p-6 sm:p-8 shadow-md">
-            <p className="text-xs sm:text-sm text-silver mb-5 leading-relaxed">
-              Enter the 6-digit verification code sent to{' '}
-              <strong className="text-chalk">{email || user?.email}</strong>. Codes expire after
-              10 minutes and lock after 5 incorrect attempts.
-            </p>
-
-            {devOtpHint && (
-              <div className="mb-4 p-3 rounded-[6px] bg-iron border border-iris/40 text-xs text-silver font-mono">
-                Non-production verification code: <strong className="text-chalk">{devOtpHint}</strong>
-              </div>
-            )}
-
-            <form onSubmit={handleVerifyOtp} className="flex flex-col gap-4" noValidate>
-              <Input
-                label="6-Digit Verification Code"
-                id="otp-code"
-                type="text"
-                inputMode="numeric"
-                maxLength={6}
-                required
-                placeholder="Enter 6-digit code"
-                value={otp}
-                onChange={(e) => setOtp(e.target.value.replace(/\D/g, '').slice(0, 6))}
-              />
-
-              <div className="flex flex-col sm:flex-row gap-3">
-                <Button type="submit" variant="primary" size="md" isLoading={busy} className="flex-1">
-                  Verify Email &amp; Continue
-                </Button>
-                <Button
-                  type="button"
-                  variant="secondary"
-                  size="md"
-                  disabled={cooldownSec > 0 || busy}
-                  onClick={handleResendOtp}
-                >
-                  {cooldownSec > 0 ? `Resend in ${cooldownSec}s` : 'Resend Code'}
-                </Button>
-              </div>
-            </form>
-          </div>
-        )}
-
-        {/* STEP 3: AGE ELIGIBILITY (18+ STRICT BOUNDARY, NO GOV ID COLLECTION) */}
-        {view === 'age' && (
-          <div className="bg-coal border border-edge rounded-[12px] p-6 sm:p-8 shadow-md">
-            <p className="text-xs sm:text-sm text-silver mb-5 leading-relaxed">
-              SayMyName is strictly for adults aged 18 and older (Document 01 §3.5). Self-declared
-              birth dates create an age eligibility case queued for verification—never displayed
-              directly on public profiles. Government ID uploads are not requested at this stage.
-            </p>
-
-            <form onSubmit={handleAgeSubmit} className="flex flex-col gap-4" noValidate>
-              <Input
-                label="Date of Birth (YYYY-MM-DD)"
-                id="dob-input"
-                type="date"
-                required
-                value={dob}
-                onChange={(e) => setDob(e.target.value)}
-                helperText="Only your minimum 18+ eligibility outcome is retained cleanly."
-              />
-
-              <Button type="submit" variant="primary" size="md" isLoading={busy}>
-                Submit 18+ Eligibility Check
-              </Button>
-            </form>
-          </div>
-        )}
-
-        {/* STEP 4: STUDENT PROGRAMME & PATHWAY CASE */}
-        {view === 'student' && (
-          <div className="bg-coal border border-edge rounded-[12px] p-6 sm:p-8 shadow-md">
-            <p className="text-xs sm:text-sm text-silver mb-5 leading-relaxed">
-              Select your active IIT Madras non-campus BS programme family and academic pathway.
-              Optionally attach non-government-ID institutional enrolment proof into private R2
-              storage to speed up verification review. Photos for Discover remain optional until
-              publication.
-            </p>
-
-            <form onSubmit={handleStudentSubmit} className="flex flex-col gap-5" noValidate>
-              <div>
-                <label
-                  htmlFor="programme-select"
-                  className="text-xs font-medium text-silver block mb-1.5"
-                >
-                  Approved IITM BS Programme Family
-                </label>
-                <select
-                  id="programme-select"
-                  value={programmeFamily}
-                  onChange={(e) => setProgrammeFamily(e.target.value)}
-                  className="w-full h-12 px-3.5 bg-iron text-chalk border border-edge rounded-[4px] text-sm focus:border-iris outline-none"
-                >
-                  {PROGRAMME_OPTIONS.map((opt) => (
-                    <option key={opt.value} value={opt.value}>
-                      {opt.label}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div>
-                <span className="text-xs font-medium text-silver block mb-2">
-                  Current Academic Level (Pathway)
-                </span>
-                <div className="grid grid-cols-3 gap-2.5">
-                  {PATHWAY_OPTIONS.map((opt) => (
-                    <button
-                      type="button"
-                      key={opt.value}
-                      onClick={() => setPathwayCode(opt.value)}
-                      className={`h-11 px-3 rounded-[6px] border text-xs font-medium transition-colors ${
-                        pathwayCode === opt.value
-                          ? 'bg-slate border-iris text-chalk font-semibold'
-                          : 'bg-iron border-edge text-silver hover:text-chalk'
-                      }`}
-                    >
-                      {opt.label}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              <div className="p-4 rounded-[8px] bg-iron/70 border border-edge space-y-3">
-                <div>
-                  <label
-                    htmlFor="evidence-type"
-                    className="text-xs font-medium text-chalk block mb-1"
-                  >
-                    Optional Non-Gov-ID Institutional Proof
-                  </label>
-                  <p className="text-[11px] text-ash mb-2">
-                    Do not upload Aadhaar, PAN, Passport, or government ID documents. Institutional
-                    BS enrolment letters or term receipts only.
+        {/* STEPS 1-4 + REVIEW: 12-COLUMN EDITORIAL LAYOUT WITH GATE CONTEXT RAIL */}
+        {view !== 'profile' && view !== 'suspended' && (
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+            <div className="lg:col-span-7 min-w-0">
+              {/* STEP 1: REGISTRATION */}
+              {view === 'register' && (
+                <div className="bg-coal border border-edge rounded-[12px] p-6 sm:p-8 smn-surface-elevated">
+                  <p className="text-xs sm:text-sm text-silver mb-6 leading-relaxed">
+                    Approved institutional BS study email required. Email validation is only the first
+                    screen—age (18+) and current enrolment review are completed separately. No photo is
+                    required yet.
                   </p>
-                  <select
-                    id="evidence-type"
-                    value={evidenceType}
-                    onChange={(e) => setEvidenceType(e.target.value as any)}
-                    className="w-full h-10 px-3 bg-coal text-chalk border border-edge rounded-[4px] text-xs outline-none"
-                  >
-                    <option value="none">Submit case without document first</option>
-                    <option value="student_enrolment_letter">IITM BS Enrolment Letter</option>
-                    <option value="iitm_portal_screenshot">IITM BS Student Portal Screenshot</option>
-                    <option value="term_fee_receipt">Term Registration / Fee Receipt</option>
-                  </select>
-                </div>
 
-                {evidenceType !== 'none' && (
-                  <input
-                    type="file"
-                    accept="application/pdf,image/jpeg,image/png,image/webp"
-                    onChange={(e) => setEvidenceFile(e.target.files?.[0] || null)}
-                    className="text-xs text-silver file:mr-3 file:py-1.5 file:px-3 file:rounded-[4px] file:border file:border-edge file:bg-coal file:text-chalk"
-                  />
-                )}
-              </div>
+                  <form onSubmit={handleRegister} className="flex flex-col gap-4" noValidate>
+                    <Input
+                      label="Approved Institutional BS Email"
+                      id="reg-email"
+                      type="email"
+                      required
+                      placeholder="name@study.iitm.ac.in"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      helperText="Accepts @study.iitm.ac.in, @ds.study.iitm.ac.in, or @es.study.iitm.ac.in."
+                    />
 
-              <Button type="submit" variant="primary" size="md" isLoading={busy}>
-                Submit Student Enrolment Case for Review
-              </Button>
-            </form>
-          </div>
-        )}
+                    <Input
+                      label="Preferred Display Name (Optional)"
+                      id="reg-displayName"
+                      type="text"
+                      maxLength={50}
+                      placeholder="How peers should address you"
+                      value={regDisplayName}
+                      onChange={(e) => setRegDisplayName(e.target.value)}
+                      helperText="Never enter a student roll number or account ID."
+                    />
 
-        {/* VERIFICATION PENDING / NEEDS INFO / REJECTED + OPTIONAL DRAFT SAVE */}
-        {view === 'review' && (
-          <div className="space-y-6">
-            <div className="bg-coal border border-edge rounded-[12px] p-6 sm:p-8 shadow-md">
-              <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
-                <h2 className="text-lg font-semibold text-chalk">Verification Status</h2>
-                {ageRejected || studentRejected ? (
-                  <Badge variant="danger" size="md">Not Eligible</Badge>
-                ) : needsInfo ? (
-                  <Badge variant="warning" size="md">Needs Information</Badge>
-                ) : (
-                  <Badge variant="warning" size="md">Pending Review</Badge>
-                )}
-              </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <Input
+                        label="Create Password"
+                        id="reg-password"
+                        type="password"
+                        required
+                        minLength={8}
+                        autoComplete="new-password"
+                        placeholder="Min. 8 characters"
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                      />
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-5">
-                <div className="p-4 rounded-[8px] bg-iron border border-edge">
-                  <p className="text-[11px] uppercase tracking-wider text-ash mb-1">
-                    Age 18+ Check
-                  </p>
-                  <p className="text-sm font-semibold text-chalk capitalize">
-                    {user?.eligibility?.ageStatus || 'pending'}
-                  </p>
-                </div>
-                <div className="p-4 rounded-[8px] bg-iron border border-edge">
-                  <p className="text-[11px] uppercase tracking-wider text-ash mb-1">
-                    Student Enrolment
-                  </p>
-                  <p className="text-sm font-semibold text-chalk capitalize">
-                    {user?.eligibility?.studentStatus || 'pending'}
-                  </p>
-                </div>
-              </div>
-
-              {cases.length > 0 && (
-                <div className="space-y-2 mb-5">
-                  <p className="text-xs font-medium text-silver">Submitted Cases</p>
-                  {cases.map((c) => (
-                    <div
-                      key={c.id}
-                      className="flex flex-wrap items-center justify-between gap-2 px-3.5 py-2.5 bg-void border border-edge rounded-[6px] text-xs"
-                    >
-                      <span className="text-chalk font-medium capitalize">
-                        {c.checkType.replace('_', ' ')} ({c.providerCode})
-                      </span>
-                      <span className="text-silver capitalize">{c.status}</span>
-                      {c.rejectionReason && (
-                        <p className="w-full text-warning text-[11px] mt-1">{c.rejectionReason}</p>
-                      )}
+                      <Input
+                        label="Confirm Password"
+                        id="reg-confirm"
+                        type="password"
+                        required
+                        autoComplete="new-password"
+                        placeholder="Re-enter password"
+                        value={confirmPassword}
+                        onChange={(e) => setConfirmPassword(e.target.value)}
+                      />
                     </div>
-                  ))}
+
+                    <Button type="submit" variant="primary" size="md" isLoading={busy} className="w-full mt-2">
+                      Create Account &amp; Send Verification Code
+                    </Button>
+                  </form>
+
+                  <div className="mt-6 pt-4 border-t border-edge text-center text-xs text-silver">
+                    Already registered?{' '}
+                    <Link
+                      href={appendSafeReturnUrl('/login', searchParams.get('returnUrl'))}
+                      className="text-iris hover:text-iris-hover font-semibold"
+                    >
+                      Sign in with password &rarr;
+                    </Link>
+                  </div>
                 </div>
               )}
 
-              {ageRejected ? (
-                <p className="text-xs sm:text-sm text-danger leading-relaxed">
-                  Your account did not pass the strict 18+ minimum age rule and cannot access
-                  dating features.
-                </p>
-              ) : (
-                <div className="flex flex-wrap gap-3">
-                  <Button
-                    variant="secondary"
-                    size="sm"
-                    onClick={async () => {
-                      await refreshUser();
-                      await loadVerificationAndDraft();
-                    }}
-                  >
-                    Refresh Verification Status
-                  </Button>
-                  {needsInfo && (
-                    <Button
-                      variant="primary"
-                      size="sm"
-                      onClick={() => setView('student')}
-                    >
-                      Resubmit Student Information
+              {/* STEP 2: EMAIL OTP VERIFICATION */}
+              {view === 'otp' && (
+                <div className="bg-coal border border-edge rounded-[12px] p-6 sm:p-8 smn-surface-elevated">
+                  <p className="text-xs sm:text-sm text-silver mb-5 leading-relaxed">
+                    Enter the 6-digit verification code sent to{' '}
+                    <strong className="text-chalk">{email || user?.email}</strong>. Codes expire after
+                    10 minutes and lock after 5 incorrect attempts.
+                  </p>
+
+                  {devOtpHint && (
+                    <div className="mb-4 p-3 rounded-[6px] bg-iron border border-iris/40 text-xs text-silver font-mono">
+                      Non-production verification code: <strong className="text-chalk">{devOtpHint}</strong>
+                    </div>
+                  )}
+
+                  <form onSubmit={handleVerifyOtp} className="flex flex-col gap-4" noValidate>
+                    <Input
+                      label="6-Digit Verification Code"
+                      id="otp-code"
+                      type="text"
+                      inputMode="numeric"
+                      maxLength={6}
+                      required
+                      placeholder="Enter 6-digit code"
+                      value={otp}
+                      onChange={(e) => setOtp(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                    />
+
+                    <div className="flex flex-col sm:flex-row gap-3">
+                      <Button type="submit" variant="primary" size="md" isLoading={busy} className="flex-1">
+                        Verify Email &amp; Continue
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="secondary"
+                        size="md"
+                        disabled={cooldownSec > 0 || busy}
+                        onClick={handleResendOtp}
+                      >
+                        {cooldownSec > 0 ? `Resend in ${cooldownSec}s` : 'Resend Code'}
+                      </Button>
+                    </div>
+                  </form>
+                </div>
+              )}
+
+              {/* STEP 3: AGE ELIGIBILITY (18+ STRICT BOUNDARY, NO GOV ID COLLECTION) */}
+              {view === 'age' && (
+                <div className="bg-coal border border-edge rounded-[12px] p-6 sm:p-8 smn-surface-elevated">
+                  <p className="text-xs sm:text-sm text-silver mb-5 leading-relaxed">
+                    SayMyName is strictly for adults aged 18 and older (Document 01 §3.5). Self-declared
+                    birth dates create an age eligibility case queued for verification—never displayed
+                    directly on public profiles. Government ID uploads are not requested at this stage.
+                  </p>
+
+                  <form onSubmit={handleAgeSubmit} className="flex flex-col gap-4" noValidate>
+                    <Input
+                      label="Date of Birth (YYYY-MM-DD)"
+                      id="dob-input"
+                      type="date"
+                      required
+                      value={dob}
+                      onChange={(e) => setDob(e.target.value)}
+                      helperText="Only your minimum 18+ eligibility outcome is retained cleanly."
+                    />
+
+                    <Button type="submit" variant="primary" size="md" isLoading={busy}>
+                      Submit 18+ Eligibility Check
                     </Button>
+                  </form>
+                </div>
+              )}
+
+              {/* STEP 4: STUDENT PROGRAMME & PATHWAY CASE */}
+              {view === 'student' && (
+                <div className="bg-coal border border-edge rounded-[12px] p-6 sm:p-8 smn-surface-elevated">
+                  <p className="text-xs sm:text-sm text-silver mb-5 leading-relaxed">
+                    Select your active IIT Madras non-campus BS programme family and academic pathway.
+                    Optionally attach non-government-ID institutional enrolment proof into private R2
+                    storage to speed up verification review. Photos for Discover remain optional until
+                    publication.
+                  </p>
+
+                  <form onSubmit={handleStudentSubmit} className="flex flex-col gap-5" noValidate>
+                    <div>
+                      <label
+                        htmlFor="programme-select"
+                        className="text-xs font-medium text-silver block mb-1.5"
+                      >
+                        Approved IITM BS Programme Family
+                      </label>
+                      <select
+                        id="programme-select"
+                        value={programmeFamily}
+                        onChange={(e) => setProgrammeFamily(e.target.value)}
+                        className="w-full h-12 px-3.5 bg-iron text-chalk border border-edge rounded-[4px] text-sm focus:border-iris outline-none"
+                      >
+                        {PROGRAMME_OPTIONS.map((opt) => (
+                          <option key={opt.value} value={opt.value}>
+                            {opt.label}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div>
+                      <span className="text-xs font-medium text-silver block mb-2">
+                        Current Academic Level (Pathway)
+                      </span>
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+                        {PATHWAY_OPTIONS.map((opt) => (
+                          <button
+                            type="button"
+                            key={opt.value}
+                            onClick={() => setPathwayCode(opt.value)}
+                            className={`h-11 px-3 rounded-[6px] border text-xs font-medium transition-colors ${
+                              pathwayCode === opt.value
+                                ? 'bg-slate border-iris text-chalk font-semibold'
+                                : 'bg-iron border-edge text-silver hover:text-chalk'
+                            }`}
+                          >
+                            {opt.label}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div className="p-4 rounded-[8px] bg-iron/70 border border-edge space-y-3">
+                      <div>
+                        <label
+                          htmlFor="evidence-type"
+                          className="text-xs font-medium text-chalk block mb-1"
+                        >
+                          Optional Non-Gov-ID Institutional Proof
+                        </label>
+                        <p className="text-[11px] text-ash mb-2">
+                          Do not upload Aadhaar, PAN, Passport, or government ID documents. Institutional
+                          BS enrolment letters or term receipts only.
+                        </p>
+                        <select
+                          id="evidence-type"
+                          value={evidenceType}
+                          onChange={(e) => setEvidenceType(e.target.value as any)}
+                          className="w-full h-10 px-3 bg-coal text-chalk border border-edge rounded-[4px] text-xs outline-none"
+                        >
+                          <option value="none">Submit case without document first</option>
+                          <option value="student_enrolment_letter">IITM BS Enrolment Letter</option>
+                          <option value="iitm_portal_screenshot">IITM BS Student Portal Screenshot</option>
+                          <option value="term_fee_receipt">Term Registration / Fee Receipt</option>
+                        </select>
+                      </div>
+
+                      {evidenceType !== 'none' && (
+                        <input
+                          type="file"
+                          accept="application/pdf,image/jpeg,image/png,image/webp"
+                          onChange={(e) => setEvidenceFile(e.target.files?.[0] || null)}
+                          className="text-xs text-silver file:mr-3 file:py-1.5 file:px-3 file:rounded-[4px] file:border file:border-edge file:bg-coal file:text-chalk"
+                        />
+                      )}
+                    </div>
+
+                    <Button type="submit" variant="primary" size="md" isLoading={busy}>
+                      Submit Student Enrolment Case for Review
+                    </Button>
+                  </form>
+                </div>
+              )}
+
+              {/* VERIFICATION PENDING / NEEDS INFO / REJECTED + OPTIONAL DRAFT SAVE */}
+              {view === 'review' && (
+                <div className="space-y-6">
+                  <div className="bg-coal border border-edge rounded-[12px] p-6 sm:p-8 smn-surface-elevated">
+                    <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
+                      <h2 className="text-lg font-semibold text-chalk">Verification Status</h2>
+                      {ageRejected || studentRejected ? (
+                        <Badge variant="danger" size="md">Not Eligible</Badge>
+                      ) : needsInfo ? (
+                        <Badge variant="warning" size="md">Needs Information</Badge>
+                      ) : (
+                        <Badge variant="warning" size="md">Pending Review</Badge>
+                      )}
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-5">
+                      <div className="p-4 rounded-[8px] bg-iron border border-edge">
+                        <p className="text-[11px] uppercase tracking-wider text-ash mb-1">
+                          Age 18+ Check
+                        </p>
+                        <p className="text-sm font-semibold text-chalk capitalize">
+                          {user?.eligibility?.ageStatus || 'pending'}
+                        </p>
+                      </div>
+                      <div className="p-4 rounded-[8px] bg-iron border border-edge">
+                        <p className="text-[11px] uppercase tracking-wider text-ash mb-1">
+                          Student Enrolment
+                        </p>
+                        <p className="text-sm font-semibold text-chalk capitalize">
+                          {user?.eligibility?.studentStatus || 'pending'}
+                        </p>
+                      </div>
+                    </div>
+
+                    {cases.length > 0 && (
+                      <div className="space-y-2 mb-5">
+                        <p className="text-xs font-medium text-silver">Submitted Cases</p>
+                        {cases.map((c) => (
+                          <div
+                            key={c.id}
+                            className="flex flex-wrap items-center justify-between gap-2 px-3.5 py-2.5 bg-void border border-edge rounded-[6px] text-xs"
+                          >
+                            <span className="text-chalk font-medium capitalize">
+                              {c.checkType.replace('_', ' ')} ({c.providerCode})
+                            </span>
+                            <span className="text-silver capitalize">{c.status}</span>
+                            {c.rejectionReason && (
+                              <p className="w-full text-warning text-[11px] mt-1">{c.rejectionReason}</p>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    {ageRejected ? (
+                      <p className="text-xs sm:text-sm text-danger leading-relaxed">
+                        Your account did not pass the strict 18+ minimum age rule and cannot access
+                        dating features.
+                      </p>
+                    ) : (
+                      <div className="flex flex-wrap gap-3">
+                        <Button
+                          variant="secondary"
+                          size="sm"
+                          onClick={async () => {
+                            await refreshUser();
+                            await loadVerificationAndDraft();
+                          }}
+                        >
+                          Refresh Verification Status
+                        </Button>
+                        {needsInfo && (
+                          <Button
+                            variant="primary"
+                            size="sm"
+                            onClick={() => setView('student')}
+                          >
+                            Resubmit Student Information
+                          </Button>
+                        )}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Allow saving incomplete profile drafts even while waiting for verification (D-P2-04) */}
+                  {!ageRejected && !studentRejected && (
+                    <div className="bg-coal border border-edge rounded-[12px] p-6 sm:p-8 smn-surface-elevated">
+                      <div className="flex items-center justify-between gap-3 mb-4">
+                        <div>
+                          <h2 className="text-base font-semibold text-chalk">
+                            Save an Incomplete Profile Draft Meanwhile
+                          </h2>
+                          <p className="text-xs text-silver mt-0.5">
+                            Optional while awaiting review. Portrait upload is not required to save a draft.
+                          </p>
+                        </div>
+                        <Badge variant="neutral" size="sm">Draft Only</Badge>
+                      </div>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
+                        <Input
+                          label="Display Name"
+                          value={displayName}
+                          onChange={(e) => setDisplayName(e.target.value)}
+                          placeholder="First name or preferred name"
+                        />
+                        <Input
+                          label="Coarse City"
+                          value={locationCity}
+                          onChange={(e) => setLocationCity(e.target.value)}
+                          placeholder="e.g. Pune"
+                        />
+                      </div>
+
+                      <Button
+                        variant="secondary"
+                        size="sm"
+                        isLoading={busy}
+                        onClick={() => handleSaveProfileDraft(false)}
+                      >
+                        Save Draft Without Photo
+                      </Button>
+                    </div>
                   )}
                 </div>
               )}
             </div>
 
-            {/* Allow saving incomplete profile drafts even while waiting for verification (D-P2-04) */}
-            {!ageRejected && !studentRejected && (
-              <div className="bg-coal border border-edge rounded-[12px] p-6 sm:p-8">
-                <div className="flex items-center justify-between gap-3 mb-4">
+            {/* Right Gate & Privacy Context Rail (5 Cols Desktop) */}
+            <aside className="lg:col-span-5 lg:sticky lg:top-[84px] flex flex-col gap-5">
+              <div className="rounded-[12px] border border-edge bg-coal smn-surface-elevated p-6 flex flex-col gap-4">
+                <div className="flex items-center justify-between gap-2 pb-3 border-b border-edge">
+                  <span className="text-[11px] font-semibold uppercase tracking-[0.12em] text-iris">
+                    Verification Rules
+                  </span>
+                  <Badge variant="verified" size="sm">
+                    18+ &amp; IITM BS Only
+                  </Badge>
+                </div>
+
+                <div className="flex flex-col gap-3 text-xs text-silver leading-relaxed">
                   <div>
-                    <h2 className="text-base font-semibold text-chalk">
-                      Save an Incomplete Profile Draft Meanwhile
-                    </h2>
-                    <p className="text-xs text-silver mt-0.5">
-                      Optional while awaiting review. Portrait upload is not required to save a draft.
-                    </p>
+                    <strong className="text-chalk block">Mandatory vs Optional</strong>
+                    <span>
+                      Institutional email ownership, 18+ age eligibility, and approved IITM BS track verification are mandatory before accessing Discover, Likes, Matches, or Chats. Portrait uploads remain optional until profile publication.
+                    </span>
                   </div>
-                  <Badge variant="neutral" size="sm">Draft Only</Badge>
+                  <div>
+                    <strong className="text-chalk block">Zero Public Leakage</strong>
+                    <span>
+                      Exact birth dates, student roll numbers, and verification documents never appear on public cards or APIs.
+                    </span>
+                  </div>
+                  <div>
+                    <strong className="text-chalk block">Independent Community</strong>
+                    <span>
+                      SayMyName is an independent student platform for the four non-campus BS programmes and is not owned, operated, or endorsed by IIT Madras.
+                    </span>
+                  </div>
                 </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
-                  <Input
-                    label="Display Name"
-                    value={displayName}
-                    onChange={(e) => setDisplayName(e.target.value)}
-                    placeholder="First name or preferred name"
-                  />
-                  <Input
-                    label="Coarse City"
-                    value={locationCity}
-                    onChange={(e) => setLocationCity(e.target.value)}
-                    placeholder="e.g. Pune"
-                  />
-                </div>
-
-                <Button
-                  variant="secondary"
-                  size="sm"
-                  isLoading={busy}
-                  onClick={() => handleSaveProfileDraft(false)}
-                >
-                  Save Draft Without Photo
-                </Button>
               </div>
-            )}
+            </aside>
           </div>
         )}
 
@@ -1233,49 +1285,56 @@ function OnboardingContent() {
             </div>
 
             {/* Live Preview Rail */}
-            <div className="lg:col-span-5 bg-coal border border-edge rounded-[12px] overflow-hidden">
-              <div className="h-56 bg-iron flex items-center justify-center relative">
-                {primaryPhoto?.photoUrl ? (
-                  <img
-                    src={primaryPhoto.photoUrl}
-                    alt="Discover card portrait preview"
-                    className="w-full h-full object-cover"
-                  />
-                ) : (
-                  <div className="flex flex-col items-center gap-2 text-ash">
-                    <Avatar size="xl" name={displayName || 'Member'} />
-                    <span className="text-xs">Upload a portrait to enable Discover</span>
-                  </div>
-                )}
-              </div>
-              <div className="p-5 space-y-2.5">
-                <div className="flex items-center justify-between gap-2">
-                  <h3 className="text-lg font-semibold text-chalk">
-                    {displayName.trim() || 'Your Display Name'}
-                  </h3>
+            <aside className="lg:col-span-5 lg:sticky lg:top-[84px] flex flex-col gap-5">
+              <div className="bg-coal border border-edge rounded-[12px] overflow-hidden smn-surface-elevated">
+                <div className="px-4 py-2.5 border-b border-edge bg-stage/70 flex items-center justify-between">
+                  <span className="text-[11px] font-semibold uppercase tracking-[0.12em] text-iris">
+                    Live Discover Preview
+                  </span>
                   <Badge variant="verified" size="sm">Verified</Badge>
                 </div>
-                <p className="text-xs text-silver">
-                  {termOrYear}
-                  {locationCity ? ` · ${locationCity}` : ''}
-                </p>
-                <p className="text-xs text-silver leading-relaxed">
-                  {bio.trim() || 'Your authentic biography appears here as you save your draft.'}
-                </p>
-                {selectedInterests.length > 0 && (
-                  <div className="flex flex-wrap gap-1.5 pt-1">
-                    {selectedInterests.map((tag) => (
-                      <span
-                        key={tag}
-                        className="px-2 py-0.5 text-[11px] bg-iron border border-edge rounded-[4px] text-silver"
-                      >
-                        {tag}
-                      </span>
-                    ))}
+                <div className="aspect-[4/3.6] bg-iron flex items-center justify-center relative">
+                  {primaryPhoto?.photoUrl ? (
+                    <img
+                      src={primaryPhoto.photoUrl}
+                      alt="Discover card portrait preview"
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <div className="flex flex-col items-center gap-2 text-ash p-6 text-center">
+                      <Avatar size="xl" name={displayName || 'Member'} />
+                      <span className="text-xs">Upload 1 portrait to unlock Discover publication</span>
+                    </div>
+                  )}
+                </div>
+                <div className="p-5 space-y-2.5">
+                  <div className="flex items-center justify-between gap-2">
+                    <h3 className="text-lg font-semibold text-chalk">
+                      {displayName.trim() || 'Your Display Name'}
+                    </h3>
                   </div>
-                )}
+                  <p className="text-xs text-silver">
+                    {termOrYear}
+                    {locationCity ? ` · ${locationCity}` : ''}
+                  </p>
+                  <p className="text-xs text-silver leading-relaxed">
+                    {bio.trim() || 'Your authentic biography appears here as you save your draft.'}
+                  </p>
+                  {selectedInterests.length > 0 && (
+                    <div className="flex flex-wrap gap-1.5 pt-1">
+                      {selectedInterests.map((tag) => (
+                        <span
+                          key={tag}
+                          className="px-2 py-0.5 text-[11px] bg-iron border border-edge rounded-[4px] text-silver"
+                        >
+                          {tag}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                </div>
               </div>
-            </div>
+            </aside>
           </div>
         )}
 

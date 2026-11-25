@@ -302,6 +302,8 @@ model Like {
   @@unique([fromAccountId, toAccountId])
   @@index([fromAccountId, status])
   @@index([toAccountId, status])
+  @@index([toAccountId, status, createdAt(sort: Desc), id(sort: Desc)], map: "likes_received_inbox_idx")
+  @@index([fromAccountId, status, createdAt(sort: Desc), id(sort: Desc)], map: "likes_sent_outbox_idx")
   @@map("likes")
   @@schema("dating")
 }

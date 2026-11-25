@@ -1,5 +1,5 @@
-import { IsString, IsNotEmpty, IsOptional, IsUUID, IsInt, Min, Max } from 'class-validator';
-import { Type } from 'class-transformer';
+import { IsString, IsNotEmpty, IsOptional, IsUUID, IsInt, Min, Max, IsBoolean } from 'class-validator';
+import { Transform, Type } from 'class-transformer';
 import { ApiPropertyOptional } from '@nestjs/swagger';
 
 export class DiscoveryFeedQueryDto {
@@ -15,6 +15,39 @@ export class DiscoveryFeedQueryDto {
   @Min(1)
   @Max(20)
   limit?: number;
+}
+
+export class LikesFeedQueryDto {
+  @ApiPropertyOptional({ description: 'Opaque HMAC-signed keyset cursor from previous likes batch' })
+  @IsOptional()
+  @IsString()
+  cursor?: string;
+
+  @ApiPropertyOptional({ example: 12, description: 'Batch page size (default 12, max 20)' })
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  @Max(20)
+  limit?: number;
+}
+
+export class SentLikesFeedQueryDto extends LikesFeedQueryDto {
+  @ApiPropertyOptional({
+    example: true,
+    description: 'Include withdrawn outgoing likes alongside pending outgoing likes (default true)',
+  })
+  @IsOptional()
+  @Transform(({ value }) => {
+    if (value === undefined || value === null || value === '') return undefined;
+    if (typeof value === 'boolean') return value;
+    const normalized = String(value).trim().toLowerCase();
+    if (normalized === 'true' || normalized === '1') return true;
+    if (normalized === 'false' || normalized === '0') return false;
+    return value;
+  })
+  @IsBoolean()
+  includeWithdrawn?: boolean;
 }
 
 export class LikeCandidateDto {
@@ -59,6 +92,13 @@ export class UnmatchDto {
   @IsNotEmpty()
   matchId: string;
 
+  @ApiPropertyOptional({ example: 'Different communication preferences' })
+  @IsOptional()
+  @IsString()
+  reason?: string;
+}
+
+export class UnmatchReasonDto {
   @ApiPropertyOptional({ example: 'Different communication preferences' })
   @IsOptional()
   @IsString()

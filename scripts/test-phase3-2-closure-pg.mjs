@@ -272,13 +272,17 @@ async function main() {
     const matchesA = await req('GET', '/dating/matches', uA.token);
     assert.strictEqual(matchesA.status, 200);
     assert.strictEqual(matchesA.body.length, 5);
+    for (const m of matchesA.body) {
+      assert.strictEqual(m.matchedAccountId, undefined, 'Internal account ID must not leak in GET /dating/matches');
+      assert.ok(m.profile?.profileId, 'Sanitized profile.profileId must be populated in GET /dating/matches');
+    }
 
-    const findPair = (peerId) => matchesA.body.find((m) => m.matchedAccountId === peerId);
-    const pairAB = findPair(uB.accountId);
-    const pairASus = findPair(uSus.accountId);
-    const pairARev = findPair(uRev.accountId);
-    const pairAAgeRev = findPair(uAgeRev.accountId);
-    const pairABlk = findPair(uBlk.accountId);
+    const findPair = (peer) => matchesA.body.find((m) => m.profile?.profileId === peer.profileId);
+    const pairAB = findPair(uB);
+    const pairASus = findPair(uSus);
+    const pairARev = findPair(uRev);
+    const pairAAgeRev = findPair(uAgeRev);
+    const pairABlk = findPair(uBlk);
     assert.ok(pairAB && pairASus && pairARev && pairAAgeRev && pairABlk);
 
     // 3. Exercise Messaging, Calling, Games, Virtual Dates, Relationship Space on A<->B BEFORE unmatch
