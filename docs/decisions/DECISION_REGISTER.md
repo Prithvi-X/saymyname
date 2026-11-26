@@ -188,7 +188,9 @@
 
 ---
 
-## 4. Final Security & Git Acceptance Reconciliation (2026-11-26)
+## 4. Phase 3.5 -> Phase 4.1 Acceptance Reconciliation (2026-11-26)
 
-- Reconciled cleanly with [`PHASE3_5_SECURITY_BOUNDARIES_AND_DEPENDENCIES.md`](file:///i:/saymyname/docs/implementation/PHASE3_5_SECURITY_BOUNDARIES_AND_DEPENDENCIES.md) and [`PHASE3_5_FINAL_GIT_DIFF_REVIEW.md`](file:///i:/saymyname/docs/implementation/PHASE3_5_FINAL_GIT_DIFF_REVIEW.md).
-- Confirmed `D-P35-01`, `D-P35-02`, and `D-P35-03` remain strictly **`NEEDS HUMAN DECISION`** with zero unauthorized approvals and zero background deletion workers activated; `MATCH-22` external LiveKit SFU eviction remains **`PARTIAL`** (Phase 4).
+- Reconciled cleanly with [`PHASE3_5_SECURITY_BOUNDARIES_AND_DEPENDENCIES.md`](file:///i:/saymyname/docs/implementation/PHASE3_5_SECURITY_BOUNDARIES_AND_DEPENDENCIES.md), [`PHASE4_1_CALLING_ARCHITECTURE_AND_SCOPE.md`](file:///i:/saymyname/docs/implementation/PHASE4_1_CALLING_ARCHITECTURE_AND_SCOPE.md), [`PHASE4_1_MATCH22_SFU_EVICTION.md`](file:///i:/saymyname/docs/implementation/PHASE4_1_MATCH22_SFU_EVICTION.md), and [`ADR-024`](file:///i:/saymyname/docs/decisions/ADR-024-livekit-audio-calling-and-sfu-eviction.md).
+- Updated `MATCH-22` status from `PARTIAL` to **IMPLEMENTED & VERIFIED (Local Docker LiveKit SFU + Headless Edge WebRTC E2E)**: Unmatch, Block, Account Suspension, Verification Revocation, and SFU outage retry/recovery verified end-to-end on branch `phase-4-1-calling-safety`.
+- **Mandatory LiveKit Server Config Decision (`ADR-024`):** Production / Staging LiveKit deployments MUST enforce `room.auto_create: false` so `roomCreate: false` participant grants cannot recreate deleted rooms with unexpired short-lived (`<= 300s`) tokens. LiveKit Cloud production credentials remain **NOT AUTHORIZED / NOT TESTED**.
+- Confirmed `D-P35-01`, `D-P35-02`, and `D-P35-03` remain strictly **`NEEDS HUMAN DECISION`** with zero unauthorized approvals and zero background deletion workers activated.
