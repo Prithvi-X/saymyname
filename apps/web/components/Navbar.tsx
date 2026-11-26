@@ -86,7 +86,12 @@ export default function Navbar({ editorialEnabled = false }: NavbarProps) {
       <div className="container-app flex items-center justify-between gap-4 h-[68px]">
         {/* Brand Logo (Left Anchor) */}
         <div className="flex items-center shrink-0">
-          <Logo size="md" symbolConcept="A" />
+          <span className="sm:hidden">
+            <Logo size="sm" symbolConcept="A" />
+          </span>
+          <span className="hidden sm:inline-flex">
+            <Logo size="md" symbolConcept="A" />
+          </span>
         </div>
 
         {/* Centered Architectural Desktop Navigation */}
@@ -182,9 +187,11 @@ export default function Navbar({ editorialEnabled = false }: NavbarProps) {
                   <span className="hidden lg:inline text-sm font-semibold text-chalk group-hover:text-silver transition-colors max-w-[130px] truncate">
                     {cleanDisplayName || 'Member'}
                   </span>
-                  <Badge variant="verified" size="sm">
-                    Verified
-                  </Badge>
+                  <span className="hidden min-[380px]:inline-flex">
+                    <Badge variant="verified" size="sm">
+                      Verified
+                    </Badge>
+                  </span>
                 </Link>
 
                 <Button
@@ -192,6 +199,7 @@ export default function Navbar({ editorialEnabled = false }: NavbarProps) {
                   size="sm"
                   onClick={() => logout()}
                   title="Sign out of session"
+                  className="!px-3 sm:!px-3.5"
                 >
                   Sign Out
                 </Button>

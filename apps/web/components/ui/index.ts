@@ -10,3 +10,4 @@ export * from './Skeleton';
 export * from './Divider';
 export * from './PageHeader';
 export * from './StructuredListRow';
+export * from './MutualMatchDialog';
