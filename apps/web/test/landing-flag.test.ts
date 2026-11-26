@@ -20,6 +20,15 @@ test('isEditorialLandingEnabled is strictly opt-in for literal "true"', () => {
   assert.equal(isEditorialLandingEnabled('true'), true);
 });
 
+test('DEC-LP-01 canonical hero headline candidates match Phase 1/2 register verbatim', () => {
+  assert.equal(HERO_CANDIDATES.A.headline, 'Same world. Different cities. A chance to meet.');
+  assert.equal(HERO_CANDIDATES.B.headline, 'Built for real connection across your BS world.');
+  assert.equal(
+    HERO_CANDIDATES.C.headline,
+    'A calmer place to meet someone who shares your pace.',
+  );
+});
+
 test('approved Phase 1 BS programme families list matches exact four-track scope', () => {
   assert.deepEqual(
     APPROVED_PROGRAMME_FAMILIES.map((item) => item.name),

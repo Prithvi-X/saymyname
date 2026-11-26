@@ -26,14 +26,14 @@ export const HERO_CANDIDATES: Record<HeroHeadlineCandidateId, HeroHeadlineCandid
   B: {
     id: 'B',
     eyebrow: 'FOR THE IITM NON-CAMPUS BS COMMUNITY · 18+',
-    headline: 'Study online from anywhere. Meet someone real.',
+    headline: 'Built for real connection across your BS world.',
     subheadline:
       'A dedicated dating space for verified adults (18+) across IIT Madras non-campus BS programmes — mutual matching, calm pacing, and no stranger DMs.',
   },
   C: {
     id: 'C',
     eyebrow: 'FOR THE IITM NON-CAMPUS BS COMMUNITY · 18+',
-    headline: 'Across study centres, timezones, and exam terms.',
+    headline: 'A calmer place to meet someone who shares your pace.',
     subheadline:
       'Connect privately with verified adults (18+) in the same four IIT Madras non-campus BS degree tracks — mutual match before messaging, always.',
   },
@@ -129,12 +129,14 @@ export const ONBOARDING_STEPS: readonly OnboardingStepItem[] = [
   {
     step: '04',
     title: 'Select & verify your BS track',
-    detail: 'Choose your approved BS programme family and submit current enrolment proof for manual review.',
+    detail:
+      'Choose your approved BS programme family and level (plus optional non-ID enrolment document) for manual verification review.',
   },
   {
     step: '05',
     title: 'Build your profile & publish',
-    detail: 'Add your bio, city, and portraits once verified, then publish your card to enter Discover.',
+    detail:
+      'Add your bio, coarse city and state, and at least one portrait once verified, then publish your profile to enter Discover.',
   },
 ] as const;
 

@@ -17,9 +17,9 @@ export function AcrossCitiesSection() {
           <div className="rounded-[12px] border border-edge bg-void p-6 sm:p-8 smn-surface-elevated">
             <div className="flex items-center justify-between gap-4 pb-5 border-b border-edge/70">
               <span className="text-[12px] font-semibold uppercase tracking-[0.12em] text-iris">
-                Non-Campus Orbit
+                Illustrative Meridian
               </span>
-              <span className="text-[12px] text-silver">Four BS Tracks &middot; Nationwide</span>
+              <span className="text-[12px] text-silver">Non-Campus BS &middot; Across Distance</span>
             </div>
 
             <div className="py-7 sm:py-8 relative">
@@ -79,15 +79,20 @@ export function AcrossCitiesSection() {
               </svg>
             </div>
 
-            <div className="pt-4 border-t border-edge/70 flex flex-wrap gap-2">
-              {ACROSS_CITIES_CONTENT.cities.map((city) => (
-                <span
-                  key={city}
-                  className="px-2.5 py-1 rounded-[4px] border border-edge bg-iron text-[12px] font-medium text-silver"
-                >
-                  {city}
-                </span>
-              ))}
+            <div className="pt-4 border-t border-edge/70 flex flex-col gap-2.5">
+              <span className="text-[12px] text-silver">
+                Illustrative study cities across distance:
+              </span>
+              <div className="flex flex-wrap gap-2">
+                {ACROSS_CITIES_CONTENT.cities.map((city) => (
+                  <span
+                    key={city}
+                    className="px-2.5 py-1 rounded-[4px] border border-edge bg-iron text-[12px] font-medium text-silver"
+                  >
+                    {city}
+                  </span>
+                ))}
+              </div>
             </div>
           </div>
         </div>

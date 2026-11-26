@@ -119,9 +119,9 @@ export function LandingHero({
               <div className="relative aspect-[4/3] sm:aspect-[16/11] lg:aspect-[5/4] rounded-[8px] overflow-hidden border border-white/[0.06] bg-void">
                 <img
                   src="/images/landing/3d/two-lights-detail.webp"
-                  alt="Two warm amber and cool iris light spheres meeting gently in quiet darkness — visual metaphor for mutual connection across distance."
+                  alt="Two architectural columns warmed by calm amber and iris light meeting across a dark interval, representing connection across distance."
                   width={960}
-                  height={768}
+                  height={720}
                   decoding="async"
                   className="w-full h-full object-cover object-center"
                 />
