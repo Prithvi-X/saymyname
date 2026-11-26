@@ -20,12 +20,21 @@ export const metadata: Metadata = {
       'An independent dating space for verified adults (18+) in IIT Madras non-campus BS programmes, built around mutual consent and unhurried conversation.',
     url: 'https://saymyname.in',
     type: 'website',
+    images: [
+      {
+        url: '/images/landing/og/saymyname-og-direction-a.png',
+        width: 1200,
+        height: 630,
+        alt: 'SayMyName.in — Same world. Different cities. A chance to meet.',
+      },
+    ],
   },
   twitter: {
     card: 'summary_large_image',
     title: 'SayMyName.in — Same world. Different cities. A chance to meet.',
     description:
       'Independent dating space for verified adults (18+) enrolled in IIT Madras non-campus BS programmes.',
+    images: ['/images/landing/og/saymyname-og-direction-a.png'],
   },
 };
 

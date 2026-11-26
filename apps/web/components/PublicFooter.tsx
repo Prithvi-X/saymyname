@@ -36,18 +36,18 @@ export default function PublicFooter({
       <div className="container-wide py-12 grid grid-cols-1 md:grid-cols-12 gap-8">
         <div className="md:col-span-5 flex flex-col gap-3">
           <Logo size="sm" symbolConcept="A" />
-          <p className="text-xs text-silver leading-relaxed max-w-sm">
+          <p className={`${useEditorialFooter ? 'text-[12px]' : 'text-xs'} text-silver leading-relaxed max-w-sm`}>
             An independent, dating-first space built strictly for verified adults (18+)
             currently enrolled in approved IIT Madras non-campus BS programmes.
           </p>
-          <p className={`${useEditorialFooter ? 'text-xs' : 'text-[11px]'} text-ash leading-relaxed max-w-sm`}>
+          <p className={`${useEditorialFooter ? 'text-[12px]' : 'text-[11px]'} text-ash leading-relaxed max-w-sm`}>
             Independent platform. SayMyName.in is not owned, endorsed, operated by, or
             officially affiliated with IIT Madras.
           </p>
         </div>
 
-        <div className="md:col-span-2 flex flex-col gap-2.5 text-xs">
-          <p className={`${useEditorialFooter ? 'text-xs' : 'text-[11px]'} font-semibold uppercase tracking-[0.12em] text-ash`}>
+        <div className={`md:col-span-2 flex flex-col gap-2.5 ${useEditorialFooter ? 'text-[12px]' : 'text-xs'}`}>
+          <p className={`${useEditorialFooter ? 'text-[12px]' : 'text-[11px]'} font-semibold uppercase tracking-[0.12em] text-ash`}>
             Platform
           </p>
           {useEditorialFooter ? (
@@ -72,8 +72,8 @@ export default function PublicFooter({
           </Link>
         </div>
 
-        <div className="md:col-span-2 flex flex-col gap-2.5 text-xs">
-          <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-ash">
+        <div className={`md:col-span-2 flex flex-col gap-2.5 ${useEditorialFooter ? 'text-[12px]' : 'text-xs'}`}>
+          <p className={`${useEditorialFooter ? 'text-[12px]' : 'text-[11px]'} font-semibold uppercase tracking-[0.12em] text-ash`}>
             Access
           </p>
           <Link href="/login" className="text-silver hover:text-chalk transition-colors">
@@ -87,8 +87,8 @@ export default function PublicFooter({
           </Link>
         </div>
 
-        <div className="md:col-span-3 flex flex-col gap-2.5 text-xs">
-          <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-ash">
+        <div className={`md:col-span-3 flex flex-col gap-2.5 ${useEditorialFooter ? 'text-[12px]' : 'text-xs'}`}>
+          <p className={`${useEditorialFooter ? 'text-[12px]' : 'text-[11px]'} font-semibold uppercase tracking-[0.12em] text-ash`}>
             Governance
           </p>
           <Link href="/privacy" className="text-silver hover:text-chalk transition-colors">

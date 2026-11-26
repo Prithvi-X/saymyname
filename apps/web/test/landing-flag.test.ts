@@ -1,4 +1,6 @@
 import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import path from 'node:path';
 import test from 'node:test';
 import { isEditorialLandingEnabled } from '../lib/landing-flag.ts';
 import {
@@ -69,4 +71,20 @@ test('product preview and hero copy do not overclaim deferred Phase 4 features',
       `Forbidden deferred feature mention found: ${forbidden}`,
     );
   }
+});
+
+test('approved Phase 5 public static assets (3D-01 + OG Direction A) exist on disk without placeholder photos', () => {
+  const publicLandingDir = path.resolve(import.meta.dirname, '..', 'public', 'images', 'landing');
+  for (const rel of [
+    '3d/two-lights-desktop-10bit.avif',
+    '3d/two-lights-desktop-8bit.avif',
+    '3d/two-lights-desktop.webp',
+    '3d/two-lights-mobile-10bit.avif',
+    '3d/two-lights-mobile.webp',
+    '3d/two-lights-detail.webp',
+    'og/saymyname-og-direction-a.png',
+  ]) {
+    assert.equal(fs.existsSync(path.join(publicLandingDir, rel)), true, `Missing asset: ${rel}`);
+  }
+  assert.equal(fs.existsSync(path.join(publicLandingDir, 'photography')), false);
 });

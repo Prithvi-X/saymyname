@@ -212,7 +212,7 @@ export default function Navbar({ editorialEnabled = false }: NavbarProps) {
               <button
                 ref={mobileToggleRef}
                 type="button"
-                className="md:hidden inline-flex items-center justify-center w-10 h-10 rounded-[6px] border border-edge bg-iron text-chalk hover:bg-slate transition-colors"
+                className="md:hidden inline-flex items-center justify-center w-[44px] h-[44px] rounded-[6px] border border-edge bg-iron text-chalk hover:bg-slate transition-colors"
                 aria-label={mobileMenuOpen ? 'Close navigation menu' : 'Open navigation menu'}
                 aria-expanded={mobileMenuOpen}
                 aria-controls="mobile-public-drawer"
