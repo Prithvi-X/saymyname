@@ -27,10 +27,17 @@ export class CallInviteDto {
 }
 
 export class CallRespondDto {
-  @ApiProperty({ example: 'accept', enum: ['accept', 'decline', 'busy'], description: 'Response action' })
+  @ApiProperty({ example: 'accept', enum: ['accept', 'decline', 'busy', 'cancel'], description: 'Response action' })
   @IsString()
-  @IsIn(['accept', 'decline', 'busy'])
-  action!: 'accept' | 'decline' | 'busy';
+  @IsIn(['accept', 'decline', 'busy', 'cancel'])
+  action!: 'accept' | 'decline' | 'busy' | 'cancel';
+}
+
+export class CallStateTransitionDto {
+  @ApiProperty({ example: 'active', enum: ['ringing', 'connecting', 'active', 'reconnecting'], description: 'Target non-terminal state' })
+  @IsString()
+  @IsIn(['ringing', 'connecting', 'active', 'reconnecting'])
+  state!: 'ringing' | 'connecting' | 'active' | 'reconnecting';
 }
 
 export class SendVoiceNoteDto {

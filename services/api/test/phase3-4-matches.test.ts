@@ -3,6 +3,7 @@ import * as assert from 'node:assert';
 import { DatingService } from '../src/modules/dating/dating.service';
 import { MessagingService } from '../src/modules/messaging/messaging.service';
 import { CallingService } from '../src/modules/calling/calling.service';
+import { LiveKitProviderAdapter } from '../src/modules/calling/livekit-provider.adapter';
 import { TogetherService } from '../src/modules/together/together.service';
 import { IdentityService } from '../src/modules/identity/identity.service';
 import { SafetyService } from '../src/modules/safety/safety.service';
@@ -326,6 +327,18 @@ function createPhase34Harness() {
     },
     callSession: {
       findUnique: async ({ where }: any) => callSessions.find((c) => c.id === where.id) ?? null,
+      findFirst: async ({ where }: any) =>
+        callSessions.find(
+          (c) =>
+            (!where?.conversationId || c.conversationId === where.conversationId) &&
+            (!where?.callStatus?.in || where.callStatus.in.includes(c.callStatus)),
+        ) ?? null,
+      findMany: async ({ where }: any) =>
+        callSessions.filter(
+          (c) =>
+            (!where?.conversationId || c.conversationId === where.conversationId) &&
+            (!where?.callStatus?.in || where.callStatus.in.includes(c.callStatus)),
+        ),
       create: async ({ data }: any) => {
         const row = { ...data, createdAt: new Date(), startedAt: null, endedAt: null };
         callSessions.push(row);
@@ -406,11 +419,23 @@ function createPhase34Harness() {
     },
   };
 
+  process.env.LIVEKIT_URL = process.env.LIVEKIT_URL || 'ws://127.0.0.1:7880';
+  process.env.LIVEKIT_API_KEY = process.env.LIVEKIT_API_KEY || 'APItestkey123';
+  process.env.LIVEKIT_API_SECRET = process.env.LIVEKIT_API_SECRET || '0123456789abcdef0123456789abcdef';
+  const livekitAdapter = new LiveKitProviderAdapter();
+  (livekitAdapter as any).ensureAudioRoom = async () => {};
+  (livekitAdapter as any).deleteRoom = async () => 'deleted';
+  (livekitAdapter as any).evictSession = async () => ({
+    outcome: 'evicted',
+    participantIdentities: [],
+    roomDeleted: 'deleted',
+  });
+
   const matchAuth = new MatchAuthorizationService(prisma);
   const cryptoSvc = new CryptoService();
   const dating = new DatingService(prisma, undefined, undefined, matchAuth);
   const messaging = new MessagingService(prisma, matchAuth);
-  const calling = new CallingService(prisma, cryptoSvc, matchAuth);
+  const calling = new CallingService(prisma, cryptoSvc, matchAuth, livekitAdapter);
   const together = new TogetherService(prisma, matchAuth);
   const safety = new SafetyService(prisma, matchAuth);
   const identity = new IdentityService(prisma, cryptoSvc, { sendOtpEmail: async () => {} } as any, matchAuth);

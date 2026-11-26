@@ -484,9 +484,25 @@ export class MatchAuthorizationService {
           .updateMany({
             where: {
               conversationId,
-              callStatus: { in: ['initiated', 'ringing', 'accepted', 'active'] },
+              callStatus: {
+                in: [
+                  'inviting',
+                  'initiated',
+                  'ringing',
+                  'accepted',
+                  'connecting',
+                  'active',
+                  'reconnecting',
+                ],
+              },
             },
-            data: { callStatus: 'ended', endedAt: now },
+            data: {
+              callStatus: 'ended',
+              endedAt: now,
+              endedReason: params.endReason,
+              endedByAccountId: params.endedByAccountId ?? null,
+              evictionStatus: 'pending',
+            },
           })
           .catch(() => null);
       }

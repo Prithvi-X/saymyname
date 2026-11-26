@@ -437,19 +437,29 @@ model MessageMedia {
 }
 
 model CallSession {
-  id              String    @id @default(uuid()) @db.Uuid
-  conversationId  String    @map("conversation_id") @db.Uuid
-  callerId        String    @map("caller_id") @db.Uuid
-  receiverId      String    @map("receiver_id") @db.Uuid
-  callStatus      String    @default("initiated") @map("call_status") @db.Text
-  livekitRoomId   String    @map("livekit_room_id") @db.Text
-  startedAt       DateTime? @map("started_at") @db.Timestamptz
-  endedAt         DateTime? @map("ended_at") @db.Timestamptz
-  durationSeconds Int?      @default(0) @map("duration_seconds")
-  createdAt       DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  id                String    @id @default(uuid()) @db.Uuid
+  conversationId    String    @map("conversation_id") @db.Uuid
+  callerId          String    @map("caller_id") @db.Uuid
+  receiverId        String    @map("receiver_id") @db.Uuid
+  callStatus        String    @default("inviting") @map("call_status") @db.Text
+  livekitRoomId     String    @map("livekit_room_id") @db.Text
+  startedAt         DateTime? @map("started_at") @db.Timestamptz
+  expiresAt         DateTime? @map("expires_at") @db.Timestamptz
+  endedAt           DateTime? @map("ended_at") @db.Timestamptz
+  endedReason       String?   @map("ended_reason") @db.Text
+  endedByAccountId  String?   @map("ended_by_account_id") @db.Uuid
+  durationSeconds   Int?      @default(0) @map("duration_seconds")
+  evictionStatus    String    @default("not_required") @map("eviction_status") @db.Text
+  evictedAt         DateTime? @map("evicted_at") @db.Timestamptz
+  evictionAttempts  Int       @default(0) @map("eviction_attempts")
+  lastEvictionError String?   @map("last_eviction_error") @db.Text
+  createdAt         DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt         DateTime  @updatedAt @map("updated_at") @db.Timestamptz
 
   conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
 
+  @@index([conversationId, callStatus], map: "call_sessions_conv_status_idx")
+  @@index([evictionStatus], map: "call_sessions_eviction_status_idx")
   @@map("call_sessions")
   @@schema("messaging")
 }

@@ -361,8 +361,13 @@ export interface CallSessionDto {
   receiverId: string;
   callStatus: CallStatus;
   livekitRoomId: string;
+  callType?: 'audio';
   startedAt?: string | null;
+  expiresAt?: string | null;
+  endedAt?: string | null;
+  endedReason?: string | null;
   durationSeconds?: number | null;
+  evictionStatus?: string | null;
 }
 
 export interface VoiceNotePresignRequestDto {
@@ -382,8 +387,17 @@ export interface CallInviteRequestDto {
   conversationId: string;
 }
 
+export interface CallInviteResponseDto {
+  callSession: CallSessionDto;
+  expiresAt: string;
+}
+
 export interface CallRespondRequestDto {
-  action: 'accept' | 'decline' | 'busy';
+  action: 'accept' | 'decline' | 'busy' | 'cancel';
+}
+
+export interface CallStateTransitionRequestDto {
+  state: 'ringing' | 'connecting' | 'active' | 'reconnecting';
 }
 
 export interface CallTokenResponseDto {
@@ -392,6 +406,8 @@ export interface CallTokenResponseDto {
   token: string;
   callStatus: CallStatus;
   livekitUrl?: string;
+  expiresAt?: string;
+  participantIdentity?: string;
 }
 
 export interface GameCatalogItemDto {

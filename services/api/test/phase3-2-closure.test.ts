@@ -9,6 +9,7 @@ import { MatchAuthorizationService } from '../src/modules/safety/match-authoriza
 import { DatingService } from '../src/modules/dating/dating.service';
 import { MessagingService } from '../src/modules/messaging/messaging.service';
 import { CallingService } from '../src/modules/calling/calling.service';
+import { LiveKitProviderAdapter } from '../src/modules/calling/livekit-provider.adapter';
 import { TogetherService } from '../src/modules/together/together.service';
 import { SafetyService } from '../src/modules/safety/safety.service';
 import { VerificationService } from '../src/modules/verification/verification.service';
@@ -423,6 +424,19 @@ function createClosureMockHarness() {
     },
     callSession: {
       findUnique: async ({ where }: any) => callSessions.find((s) => s.id === where.id) ?? null,
+      findFirst: async ({ where }: any) =>
+        callSessions.find(
+          (s) =>
+            (!where?.conversationId || s.conversationId === where.conversationId) &&
+            (!where?.callStatus?.in || where.callStatus.in.includes(s.callStatus)),
+        ) ?? null,
+      findMany: async ({ where }: any) =>
+        callSessions.filter(
+          (s) =>
+            (!where?.conversationId || s.conversationId === where.conversationId) &&
+            (!where?.callStatus?.in || where.callStatus.in.includes(s.callStatus)) &&
+            (!where?.expiresAt?.lte || (s.expiresAt && new Date(s.expiresAt) <= where.expiresAt.lte)),
+        ),
       create: async ({ data }: any) => {
         const row = { createdAt: new Date(), startedAt: null, endedAt: null, ...data };
         callSessions.push(row);
@@ -619,11 +633,23 @@ function createClosureMockHarness() {
     $transaction: async (fn: any) => fn(prisma),
   };
 
+  process.env.LIVEKIT_URL = process.env.LIVEKIT_URL || 'ws://127.0.0.1:7880';
+  process.env.LIVEKIT_API_KEY = process.env.LIVEKIT_API_KEY || 'APItestkey123';
+  process.env.LIVEKIT_API_SECRET = process.env.LIVEKIT_API_SECRET || '0123456789abcdef0123456789abcdef';
+  const livekitAdapter = new LiveKitProviderAdapter();
+  (livekitAdapter as any).ensureAudioRoom = async () => {};
+  (livekitAdapter as any).deleteRoom = async () => 'deleted';
+  (livekitAdapter as any).evictSession = async () => ({
+    outcome: 'evicted',
+    participantIdentities: [],
+    roomDeleted: 'deleted',
+  });
+
   const matchAuth = new MatchAuthorizationService(prisma);
   const cryptoService = new CryptoService();
   const dating = new DatingService(prisma, undefined, undefined, matchAuth);
   const messaging = new MessagingService(prisma, matchAuth);
-  const calling = new CallingService(prisma, cryptoService, matchAuth);
+  const calling = new CallingService(prisma, cryptoService, matchAuth, livekitAdapter);
   const together = new TogetherService(prisma, matchAuth);
   const safety = new SafetyService(prisma, matchAuth);
   const verification = new VerificationService(prisma, matchAuth);
@@ -886,18 +912,24 @@ describe('Phase 3.2 Final Must-Requirement Closure (MATCH-11, MATCH-22, HEIC/FFm
       const matchId = matchRes.matchId!;
       const conversationId = matchRes.conversationId!;
 
-      // Activate BOTH an already-accepted CallSession AND a pending CallSession invitation
+      // Activate an accepted CallSession cleanly (Phase 4.1: no pre-accept token, max 1 active call, 300s audio-only JWT)
       const activeCall = await h.calling.inviteCall(uOwner.accountId, { conversationId });
+      assert.strictEqual('token' in (activeCall as any), false);
       const acceptRes = await h.calling.respondToCall(uPeer.accountId, activeCall.callSession.id, {
         action: 'accept',
       });
-      const pendingCall = await h.calling.inviteCall(uPeer.accountId, { conversationId });
+      await assert.rejects(
+        () => h.calling.inviteCall(uPeer.accountId, { conversationId }),
+        { name: 'ConflictException' },
+      );
 
-      // Inspect issued LiveKit JWT claims: nbf..exp spans 3605s stateless window (no external LiveKit SFU deleteRoom in Phase 3.2)
+      // Inspect issued LiveKit JWT claims: 300s window, microphone-only audio grant
       const [, payloadB64] = acceptRes.token.split('.');
       const lkPayload = JSON.parse(Buffer.from(payloadB64, 'base64url').toString('utf8'));
-      assert.strictEqual(lkPayload.exp - lkPayload.nbf, 3605);
+      assert.strictEqual(lkPayload.exp - lkPayload.nbf, 300);
       assert.strictEqual(lkPayload.video.room, activeCall.callSession.livekitRoomId);
+      assert.deepStrictEqual(lkPayload.video.canPublishSources, ['microphone']);
+      assert.strictEqual(lkPayload.video.canPublishData, false);
 
       // Activate Together GameSession (ACTIVE), VirtualDate (ACCEPTED), and RelationshipSpace (isActive: true)
       const game = await h.together.inviteGame(uOwner.accountId, {
@@ -954,10 +986,8 @@ describe('Phase 3.2 Final Must-Requirement Closure (MATCH-11, MATCH-22, HEIC/FFm
       const convRow = h.conversations.find((c) => c.id === conversationId);
       assert.strictEqual(convRow.status, 'closed', `${trig.kind} must close Conversation`);
 
-      for (const cs of [activeCall.callSession.id, pendingCall.callSession.id]) {
-        const callRow = h.callSessions.find((s) => s.id === cs);
-        assert.strictEqual(callRow.callStatus, 'ended', `${trig.kind} must end CallSession`);
-      }
+      const callRow = h.callSessions.find((s) => s.id === activeCall.callSession.id);
+      assert.strictEqual(callRow.callStatus, 'ended', `${trig.kind} must end CallSession`);
 
       const gameRow = h.gameSessions.find((g) => g.id === game.id);
       assert.strictEqual(gameRow.sessionStatus, 'ended', `${trig.kind} must end GameSession`);
@@ -972,7 +1002,7 @@ describe('Phase 3.2 Final Must-Requirement Closure (MATCH-11, MATCH-22, HEIC/FFm
       for (const deniedOp of [
         () => h.messaging.sendMessage(uOwner.accountId, conversationId, { bodyText: 'After' }),
         () => h.calling.getCallSession(uOwner.accountId, activeCall.callSession.id),
-        () => h.calling.respondToCall(uOwner.accountId, pendingCall.callSession.id, { action: 'accept' }),
+        () => h.calling.issueJoinToken(uOwner.accountId, activeCall.callSession.id),
         () => h.calling.inviteCall(uOwner.accountId, { conversationId }),
         () => h.calling.sendVoiceNote(uOwner.accountId, { conversationId, mediaRefId: uuid(950), durationSeconds: 5 }),
         () => h.together.submitMove(uOwner.accountId, game.id, { moveType: 'guess_word', moveData: { guess: 'ALGORITHM' } }),
