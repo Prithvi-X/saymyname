@@ -1,5 +1,8 @@
 import { Injectable, UnauthorizedException } from '@nestjs/common';
 import * as crypto from 'crypto';
+import { promisify } from 'util';
+
+const pbkdf2Async = promisify(crypto.pbkdf2);
 
 export interface JwtPayload {
   sub: string;
@@ -35,6 +38,12 @@ export class CryptoService {
     return `pbkdf2$100000$${salt}$${hash}`;
   }
 
+  async hashPasswordAsync(password: string): Promise<string> {
+    const salt = crypto.randomBytes(16).toString('hex');
+    const derived = await pbkdf2Async(password, salt, 100000, 64, 'sha512');
+    return `pbkdf2$100000$${salt}$${derived.toString('hex')}`;
+  }
+
   verifyPassword(password: string, storedHash: string): boolean {
     if (!storedHash || typeof storedHash !== 'string') return false;
 
@@ -60,6 +69,33 @@ export class CryptoService {
     if (parts.length !== 2) return false;
     const [salt, originalHash] = parts;
     const derived = crypto.pbkdf2Sync(password, salt, 10000, 64, 'sha512').toString('hex');
+    const a = Buffer.from(derived, 'utf8');
+    const b = Buffer.from(originalHash, 'utf8');
+    return a.length === b.length && crypto.timingSafeEqual(a, b);
+  }
+
+  async verifyPasswordAsync(password: string, storedHash: string): Promise<boolean> {
+    if (!storedHash || typeof storedHash !== 'string') return false;
+
+    if (storedHash.startsWith('pbkdf2$')) {
+      const parts = storedHash.split('$');
+      if (parts.length !== 4) return false;
+      const iterations = Number(parts[1]);
+      const salt = parts[2];
+      const originalHash = parts[3];
+      if (!Number.isFinite(iterations) || iterations < 10000 || !salt || !originalHash) {
+        return false;
+      }
+      const derived = (await pbkdf2Async(password, salt, iterations, 64, 'sha512')).toString('hex');
+      const a = Buffer.from(derived, 'utf8');
+      const b = Buffer.from(originalHash, 'utf8');
+      return a.length === b.length && crypto.timingSafeEqual(a, b);
+    }
+
+    const parts = storedHash.split(':');
+    if (parts.length !== 2) return false;
+    const [salt, originalHash] = parts;
+    const derived = (await pbkdf2Async(password, salt, 10000, 64, 'sha512')).toString('hex');
     const a = Buffer.from(derived, 'utf8');
     const b = Buffer.from(originalHash, 'utf8');
     return a.length === b.length && crypto.timingSafeEqual(a, b);

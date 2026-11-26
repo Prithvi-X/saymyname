@@ -77,6 +77,23 @@ export function isSafeReturnPath(raw: string): boolean {
   return isSafeInternalReturnPath(raw);
 }
 
+function ensureCsrfCookie(request: NextRequest, response: NextResponse): NextResponse {
+  if (!request.cookies.get('smn_csrf')?.value) {
+    const proto = request.headers.get('x-forwarded-proto') || request.nextUrl.protocol;
+    const host = request.headers.get('x-forwarded-host') || request.headers.get('host') || '';
+    const isLocalHost = host.startsWith('localhost') || host.startsWith('127.0.0.1');
+    const secure = proto.includes('https') || (process.env.NODE_ENV === 'production' && !isLocalHost);
+    response.cookies.set('smn_csrf', crypto.randomUUID().replace(/-/g, ''), {
+      httpOnly: false,
+      sameSite: 'lax',
+      path: '/',
+      secure,
+      maxAge: 7 * 24 * 60 * 60,
+    });
+  }
+  return response;
+}
+
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
   const isProtected = PROTECTED_PREFIXES.some(
@@ -84,7 +101,7 @@ export async function middleware(request: NextRequest) {
   );
 
   if (!isProtected) {
-    return NextResponse.next();
+    return ensureCsrfCookie(request, NextResponse.next());
   }
 
   const accessToken = request.cookies.get('smn_access_token')?.value || '';
@@ -106,7 +123,7 @@ export async function middleware(request: NextRequest) {
         if (!check.discoveryEligible) {
           return NextResponse.redirect(new URL('/onboarding', request.url));
         }
-        return NextResponse.next();
+        return ensureCsrfCookie(request, NextResponse.next());
       }
 
       if (!check.expired || !refreshToken) {
@@ -123,11 +140,13 @@ export async function middleware(request: NextRequest) {
   }
 
   // Expired access cookie with active refresh cookie passes to SSR layout guard for authoritative refresh & check
-  return NextResponse.next();
+  return ensureCsrfCookie(request, NextResponse.next());
 }
 
 export const config = {
   matcher: [
+    '/login',
+    '/onboarding/:path*',
     '/discover/:path*',
     '/likes/:path*',
     '/matches/:path*',

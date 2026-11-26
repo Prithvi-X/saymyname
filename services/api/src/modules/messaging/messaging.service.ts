@@ -449,45 +449,48 @@ export class MessagingService {
         },
       });
 
+      const candidateEntries = (members || [])
+        .filter((m: any) => m.conversation?.status === 'active' && m.conversation?.match?.status === 'active')
+        .map((m: any) => ({
+          member: m,
+          conversation: m.conversation,
+          match: m.conversation.match,
+          partnerAccountId:
+            m.conversation.match.userLowId === accountId
+              ? m.conversation.match.userHighId
+              : m.conversation.match.userLowId,
+          lastMsg: m.conversation.messages?.[0] || null,
+        }));
+
+      const candidatePartnerIds: string[] = Array.from(
+        new Set<string>(candidateEntries.map((e: any) => String(e.partnerAccountId)).filter(Boolean)),
+      );
+      const [blockedPartnerIds, activeAccountSet] = await Promise.all([
+        this.matchAuth.loadBlockedCounterpartyIds(this.prisma, accountId, candidatePartnerIds),
+        this.matchAuth.loadActiveAccountIdSet(
+          this.prisma,
+          [accountId, ...candidatePartnerIds],
+          now,
+        ),
+      ]);
+
       const eligibleEntries: Array<{
         member: any;
         conversation: any;
         match: any;
         partnerAccountId: string;
         lastMsg: any;
-      }> = [];
-
-      for (const m of members || []) {
-        const c = m.conversation;
-        if (c?.status !== 'active' || c?.match?.status !== 'active') {
-          continue;
+      }> = candidateEntries.filter((entry: any) => {
+        if (blockedPartnerIds.has(entry.partnerAccountId)) return false;
+        if (
+          activeAccountSet !== null &&
+          (!activeAccountSet.has(entry.match.userLowId) ||
+            !activeAccountSet.has(entry.match.userHighId))
+        ) {
+          return false;
         }
-        const blocked = await this.matchAuth.hasBidirectionalBlock(
-          this.prisma,
-          c.match.userLowId,
-          c.match.userHighId,
-        );
-        if (blocked) {
-          continue;
-        }
-        const bothActive = await this.matchAuth.verifyParticipantAccountsActive(
-          this.prisma,
-          [c.match.userLowId, c.match.userHighId],
-          now,
-        );
-        if (!bothActive) {
-          continue;
-        }
-        const partnerAccountId =
-          c.match.userLowId === accountId ? c.match.userHighId : c.match.userLowId;
-        eligibleEntries.push({
-          member: m,
-          conversation: c,
-          match: c.match,
-          partnerAccountId,
-          lastMsg: c.messages?.[0] || null,
-        });
-      }
+        return true;
+      });
 
       const partnerIds = eligibleEntries.map((e) => e.partnerAccountId);
       const profileMap = new Map<string, any>();

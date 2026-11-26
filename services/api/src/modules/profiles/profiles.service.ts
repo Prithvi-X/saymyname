@@ -74,6 +74,14 @@ const DEFAULT_PROMPTS_CATALOG = [
 
 @Injectable()
 export class ProfilesService {
+  private cachedR2Key: string | null = null;
+  private cachedR2Client: { client: S3Client; bucket: string } | null = null;
+  private cachedCatalog: {
+    interests: any[];
+    prompts: any[];
+    cachedAtMs: number;
+  } | null = null;
+
   constructor(private readonly prisma: PrismaService) {}
 
   private createR2Client(): { client: S3Client; bucket: string } | null {
@@ -87,6 +95,8 @@ export class ProfilesService {
         : undefined);
 
     if (!endpoint || !bucket || !accessKeyId || !secretAccessKey) {
+      this.cachedR2Key = null;
+      this.cachedR2Client = null;
       return null;
     }
 
@@ -97,8 +107,13 @@ export class ProfilesService {
       isCloudflareR2Host = false;
     }
     const forcePathStyle = !isCloudflareR2Host && process.env.R2_FORCE_PATH_STYLE === 'true';
+    const configKey = `${endpoint}|${bucket}|${accessKeyId}|${secretAccessKey}|${forcePathStyle}`;
+    if (this.cachedR2Key === configKey && this.cachedR2Client) {
+      return this.cachedR2Client;
+    }
 
-    return {
+    this.cachedR2Key = configKey;
+    this.cachedR2Client = {
       bucket,
       client: new S3Client({
         region: 'auto',
@@ -107,6 +122,7 @@ export class ProfilesService {
         credentials: { accessKeyId, secretAccessKey },
       }),
     };
+    return this.cachedR2Client;
   }
 
   /**
@@ -154,39 +170,64 @@ export class ProfilesService {
   }
 
   /**
-   * Ensures & returns curated interests + prompts catalog from PostgreSQL
+   * Returns curated interests + prompts catalog from PostgreSQL, seeding defaults once when empty.
    */
   async getCatalog() {
-    await Promise.all([
-      ...DEFAULT_INTERESTS_CATALOG.map((item) =>
-        this.prisma.interest
-          .upsert({
-            where: { name: item.name },
-            create: item,
-            update: {},
-          })
-          .catch(() => null),
-      ),
-    ]);
-
-    const existingPrompts = await this.prisma.profilePrompt
-      .findMany({ where: { isActive: true } })
-      .catch(() => []);
-
-    if (existingPrompts.length === 0) {
-      for (const prompt of DEFAULT_PROMPTS_CATALOG) {
-        await this.prisma.profilePrompt
-          .create({ data: { ...prompt, isActive: true } })
-          .catch(() => null);
-      }
+    const now = Date.now();
+    if (
+      this.cachedCatalog &&
+      this.cachedCatalog.interests.length > 0 &&
+      this.cachedCatalog.prompts.length > 0 &&
+      now - this.cachedCatalog.cachedAtMs < 5 * 60 * 1000
+    ) {
+      return {
+        interests: this.cachedCatalog.interests,
+        prompts: this.cachedCatalog.prompts,
+        supportedImageMimes: [...getAllowedImageMimes()],
+        heicSupported: isHeicDecodingSupported(),
+      };
     }
 
-    const [interests, prompts] = await Promise.all([
+    let [interests, prompts] = await Promise.all([
       this.prisma.interest.findMany({ orderBy: { name: 'asc' } }).catch(() => []),
       this.prisma.profilePrompt
         .findMany({ where: { isActive: true } })
         .catch(() => []),
     ]);
+
+    if (interests.length === 0) {
+      await Promise.all(
+        DEFAULT_INTERESTS_CATALOG.map((item) =>
+          this.prisma.interest
+            .upsert({
+              where: { name: item.name },
+              create: item,
+              update: {},
+            })
+            .catch(() => null),
+        ),
+      );
+      interests = await this.prisma.interest
+        .findMany({ orderBy: { name: 'asc' } })
+        .catch(() => []);
+    }
+
+    if (prompts.length === 0) {
+      await Promise.all(
+        DEFAULT_PROMPTS_CATALOG.map((prompt) =>
+          this.prisma.profilePrompt
+            .create({ data: { ...prompt, isActive: true } })
+            .catch(() => null),
+        ),
+      );
+      prompts = await this.prisma.profilePrompt
+        .findMany({ where: { isActive: true } })
+        .catch(() => []);
+    }
+
+    if (interests.length > 0 && prompts.length > 0) {
+      this.cachedCatalog = { interests, prompts, cachedAtMs: now };
+    }
 
     return {
       interests,
@@ -263,24 +304,11 @@ export class ProfilesService {
             preferences: true,
           },
         })
-        .catch(
-          () =>
-            ({
-              id: 'mock-profile-id',
-              accountId,
-              displayName: safeName,
-              programmeFamily:
-                account.eligibility?.programmeFamily || 'data_science_applications',
-              bio: null,
-              profileStatus: 'draft',
-              isPublished: false,
-              isPaused: false,
-              photos: [],
-              interests: [],
-              promptAnswers: [],
-              preferences: { minAge: 18, maxAge: 35, allowedProgrammes: [] },
-            }) as any,
-        );
+        .catch(() => {
+          throw new ServiceUnavailableException(
+            'Profile storage is temporarily unavailable. Please retry saving in a moment.',
+          );
+        });
     }
 
     return this.hydrateProfileMedia(profile);
@@ -711,9 +739,16 @@ export class ProfilesService {
   }
 
   async getPreferences(accountId: string) {
-    const profile = await this.getProfile(accountId);
+    const existing = await this.prisma.profile
+      .findUnique({
+        where: { accountId },
+        select: { id: true },
+      })
+      .catch(() => null);
+
+    const profileId = existing?.id || (await this.getProfile(accountId)).id;
     const prefs = await this.prisma.preferenceSetting.findUnique({
-      where: { profileId: profile.id },
+      where: { profileId },
     });
     if (!prefs) {
       return {

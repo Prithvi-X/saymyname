@@ -3,6 +3,7 @@ import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { AccountLifecycleState } from '@saymyname/contracts';
 import { ACCESS_COOKIE, REFRESH_COOKIE, getBackendBaseUrl } from '../../lib/server-bff';
+import MemberSessionHydrator from '../../components/MemberSessionHydrator';
 
 /**
  * Server Component Guard for authenticated member workspace routes ((app)/*).
@@ -57,5 +58,5 @@ export default async function MemberAppLayout({
     redirect('/onboarding');
   }
 
-  return <>{children}</>;
+  return <MemberSessionHydrator initialUser={me}>{children}</MemberSessionHydrator>;
 }

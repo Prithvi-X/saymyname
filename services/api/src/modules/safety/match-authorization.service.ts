@@ -163,6 +163,96 @@ export class MatchAuthorizationService {
   }
 
   /**
+   * Batch block lookup for a viewer against multiple counterparty accounts.
+   */
+  async loadBlockedCounterpartyIds(
+    db: any,
+    accountId: string,
+    counterpartyIds: string[],
+  ): Promise<Set<string>> {
+    const blocked = new Set<string>();
+    const uniqueTargets = Array.from(new Set(counterpartyIds.filter(Boolean)));
+    if (!accountId || uniqueTargets.length === 0) return blocked;
+
+    if (this.hasDbLookup(db, 'userBlock', 'findMany')) {
+      const rows = await db.userBlock.findMany({
+        where: {
+          OR: [
+            { blockerId: accountId, blockedId: { in: uniqueTargets } },
+            { blockerId: { in: uniqueTargets }, blockedId: accountId },
+          ],
+        },
+        select: { blockerId: true, blockedId: true },
+      });
+      for (const row of rows || []) {
+        if (row.blockerId === accountId && row.blockedId) blocked.add(row.blockedId);
+        else if (row.blockedId === accountId && row.blockerId) blocked.add(row.blockerId);
+      }
+      return blocked;
+    }
+
+    const checks = await Promise.all(
+      uniqueTargets.map(async (targetId) => ({
+        targetId,
+        isBlocked: await this.hasBidirectionalBlock(db, accountId, targetId),
+      })),
+    );
+    for (const c of checks) {
+      if (c.isBlocked) blocked.add(c.targetId);
+    }
+    return blocked;
+  }
+
+  /**
+   * Batch eligibility/active-account lookup; returns null only for minimal test mocks lacking account delegates.
+   */
+  async loadActiveAccountIdSet(
+    db: any,
+    accountIds: string[],
+    referenceDate: Date = new Date(),
+  ): Promise<Set<string> | null> {
+    const uniqueIds = Array.from(new Set(accountIds.filter(Boolean)));
+    if (uniqueIds.length === 0) return new Set<string>();
+
+    if (this.hasDbLookup(db, 'account', 'findMany')) {
+      const accounts = await db.account.findMany({
+        where: { id: { in: uniqueIds } },
+        include: { eligibility: true },
+      });
+      const active = new Set<string>();
+      for (const acc of accounts || []) {
+        if (this.isAccountDatingActive(acc, referenceDate)) {
+          active.add(acc.id);
+        }
+      }
+      return active;
+    }
+
+    if (this.hasDbLookup(db, 'account', 'findUnique')) {
+      const accounts = await Promise.all(
+        uniqueIds.map((id) =>
+          db.account.findUnique({
+            where: { id },
+            include: { eligibility: true },
+          }),
+        ),
+      );
+      const active = new Set<string>();
+      for (const acc of accounts) {
+        if (acc && this.isAccountDatingActive(acc, referenceDate)) {
+          active.add(acc.id);
+        }
+      }
+      return active;
+    }
+
+    if (process.env.NODE_ENV === 'production') {
+      return new Set<string>();
+    }
+    return null;
+  }
+
+  /**
    * Authoritative verification for conversation-scoped operations (Messaging, Calling, Games, Virtual Dates).
    */
   async assertAuthorizedForConversation(

@@ -1,3 +1,4 @@
+import * as crypto from 'crypto';
 import { NextRequest, NextResponse } from 'next/server';
 import { CSRF_COOKIE, attachCsrfCookie } from '../../../../lib/server-bff';
 

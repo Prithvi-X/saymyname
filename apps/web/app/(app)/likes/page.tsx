@@ -8,9 +8,16 @@ import {
   DiscoveryCandidate,
   LikeResponse,
   ReceivedLikeItem,
+  ReceivedLikesResponse,
   SentLikeItem,
+  SentLikesResponse,
   ReportCategory,
 } from '../../../lib/api';
+import {
+  getCachedQuery,
+  invalidateQueryKey,
+  setCachedQuery,
+} from '../../../lib/query-cache';
 import {
   formatProgrammeLabel,
   formatIntentionLabel,
@@ -68,6 +75,8 @@ function makeActionKey(prefix: string): string {
 export default function LikesPage() {
   const router = useRouter();
   const [activeTab, setActiveTab] = useState<LikesTab>('received');
+  const cachedReceived = getCachedQuery<ReceivedLikesResponse>('likes:received', 90_000);
+  const cachedSent = getCachedQuery<SentLikesResponse>('likes:sent', 90_000);
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -79,28 +88,29 @@ export default function LikesPage() {
   }, []);
 
   // Received Likes State
-  const [receivedItems, setReceivedItems] = useState<ReceivedLikeItem[]>([]);
-  const [receivedCursor, setReceivedCursor] = useState<string | null>(null);
-  const [receivedHasMore, setReceivedHasMore] = useState(false);
-  const [receivedTotalActive, setReceivedTotalActive] = useState(0);
+  const [receivedItems, setReceivedItems] = useState<ReceivedLikeItem[]>(() => cachedReceived?.items ?? []);
+  const [receivedCursor, setReceivedCursor] = useState<string | null>(() => cachedReceived?.nextCursor ?? null);
+  const [receivedHasMore, setReceivedHasMore] = useState(() => cachedReceived?.hasMore ?? false);
+  const [receivedTotalActive, setReceivedTotalActive] = useState(() => cachedReceived?.totalActiveCount ?? 0);
   const [receivedViewerState, setReceivedViewerState] = useState<
     'ready' | 'paused' | 'profile_incomplete'
-  >('ready');
-  const [receivedLoading, setReceivedLoading] = useState(true);
+  >(() => cachedReceived?.viewerState ?? 'ready');
+  const [receivedLoading, setReceivedLoading] = useState(() => !cachedReceived);
   const [receivedLoadingMore, setReceivedLoadingMore] = useState(false);
   const [receivedError, setReceivedError] = useState<string | null>(null);
 
   // Sent Likes State
-  const [sentItems, setSentItems] = useState<SentLikeItem[]>([]);
-  const [sentCursor, setSentCursor] = useState<string | null>(null);
-  const [sentHasMore, setSentHasMore] = useState(false);
-  const [sentTotalActive, setSentTotalActive] = useState(0);
+  const [sentItems, setSentItems] = useState<SentLikeItem[]>(() => cachedSent?.items ?? []);
+  const [sentCursor, setSentCursor] = useState<string | null>(() => cachedSent?.nextCursor ?? null);
+  const [sentHasMore, setSentHasMore] = useState(() => cachedSent?.hasMore ?? false);
+  const [sentTotalActive, setSentTotalActive] = useState(() => cachedSent?.totalActiveCount ?? 0);
   const [sentViewerState, setSentViewerState] = useState<
     'ready' | 'paused' | 'profile_incomplete'
-  >('ready');
-  const [sentLoading, setSentLoading] = useState(true);
+  >(() => cachedSent?.viewerState ?? 'ready');
+  const [sentLoading, setSentLoading] = useState(() => !cachedSent);
   const [sentLoadingMore, setSentLoadingMore] = useState(false);
   const [sentError, setSentError] = useState<string | null>(null);
+  const sentLoadedOnceRef = useRef(Boolean(cachedSent));
 
   // Action & Feedback State
   const [inFlightByLikeId, setInFlightByLikeId] = useState<
@@ -156,17 +166,21 @@ export default function LikesPage() {
   };
 
   const loadReceivedLikes = useCallback(async () => {
-    setReceivedLoading(true);
+    const hasWarm = Boolean(getCachedQuery<ReceivedLikesResponse>('likes:received', 90_000));
+    if (!hasWarm) setReceivedLoading(true);
     setReceivedError(null);
     try {
       const res = await api.getReceivedLikes({ limit: 12 });
+      setCachedQuery('likes:received', res);
       setReceivedItems(res.items);
       setReceivedCursor(res.nextCursor);
       setReceivedHasMore(res.hasMore);
       setReceivedTotalActive(res.totalActiveCount);
       setReceivedViewerState(res.viewerState);
     } catch (err: any) {
-      setReceivedError(err?.message || 'Unable to load received likes right now.');
+      if (!hasWarm) {
+        setReceivedError(err?.message || 'Unable to load received likes right now.');
+      }
     } finally {
       setReceivedLoading(false);
     }
@@ -194,17 +208,22 @@ export default function LikesPage() {
   }, [receivedHasMore, receivedCursor, receivedLoadingMore, loadReceivedLikes]);
 
   const loadSentLikes = useCallback(async () => {
-    setSentLoading(true);
+    const hasWarm = Boolean(getCachedQuery<SentLikesResponse>('likes:sent', 90_000));
+    if (!hasWarm) setSentLoading(true);
     setSentError(null);
     try {
       const res = await api.getSentLikes({ limit: 12, includeWithdrawn: true });
+      sentLoadedOnceRef.current = true;
+      setCachedQuery('likes:sent', res);
       setSentItems(res.items);
       setSentCursor(res.nextCursor);
       setSentHasMore(res.hasMore);
       setSentTotalActive(res.totalActiveCount);
       setSentViewerState(res.viewerState);
     } catch (err: any) {
-      setSentError(err?.message || 'Unable to load sent likes right now.');
+      if (!hasWarm) {
+        setSentError(err?.message || 'Unable to load sent likes right now.');
+      }
     } finally {
       setSentLoading(false);
     }
@@ -237,7 +256,12 @@ export default function LikesPage() {
 
   useEffect(() => {
     loadReceivedLikes();
-    loadSentLikes();
+    if (
+      typeof window !== 'undefined' &&
+      new URLSearchParams(window.location.search).get('tab') === 'sent'
+    ) {
+      loadSentLikes();
+    }
   }, [loadReceivedLikes, loadSentLikes]);
 
   const handleTabChange = (nextTab: string) => {
@@ -245,6 +269,9 @@ export default function LikesPage() {
     setActiveTab(resolved);
     setActionNotice(null);
     setActionError(null);
+    if (resolved === 'sent' && !sentLoadedOnceRef.current) {
+      void loadSentLikes();
+    }
   };
 
   const handleResumeDiscovery = async () => {
@@ -307,6 +334,10 @@ export default function LikesPage() {
     try {
       const res = await api.likeBackReceived(item.likeId, key);
       clearActionKeysForLike(item.likeId);
+      invalidateQueryKey('likes:');
+      invalidateQueryKey('matches:');
+      invalidateQueryKey('chats:');
+      invalidateQueryKey('discover:');
       setInspectTarget((cur) =>
         cur?.source === 'received' && cur.item.likeId === item.likeId ? null : cur,
       );

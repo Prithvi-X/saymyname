@@ -1,10 +1,11 @@
 'use client';
 
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { isPrivateIdentifierLike } from '@saymyname/validation';
 import { useAuth } from '../../../lib/auth-context';
 import { api, sanitizeDisplayName } from '../../../lib/api';
-import { Button, Input, Badge, Dialog, Tabs } from '../../../components/ui';
+import { getCachedQuery, invalidateQueryKey, setCachedQuery } from '../../../lib/query-cache';
+import { Button, Input, Badge, Dialog, Tabs, Skeleton } from '../../../components/ui';
 import {
   ShieldIcon,
   LockIcon,
@@ -77,56 +78,89 @@ interface PublicPreviewData {
 
 export default function ProfilePage() {
   const { user, logout, refreshUser } = useAuth();
+  const cachedProfile = getCachedQuery<any>('profile:me', 120_000);
+  const cachedCatalog = getCachedQuery<any>('profile:catalog', 300_000);
 
   const [activeTab, setActiveTab] = useState<ProfileTab>('overview');
+  const [isHydratingProfile, setIsHydratingProfile] = useState<boolean>(() => !cachedProfile);
+  const [hydrateError, setHydrateError] = useState<string | null>(null);
+  const [isProfileDirty, setIsProfileDirty] = useState<boolean>(false);
+  const saveActionBarRef = useRef<HTMLDivElement | null>(null);
 
   // Form Fields
-  const initialCleanName = sanitizeDisplayName(user?.displayName);
+  const initialCleanName = sanitizeDisplayName(cachedProfile?.displayName || user?.displayName);
   const [displayName, setDisplayName] = useState(initialCleanName);
   const [programmeFamily, setProgrammeFamily] = useState(
-    user?.eligibility?.programmeFamily || 'data_science_applications',
+    cachedProfile?.programmeFamily || user?.eligibility?.programmeFamily || 'data_science_applications',
   );
-  const [currentTerm, setCurrentTerm] = useState('Foundation Level');
-  const [locationCity, setLocationCity] = useState('');
-  const [locationState, setLocationState] = useState('');
-  const [intention, setIntention] = useState('Long-term intentional relationship');
-  const [bio, setBio] = useState('');
-  const [ageDisplayMode, setAgeDisplayMode] = useState<'hidden' | 'show_calculated_age'>('show_calculated_age');
+  const [currentTerm, setCurrentTerm] = useState(cachedProfile?.termOrYear || 'Foundation Level');
+  const [locationCity, setLocationCity] = useState(cachedProfile?.locationCity || '');
+  const [locationState, setLocationState] = useState(cachedProfile?.locationState || '');
+  const [intention, setIntention] = useState(
+    cachedProfile?.intention || 'Long-term intentional relationship',
+  );
+  const [bio, setBio] = useState(cachedProfile?.bio || '');
+  const [ageDisplayMode, setAgeDisplayMode] = useState<'hidden' | 'show_calculated_age'>(
+    cachedProfile?.ageDisplayMode === 'hidden' ? 'hidden' : 'show_calculated_age',
+  );
 
   // Photos
-  const [photos, setPhotos] = useState<PhotoItem[]>([]);
+  const [photos, setPhotos] = useState<PhotoItem[]>(() => cachedProfile?.photos || []);
   const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
   const [uploadProgress, setUploadProgress] = useState<number | null>(null);
-  const [supportedImageMimes, setSupportedImageMimes] = useState<string[]>([
-    'image/jpeg',
-    'image/png',
-    'image/webp',
-    'image/heic',
-  ]);
+  const [supportedImageMimes, setSupportedImageMimes] = useState<string[]>(
+    () =>
+      (Array.isArray(cachedCatalog?.supportedImageMimes) &&
+      cachedCatalog.supportedImageMimes.length > 0
+        ? cachedCatalog.supportedImageMimes
+        : null) || ['image/jpeg', 'image/png', 'image/webp', 'image/heic'],
+  );
 
   // Interests & Prompts Catalogs
-  const [catalogInterests, setCatalogInterests] = useState<InterestItem[]>([]);
-  const [selectedInterests, setSelectedInterests] = useState<string[]>([]);
-  const [catalogPrompts, setCatalogPrompts] = useState<PromptItem[]>([]);
-  const [promptAnswers, setPromptAnswers] = useState<PromptAnswerEntry[]>([]);
+  const [catalogInterests, setCatalogInterests] = useState<InterestItem[]>(
+    () => cachedCatalog?.interests || [],
+  );
+  const [selectedInterests, setSelectedInterests] = useState<string[]>(() =>
+    Array.isArray(cachedProfile?.interests)
+      ? cachedProfile.interests.map((i: any) => (typeof i === 'string' ? i : i.interest?.name || i.name))
+      : [],
+  );
+  const [catalogPrompts, setCatalogPrompts] = useState<PromptItem[]>(
+    () => cachedCatalog?.prompts || [],
+  );
+  const [promptAnswers, setPromptAnswers] = useState<PromptAnswerEntry[]>(() =>
+    Array.isArray(cachedProfile?.promptAnswers)
+      ? cachedProfile.promptAnswers.map((pa: any) => ({
+          id: pa.id,
+          promptId: pa.promptId,
+          promptText: pa.prompt?.promptText || pa.promptText || '',
+          answerText: pa.answerText,
+        }))
+      : [],
+  );
 
   // Dating Preferences (Private)
-  const [preferences, setPreferences] = useState<DatingPreferencesState>({
-    minAge: 18,
-    maxAge: 35,
-    allowedProgrammes: [
-      'data_science_applications',
-      'electronic_systems',
-      'aeronautics_space',
-      'management_data_science',
-    ],
-    maxDistanceKm: null,
-    showInDiscovery: true,
+  const [preferences, setPreferences] = useState<DatingPreferencesState>(() => {
+    const prefs = cachedProfile?.preferences;
+    return {
+      minAge: typeof prefs?.minAge === 'number' ? prefs.minAge : 18,
+      maxAge: typeof prefs?.maxAge === 'number' ? prefs.maxAge : 35,
+      allowedProgrammes: Array.isArray(prefs?.allowedProgrammes)
+        ? prefs.allowedProgrammes
+        : [
+            'data_science_applications',
+            'electronic_systems',
+            'aeronautics_space',
+            'management_data_science',
+          ],
+      maxDistanceKm: prefs?.maxDistanceKm ?? null,
+      showInDiscovery: prefs?.showInDiscovery !== false,
+    };
   });
 
   // Publication State
-  const [isPublished, setIsPublished] = useState(false);
-  const [isPaused, setIsPaused] = useState(false);
+  const [isPublished, setIsPublished] = useState(() => Boolean(cachedProfile?.isPublished));
+  const [isPaused, setIsPaused] = useState(() => Boolean(cachedProfile?.isPaused));
 
   // Public Preview Modal
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
@@ -140,15 +174,31 @@ export default function ProfilePage() {
   const [isTogglingDiscovery, setIsTogglingDiscovery] = useState(false);
   const [isRevokingOthers, setIsRevokingOthers] = useState(false);
 
-  const hydrateProfile = useCallback(async () => {
+  const hydrateProfile = useCallback(async (opts?: { forceCatalog?: boolean }) => {
+    const hasWarmProfile = Boolean(getCachedQuery<any>('profile:me', 120_000));
+    if (!hasWarmProfile) {
+      setIsHydratingProfile(true);
+    }
+    setHydrateError(null);
+
     try {
-      const [profile, catalog, prefs] = await Promise.all([
+      const cachedCat = opts?.forceCatalog
+        ? null
+        : getCachedQuery<any>('profile:catalog', 300_000);
+      const [profile, catalog] = await Promise.all([
         api.getProfile(),
-        api
-          .getProfileCatalog()
-          .catch(() => ({ interests: [], prompts: [], supportedImageMimes: undefined })),
-        api.getPreferences().catch(() => null),
+        cachedCat
+          ? Promise.resolve(cachedCat)
+          : api
+              .getProfileCatalog()
+              .catch(() => ({ interests: [], prompts: [], supportedImageMimes: undefined })),
       ]);
+
+      const prefs = profile?.preferences ?? (await api.getPreferences().catch(() => null));
+      setCachedQuery('profile:me', profile);
+      if (Array.isArray(catalog?.interests) && catalog.interests.length > 0) {
+        setCachedQuery('profile:catalog', catalog);
+      }
 
       setCatalogInterests(catalog.interests || []);
       setCatalogPrompts(catalog.prompts || []);
@@ -160,10 +210,10 @@ export default function ProfilePage() {
       if (clean && clean !== 'Member') setDisplayName(clean);
       if (profile.programmeFamily) setProgrammeFamily(profile.programmeFamily);
       if (profile.termOrYear) setCurrentTerm(profile.termOrYear);
-      if (profile.locationCity) setLocationCity(profile.locationCity);
-      if (profile.locationState) setLocationState(profile.locationState);
+      setLocationCity(profile.locationCity || '');
+      setLocationState(profile.locationState || '');
       if (profile.intention) setIntention(profile.intention);
-      if (profile.bio) setBio(profile.bio);
+      setBio(profile.bio || '');
       if (profile.ageDisplayMode === 'hidden' || profile.ageDisplayMode === 'show_calculated_age') {
         setAgeDisplayMode(profile.ageDisplayMode);
       }
@@ -204,8 +254,13 @@ export default function ProfilePage() {
           showInDiscovery: prefs.showInDiscovery !== false,
         });
       }
-    } catch {
-      // Handled silently
+      setIsProfileDirty(false);
+    } catch (err: any) {
+      if (!hasWarmProfile) {
+        setHydrateError(err?.message || 'Unable to load your profile right now.');
+      }
+    } finally {
+      setIsHydratingProfile(false);
     }
   }, []);
 
@@ -241,12 +296,15 @@ export default function ProfilePage() {
   const toggleInterest = (interestName: string) => {
     setSelectedInterests((prev) => {
       if (prev.includes(interestName)) {
+        setIsProfileDirty(true);
+        setSaveError(null);
         return prev.filter((i) => i !== interestName);
       }
       if (prev.length >= 10) {
         setSaveError('Maximum of 10 personal interests can be selected.');
         return prev;
       }
+      setIsProfileDirty(true);
       setSaveError(null);
       return [...prev, interestName];
     });
@@ -263,6 +321,11 @@ export default function ProfilePage() {
       return;
     }
 
+    if (!locationCity.trim() || !locationState.trim()) {
+      setSaveError('Please enter both City and State in Public Identity & Academics before saving.');
+      return;
+    }
+
     if (bio.length > 500) {
       setSaveError('Biography cannot exceed 500 characters.');
       return;
@@ -270,7 +333,7 @@ export default function ProfilePage() {
 
     setIsSaving(true);
     try {
-      await api.updateProfile({
+      const updated = await api.updateProfile({
         displayName: trimmed,
         bio: bio.trim(),
         termOrYear: currentTerm.trim(),
@@ -287,9 +350,12 @@ export default function ProfilePage() {
             answerText: pa.answerText.trim(),
           })),
       });
+      setCachedQuery('profile:me', updated);
+      invalidateQueryKey('discover:');
+      setIsProfileDirty(false);
       await Promise.all([refreshUser(), hydrateProfile()]);
-      setSaveFeedback('Profile changes saved cleanly.');
-      setTimeout(() => setSaveFeedback(null), 3500);
+      setSaveFeedback('Profile and interests saved cleanly.');
+      setTimeout(() => setSaveFeedback(null), 4000);
     } catch (err: any) {
       setSaveError(err.message || 'Failed to update profile.');
     } finally {
@@ -484,6 +550,45 @@ export default function ProfilePage() {
   const coarseLocationPreview = [locationCity.trim(), locationState.trim()]
     .filter(Boolean)
     .join(', ');
+
+  if (isHydratingProfile) {
+    return (
+      <div className="max-w-[1280px] mx-auto px-4 sm:px-6 lg:px-8 pt-7 pb-24 sm:pt-9 md:pb-12 flex flex-col gap-6 font-ui text-chalk">
+        <div className="flex items-center gap-4 pb-5 border-b border-edge/60">
+          <Skeleton rounded="control" width="64px" height="64px" />
+          <div className="flex flex-col gap-2">
+            <Skeleton rounded="tight" width="140px" height="14px" />
+            <Skeleton rounded="tight" width="240px" height="28px" />
+          </div>
+        </div>
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+          <div className="lg:col-span-8 flex flex-col gap-5">
+            <Skeleton rounded="panel" height="220px" />
+            <Skeleton rounded="panel" height="220px" />
+          </div>
+          <div className="lg:col-span-4">
+            <Skeleton rounded="panel" height="420px" />
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (hydrateError) {
+    return (
+      <div className="max-w-[820px] mx-auto px-4 py-16 font-ui text-chalk">
+        <div className="p-6 rounded-[12px] bg-coal border border-danger/40 flex flex-col gap-4">
+          <h1 className="text-lg font-semibold text-chalk">Could not load your profile</h1>
+          <p className="text-sm text-silver">{hydrateError}</p>
+          <div>
+            <Button variant="primary" size="sm" onClick={() => void hydrateProfile()}>
+              Retry Loading Profile
+            </Button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-[1280px] mx-auto px-4 sm:px-6 lg:px-8 pt-7 pb-24 sm:pt-9 md:pb-12 flex flex-col gap-6 font-ui text-chalk">
@@ -734,7 +839,7 @@ export default function ProfilePage() {
 
           {/* TAB 2: EDIT PROFILE (PUBLIC CARD) */}
           {activeTab === 'edit' && (
-            <form onSubmit={handleSaveProfile} className="flex flex-col gap-6">
+            <form onSubmit={handleSaveProfile} noValidate className="flex flex-col gap-6">
               <div className="p-6 rounded-[12px] bg-coal border border-edge smn-surface-elevated flex flex-col gap-5">
                 <div className="flex items-center justify-between gap-2 border-b border-edge pb-3">
                   <h2 className="text-lg font-semibold text-chalk">
@@ -752,7 +857,10 @@ export default function ProfilePage() {
                   <Input
                     type="text"
                     value={displayName}
-                    onChange={(e) => setDisplayName(e.target.value)}
+                    onChange={(e) => {
+                      setDisplayName(e.target.value);
+                      setIsProfileDirty(true);
+                    }}
                     placeholder="e.g. Ananya"
                     maxLength={50}
                     required
@@ -784,7 +892,10 @@ export default function ProfilePage() {
                     </label>
                     <select
                       value={currentTerm}
-                      onChange={(e) => setCurrentTerm(e.target.value)}
+                      onChange={(e) => {
+                        setCurrentTerm(e.target.value);
+                        setIsProfileDirty(true);
+                      }}
                       className="w-full px-3.5 h-10 rounded-[8px] bg-stage border border-edge text-xs text-chalk focus:border-iris outline-none"
                     >
                       <option value="Foundation Level">Foundation Level</option>
@@ -805,10 +916,12 @@ export default function ProfilePage() {
                     <Input
                       type="text"
                       value={locationCity}
-                      onChange={(e) => setLocationCity(e.target.value)}
+                      onChange={(e) => {
+                        setLocationCity(e.target.value);
+                        setIsProfileDirty(true);
+                      }}
                       placeholder="e.g. Bengaluru"
                       maxLength={60}
-                      required
                     />
                   </div>
                   <div>
@@ -818,10 +931,12 @@ export default function ProfilePage() {
                     <Input
                       type="text"
                       value={locationState}
-                      onChange={(e) => setLocationState(e.target.value)}
+                      onChange={(e) => {
+                        setLocationState(e.target.value);
+                        setIsProfileDirty(true);
+                      }}
                       placeholder="e.g. Karnataka"
                       maxLength={60}
-                      required
                     />
                   </div>
                   <div>
@@ -830,7 +945,10 @@ export default function ProfilePage() {
                     </label>
                     <select
                       value={ageDisplayMode}
-                      onChange={(e) => setAgeDisplayMode(e.target.value as any)}
+                      onChange={(e) => {
+                        setAgeDisplayMode(e.target.value as any);
+                        setIsProfileDirty(true);
+                      }}
                       className="w-full px-3.5 h-10 rounded-[8px] bg-stage border border-edge text-xs text-chalk focus:border-iris outline-none"
                     >
                       <option value="show_calculated_age">Display verified age</option>
@@ -845,7 +963,10 @@ export default function ProfilePage() {
                   </label>
                   <select
                     value={intention}
-                    onChange={(e) => setIntention(e.target.value)}
+                    onChange={(e) => {
+                      setIntention(e.target.value);
+                      setIsProfileDirty(true);
+                    }}
                     className="w-full px-3.5 h-10 rounded-[8px] bg-stage border border-edge text-xs text-chalk focus:border-iris outline-none"
                   >
                     <option value="Long-term intentional relationship">
@@ -878,7 +999,10 @@ export default function ProfilePage() {
                 </div>
                 <textarea
                   value={bio}
-                  onChange={(e) => setBio(e.target.value)}
+                  onChange={(e) => {
+                    setBio(e.target.value);
+                    setIsProfileDirty(true);
+                  }}
                   maxLength={500}
                   rows={5}
                   placeholder="Share your interests, ideas that excite you, and the kind of connection you are looking for..."
@@ -950,6 +1074,7 @@ export default function ProfilePage() {
                           type="button"
                           onClick={() => {
                             setPromptAnswers((prev) => prev.filter((_, i) => i !== idx));
+                            setIsProfileDirty(true);
                           }}
                           className="text-xs text-danger hover:underline"
                         >
@@ -963,6 +1088,7 @@ export default function ProfilePage() {
                           setPromptAnswers((prev) =>
                             prev.map((pa, i) => (i === idx ? { ...pa, answerText: val } : pa)),
                           );
+                          setIsProfileDirty(true);
                         }}
                         maxLength={250}
                         rows={3}
@@ -990,6 +1116,7 @@ export default function ProfilePage() {
                               ...prev,
                               { promptId: pObj.id, promptText: pObj.promptText, answerText: '' },
                             ]);
+                            setIsProfileDirty(true);
                           }
                           e.target.value = '';
                         }}
@@ -1010,13 +1137,38 @@ export default function ProfilePage() {
               </div>
 
               {/* Save Action Bar */}
-              <div className="flex flex-wrap items-center justify-between gap-3 pt-1">
-                <Button type="submit" variant="primary" disabled={isSaving} isLoading={isSaving}>
-                  {isSaving ? 'Saving Changes...' : 'Save Profile Changes'}
-                </Button>
-                <Button type="button" variant="secondary" onClick={handleOpenPreview}>
-                  Open Peer Preview Modal
-                </Button>
+              <div ref={saveActionBarRef} className="flex flex-col gap-3 pt-1">
+                {saveError && (
+                  <div
+                    role="alert"
+                    className="px-4 py-3 rounded-[8px] bg-[#2E1417] border border-danger/40 text-danger text-xs flex items-center gap-2"
+                  >
+                    <XIcon size={15} />
+                    <span>{saveError}</span>
+                  </div>
+                )}
+                {saveFeedback && (
+                  <div
+                    role="status"
+                    className="px-4 py-3 rounded-[8px] bg-coal border border-success/40 text-success text-xs flex items-center gap-2"
+                  >
+                    <CheckIcon size={15} />
+                    <span>{saveFeedback}</span>
+                  </div>
+                )}
+                {isProfileDirty && !saveError && (
+                  <p className="text-xs text-warning">
+                    You have unsaved profile or interest edits — click Save Profile Changes below to persist them.
+                  </p>
+                )}
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <Button type="submit" variant="primary" disabled={isSaving} isLoading={isSaving}>
+                    {isSaving ? 'Saving Changes...' : 'Save Profile Changes'}
+                  </Button>
+                  <Button type="button" variant="secondary" onClick={handleOpenPreview}>
+                    Open Peer Preview Modal
+                  </Button>
+                </div>
               </div>
             </form>
           )}

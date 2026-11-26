@@ -143,8 +143,8 @@ function OnboardingContent() {
       if (Array.isArray(catalog.supportedImageMimes) && catalog.supportedImageMimes.length > 0) {
         setSupportedImageMimes(catalog.supportedImageMimes);
       }
-      if (catalog.prompts?.[0] && !selectedPromptId) {
-        setSelectedPromptId(catalog.prompts[0].id);
+      if (catalog.prompts?.[0]) {
+        setSelectedPromptId((prev) => prev || catalog.prompts[0].id);
       }
       if (profile) {
         if (profile.displayName && profile.displayName !== 'Member') {
@@ -168,7 +168,7 @@ function OnboardingContent() {
     } catch {
       // Initial draft hydration is best-effort
     }
-  }, [selectedPromptId]);
+  }, []);
 
   // Map authoritative backend lifecycleState to onboarding view
   useEffect(() => {

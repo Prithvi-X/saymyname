@@ -14,7 +14,7 @@ import { LockIcon } from '../../components/icons';
 function LoginFormContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { refreshUser } = useAuth();
+  const { hydrateSessionUser } = useAuth();
   const rawReturn = searchParams.get('returnUrl');
 
   const [email, setEmail] = useState('');
@@ -44,8 +44,18 @@ function LoginFormContent() {
 
     setIsLoading(true);
     try {
-      await api.login({ email: cleanEmail, password });
-      const user = await refreshUser();
+      const loginRes = await api.login({ email: cleanEmail, password });
+      const user = hydrateSessionUser({
+        id: loginRes.account.id,
+        email: loginRes.account.email,
+        displayName: loginRes.account.displayName ?? null,
+        accountStatus: loginRes.account.accountStatus,
+        emailVerified: Boolean(loginRes.account.emailVerified),
+        hasPassword: Boolean(loginRes.account.hasPassword ?? true),
+        lifecycleState: loginRes.lifecycleState,
+        eligibility: loginRes.account.eligibility,
+        profile: loginRes.profile ?? null,
+      });
 
       if (user?.lifecycleState === AccountLifecycleState.ACTIVE_MEMBER) {
         router.push(resolveSafeReturnUrl(rawReturn, '/discover'));

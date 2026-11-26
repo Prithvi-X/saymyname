@@ -380,6 +380,7 @@ class ApiClient {
     return this.request<{
       message: string;
       account: any;
+      profile?: any;
       lifecycleState: AccountLifecycleState;
     }>('/api/auth/login', {
       method: 'POST',

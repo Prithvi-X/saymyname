@@ -1,10 +1,11 @@
 'use client';
 
-import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { AccountLifecycleState } from '@saymyname/contracts';
 import { api, sanitizeDisplayName } from './api';
 import { clearAllConversationDrafts } from './chats-state';
+import { clearAllQueryCache, setActiveCacheOwner } from './query-cache';
 
 export type AuthState =
   | 'LOADING'
@@ -44,6 +45,7 @@ interface AuthContextType {
   user: UserContext | null;
   isLoading: boolean;
   refreshUser: () => Promise<UserContext | null>;
+  hydrateSessionUser: (userData: UserContext) => UserContext;
   logout: () => Promise<void>;
 }
 
@@ -53,6 +55,7 @@ const AuthContext = createContext<AuthContextType>({
   user: null,
   isLoading: true,
   refreshUser: async () => null,
+  hydrateSessionUser: (userData) => userData,
   logout: async () => {},
 });
 
@@ -69,7 +72,31 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     AccountLifecycleState.UNAUTHENTICATED,
   );
   const [user, setUser] = useState<UserContext | null>(null);
+  const hydratedFromClientOrSsrRef = useRef(false);
   const router = useRouter();
+
+  const applyUserContext = useCallback((data: UserContext): UserContext => {
+    const cleanName = sanitizeDisplayName(data.displayName);
+    const normalizedUser: UserContext = {
+      ...data,
+      displayName: cleanName || null,
+    };
+    const resolvedLifecycle =
+      data.lifecycleState || AccountLifecycleState.VERIFICATION_PENDING;
+    hydratedFromClientOrSsrRef.current = true;
+    setActiveCacheOwner(normalizedUser.id);
+    setUser(normalizedUser);
+    setLifecycleState(resolvedLifecycle);
+    setAuthState(deriveAuthState(resolvedLifecycle));
+    return normalizedUser;
+  }, []);
+
+  const hydrateSessionUser = useCallback(
+    (userData: UserContext): UserContext => {
+      return applyUserContext(userData);
+    },
+    [applyUserContext],
+  );
 
   const refreshUser = useCallback(async (): Promise<UserContext | null> => {
     try {
@@ -77,26 +104,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (!data || !data.id) {
         throw new Error('Unauthenticated');
       }
-      const cleanName = sanitizeDisplayName(data.displayName);
-      const normalizedUser: UserContext = {
-        ...data,
-        displayName: cleanName || null,
-      };
-      const resolvedLifecycle =
-        data.lifecycleState || AccountLifecycleState.VERIFICATION_PENDING;
-      setUser(normalizedUser);
-      setLifecycleState(resolvedLifecycle);
-      setAuthState(deriveAuthState(resolvedLifecycle));
-      return normalizedUser;
+      return applyUserContext(data);
     } catch {
+      setActiveCacheOwner(null);
       setUser(null);
       setLifecycleState(AccountLifecycleState.UNAUTHENTICATED);
       setAuthState('UNAUTHENTICATED');
       return null;
     }
-  }, []);
+  }, [applyUserContext]);
 
   useEffect(() => {
+    if (hydratedFromClientOrSsrRef.current) {
+      return;
+    }
     refreshUser();
   }, [refreshUser]);
 
@@ -106,6 +127,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     } catch {
       // Clear local state regardless
     }
+    hydratedFromClientOrSsrRef.current = false;
+    clearAllQueryCache();
     setUser(null);
     setLifecycleState(AccountLifecycleState.UNAUTHENTICATED);
     setAuthState('UNAUTHENTICATED');
@@ -121,6 +144,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         user,
         isLoading: authState === 'LOADING',
         refreshUser,
+        hydrateSessionUser,
         logout,
       }}
     >

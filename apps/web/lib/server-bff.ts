@@ -227,6 +227,10 @@ export async function forwardAuthenticatedRequest(
     contentType.startsWith('audio/') ||
     contentType.startsWith('application/octet-stream');
 
+  const mayContainRotatedSessionTokens =
+    backendRes.ok &&
+    (backendPath.startsWith('/identity/') || backendPath.startsWith('/verification-cases/'));
+
   let response: NextResponse;
   if (isBinaryOrStreamResponse) {
     const headers = new Headers();
@@ -251,6 +255,18 @@ export async function forwardAuthenticatedRequest(
       methodUpper === 'HEAD' || backendRes.status === 416 ? null : backendRes.body,
       { status: backendRes.status, headers },
     );
+  } else if (!mayContainRotatedSessionTokens) {
+    const headers = new Headers();
+    const ct = backendRes.headers.get('content-type');
+    headers.set('Content-Type', ct || 'application/json');
+    headers.set('Cache-Control', 'private, no-store, no-cache, must-revalidate, max-age=0');
+    headers.set('Pragma', 'no-cache');
+    headers.set('Vary', 'Cookie');
+
+    response = new NextResponse(
+      backendRes.status === 204 || backendRes.status === 304 ? null : backendRes.body,
+      { status: backendRes.status, headers },
+    );
   } else {
     const rawText = await backendRes.text();
     let parsed: any = {};
@@ -260,7 +276,7 @@ export async function forwardAuthenticatedRequest(
       parsed = { message: rawText };
     }
 
-    // If backend returned rotated session tokens inside an eligibility call, preserve them inside HttpOnly cookies cleanly
+    // If backend returned rotated session tokens inside an identity/eligibility call, preserve them inside HttpOnly cookies cleanly
     if (backendRes.ok && parsed && typeof parsed === 'object' && !Array.isArray(parsed) && parsed.accessToken) {
       rotatedTokens = {
         accessToken: parsed.accessToken,

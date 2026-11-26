@@ -2,10 +2,14 @@
 const nextConfig = {
   reactStrictMode: true,
   transpilePackages: ['@saymyname/contracts', '@saymyname/validation', '@saymyname/design-tokens'],
-  experimental: {
-    workerThreads: false,
-    cpus: 1,
-  },
+  ...(process.env.NODE_ENV === 'production'
+    ? {
+        experimental: {
+          workerThreads: false,
+          cpus: 1,
+        },
+      }
+    : {}),
   async rewrites() {
     const defaultLocal = 'http://127.0.0.1:4000';
     const backendUrl =

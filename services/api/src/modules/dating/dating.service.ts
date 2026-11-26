@@ -1891,25 +1891,33 @@ export class DatingService {
         orderBy: { createdAt: 'desc' },
       });
 
+      const activeConversationMatches = (matches || []).filter(
+        (m: any) => !m.conversation || !m.conversation.status || m.conversation.status === 'active',
+      );
+      const allPartnerIds: string[] = Array.from(
+        new Set<string>(
+          activeConversationMatches
+            .map((m: any) => String(m.userLowId === accountId ? m.userHighId : m.userLowId))
+            .filter(Boolean),
+        ),
+      );
+
+      const [blockedPartnerIds, activeAccountSet] = await Promise.all([
+        this.matchAuth.loadBlockedCounterpartyIds(prismaAny, accountId, allPartnerIds),
+        this.matchAuth.loadActiveAccountIdSet(prismaAny, allPartnerIds, now),
+      ]);
+
       const validMatches: any[] = [];
-      for (const m of matches || []) {
-        if (m.conversation && m.conversation.status && m.conversation.status !== 'active') {
+      for (const m of activeConversationMatches) {
+        const otherAccountId = m.userLowId === accountId ? m.userHighId : m.userLowId;
+        if (blockedPartnerIds.has(otherAccountId)) {
           continue;
         }
-        const blocked = await this.matchAuth.hasBidirectionalBlock(
-          prismaAny,
-          m.userLowId,
-          m.userHighId,
-        );
-        if (blocked) {
-          continue;
-        }
-        const bothActive = await this.matchAuth.verifyParticipantAccountsActive(
-          prismaAny,
-          [m.userLowId, m.userHighId],
-          now,
-        );
-        if (!bothActive) {
+        if (
+          activeAccountSet !== null &&
+          ((!activeAccountSet.has(m.userLowId) && m.userLowId !== accountId) ||
+            (!activeAccountSet.has(m.userHighId) && m.userHighId !== accountId))
+        ) {
           continue;
         }
         validMatches.push(m);

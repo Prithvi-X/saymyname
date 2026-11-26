@@ -3,7 +3,18 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { api, DiscoveryCandidate, LikeResponse, ReportCategory } from '../../../lib/api';
+import {
+  api,
+  DiscoveryCandidate,
+  DiscoveryFeedResponse,
+  LikeResponse,
+  ReportCategory,
+} from '../../../lib/api';
+import {
+  getCachedQuery,
+  invalidateQueryKey,
+  setCachedQuery,
+} from '../../../lib/query-cache';
 
 function getErrorStatus(err: unknown): number | null {
   if (err && typeof err === 'object' && 'status' in err && typeof (err as any).status === 'number') {
@@ -42,19 +53,30 @@ function generateActionKey(prefix: string, profileId: string): string {
 
 export default function DiscoverPage() {
   const router = useRouter();
+  const initialCachedFeed = getCachedQuery<DiscoveryFeedResponse>('discover:feed', 90_000);
 
   // Feed & Pagination State
-  const [queue, setQueue] = useState<DiscoveryCandidate[]>([]);
-  const [nextCursor, setNextCursor] = useState<string | null>(null);
-  const [hasMore, setHasMore] = useState<boolean>(false);
-  const [viewerState, setViewerState] = useState<'ready' | 'paused' | 'profile_incomplete'>('ready');
+  const [queue, setQueue] = useState<DiscoveryCandidate[]>(() => initialCachedFeed?.candidates ?? []);
+  const [nextCursor, setNextCursor] = useState<string | null>(() => initialCachedFeed?.nextCursor ?? null);
+  const [hasMore, setHasMore] = useState<boolean>(() => initialCachedFeed?.hasMore ?? false);
+  const [viewerState, setViewerState] = useState<'ready' | 'paused' | 'profile_incomplete'>(
+    () => initialCachedFeed?.viewerState ?? 'ready',
+  );
   const [appliedPrefs, setAppliedPrefs] = useState<{
     minAge: number;
     maxAge: number;
     allowedProgrammes: string[];
-  } | null>(null);
+  } | null>(() =>
+    initialCachedFeed?.preferencesApplied
+      ? {
+          minAge: initialCachedFeed.preferencesApplied.minAge,
+          maxAge: initialCachedFeed.preferencesApplied.maxAge,
+          allowedProgrammes: initialCachedFeed.preferencesApplied.allowedProgrammes,
+        }
+      : null,
+  );
 
-  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [isLoading, setIsLoading] = useState<boolean>(() => !initialCachedFeed);
   const [isLoadingMore, setIsLoadingMore] = useState<boolean>(false);
   const [isResuming, setIsResuming] = useState<boolean>(false);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -105,12 +127,16 @@ export default function DiscoverPage() {
     delete idempotencyKeysRef.current[`pass:${profileId}`];
   };
 
-  const loadInitialFeed = useCallback(async () => {
-    setIsLoading(true);
+  const loadInitialFeed = useCallback(async (opts?: { background?: boolean }) => {
+    const hasWarmCache = Boolean(getCachedQuery<DiscoveryFeedResponse>('discover:feed', 90_000));
+    if (!opts?.background && !hasWarmCache) {
+      setIsLoading(true);
+    }
     setLoadError(null);
     setActionError(null);
     try {
       const feed = await api.getDiscoverFeed({ limit: 10 });
+      setCachedQuery('discover:feed', feed);
       setQueue(feed.candidates);
       setNextCursor(feed.nextCursor);
       setHasMore(feed.hasMore);
@@ -128,7 +154,9 @@ export default function DiscoverPage() {
         router.push('/login');
         return;
       }
-      setLoadError(err?.message || 'Unable to load verified peer recommendations right now.');
+      if (!hasWarmCache) {
+        setLoadError(err?.message || 'Unable to load verified peer recommendations right now.');
+      }
     } finally {
       setIsLoading(false);
     }
@@ -198,7 +226,14 @@ export default function DiscoverPage() {
     clearActionKeys(profileId);
     setActionError(null);
     setFullProfileOpen(false);
-    setQueue((prev) => removeCandidateById(prev, profileId));
+    setQueue((prev) => {
+      const nextQueue = removeCandidateById(prev, profileId);
+      const cached = getCachedQuery<DiscoveryFeedResponse>('discover:feed', 90_000);
+      if (cached) {
+        setCachedQuery('discover:feed', { ...cached, candidates: nextQueue });
+      }
+      return nextQueue;
+    });
     if (notice) {
       setStatusNotice(notice);
     }
@@ -268,8 +303,11 @@ export default function DiscoverPage() {
     try {
       const res = await api.likeCandidate(target.profileId, key);
       removeCurrentCandidateAndAdvance(target.profileId);
+      invalidateQueryKey('likes:');
 
       if (res.isMutualMatch) {
+        invalidateQueryKey('matches:');
+        invalidateQueryKey('chats:');
         setMatchResult(res);
       } else {
         setStatusNotice(`Interest sent privately to ${target.displayName}.`);

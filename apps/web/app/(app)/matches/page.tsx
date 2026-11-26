@@ -5,6 +5,11 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { api, MatchProfile, ReportCategory } from '../../../lib/api';
 import {
+  getCachedQuery,
+  invalidateQueryKey,
+  setCachedQuery,
+} from '../../../lib/query-cache';
+import {
   formatCandidateHeading,
   formatCoarseLocation,
   formatIntentionLabel,
@@ -54,11 +59,14 @@ function makeActionKey(prefix: string): string {
 
 export default function MatchesPage() {
   const router = useRouter();
+  const initialCachedMatches = getCachedQuery<MatchProfile[]>('matches:list', 90_000);
 
-  const [matches, setMatches] = useState<MatchProfile[]>([]);
-  const [selectedMatchId, setSelectedMatchId] = useState<string | null>(null);
+  const [matches, setMatches] = useState<MatchProfile[]>(() => initialCachedMatches ?? []);
+  const [selectedMatchId, setSelectedMatchId] = useState<string | null>(
+    () => (initialCachedMatches ? selectActiveMatch(initialCachedMatches, null)?.id ?? null : null),
+  );
   const [searchQuery, setSearchQuery] = useState('');
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(() => !initialCachedMatches);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [emptyKind, setEmptyKind] = useState<MatchesEmptyKind>('initial');
 
@@ -106,15 +114,19 @@ export default function MatchesPage() {
   };
 
   const loadMatches = useCallback(async () => {
-    setLoading(true);
+    const hasWarm = Boolean(getCachedQuery<MatchProfile[]>('matches:list', 90_000));
+    if (!hasWarm) setLoading(true);
     setLoadError(null);
     try {
       const list = await api.getMatches();
+      setCachedQuery('matches:list', list);
       setMatches(list);
       setEmptyKind('initial');
       setSelectedMatchId((prev) => selectActiveMatch(list, prev)?.id ?? null);
     } catch (err: any) {
-      setLoadError(err?.message || 'Unable to load mutual matches right now.');
+      if (!hasWarm) {
+        setLoadError(err?.message || 'Unable to load mutual matches right now.');
+      }
     } finally {
       setLoading(false);
     }
@@ -184,6 +196,9 @@ export default function MatchesPage() {
 
       setMatches((prev) => {
         const remaining = removeMatchById(prev, target.id);
+        setCachedQuery('matches:list', remaining);
+        invalidateQueryKey('chats:');
+        invalidateQueryKey('discover:');
         setSelectedMatchId(selectActiveMatch(remaining, null)?.id ?? null);
         if (remaining.length === 0) {
           setEmptyKind('just_ended');
@@ -237,6 +252,9 @@ export default function MatchesPage() {
 
       setMatches((prev) => {
         const remaining = removeMatchById(prev, target.id);
+        setCachedQuery('matches:list', remaining);
+        invalidateQueryKey('chats:');
+        invalidateQueryKey('discover:');
         setSelectedMatchId(selectActiveMatch(remaining, null)?.id ?? null);
         if (remaining.length === 0) {
           setEmptyKind('just_ended');

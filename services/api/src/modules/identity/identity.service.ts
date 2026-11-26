@@ -184,7 +184,7 @@ export class IdentityService {
 
     const otp = this.generateVerificationCode();
     const codeHash = this.crypto.hashChallengeCode(otp, email, 'email_verification');
-    const passwordHash = this.crypto.hashPassword(dto.password);
+    const passwordHash = await this.crypto.hashPasswordAsync(dto.password);
     const now = new Date();
     const expiresAt = new Date(now.getTime() + OTP_EXPIRY_MS);
 
@@ -470,9 +470,9 @@ export class IdentityService {
       );
     }
 
-    // Run PBKDF2 timing-equal check even when missing/passwordless to normalize timing
+    // Run PBKDF2 timing-equal check off the event loop even when missing/passwordless to normalize timing
     const hashToCheck = account?.passwordHash || DUMMY_PASSWORD_HASH;
-    const passwordMatches = this.crypto.verifyPassword(dto.password, hashToCheck);
+    const passwordMatches = await this.crypto.verifyPasswordAsync(dto.password, hashToCheck);
 
     if (!account || !account.passwordHash || !passwordMatches) {
       throw new UnauthorizedException(
@@ -503,16 +503,29 @@ export class IdentityService {
       account.eligibility,
       account.profile,
     );
+    const rawName = account.profile?.displayName || account.displayName;
+    const sanitizedName = !rawName || isPrivateIdentifierLike(rawName) ? null : rawName;
 
     return {
       message: 'Signed in successfully.',
       account: {
         id: account.id,
         email: account.email,
+        displayName: sanitizedName,
         accountStatus: account.accountStatus,
         emailVerified: true,
+        hasPassword: true,
         eligibility: account.eligibility,
       },
+      profile: account.profile
+        ? {
+            id: account.profile.id,
+            displayName: sanitizedName || account.profile.displayName,
+            profileStatus: account.profile.profileStatus,
+            isPublished: account.profile.isPublished,
+            isPaused: account.profile.isPaused,
+          }
+        : null,
       lifecycleState,
       ...session,
     };
@@ -603,7 +616,7 @@ export class IdentityService {
       throw new UnauthorizedException('Invalid or expired password reset token.');
     }
 
-    const newHash = this.crypto.hashPassword(dto.newPassword);
+    const newHash = await this.crypto.hashPasswordAsync(dto.newPassword);
 
     await this.prisma.$transaction(async (tx) => {
       await tx.passwordResetToken.update({
@@ -896,13 +909,13 @@ export class IdentityService {
         include: {
           eligibility: true,
           profile: {
-            include: {
-              photos: {
-                where: { deletedAt: null },
-                orderBy: { displayOrder: 'asc' },
-              },
-              interests: { include: { interest: true } },
-              promptAnswers: { include: { prompt: true } },
+            select: {
+              id: true,
+              displayName: true,
+              profileStatus: true,
+              isPublished: true,
+              isPaused: true,
+              publishedAt: true,
             },
           },
         },

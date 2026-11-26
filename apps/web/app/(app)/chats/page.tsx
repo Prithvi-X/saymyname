@@ -20,6 +20,11 @@ import {
   DiscoveryCandidate,
   ReportCategory,
 } from '../../../lib/api';
+import { useAuth } from '../../../lib/auth-context';
+import {
+  getCachedQuery,
+  setCachedQuery,
+} from '../../../lib/query-cache';
 import {
   formatCandidateHeading,
   formatCoarseLocation,
@@ -139,19 +144,43 @@ function SafeMessageBody({
 function ChatsContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const { user: authUser } = useAuth();
   const preselectMatchId = searchParams.get('matchId');
   const preselectConversationId = searchParams.get('conversationId');
+  const initialCachedInbox = getCachedQuery<ConversationListItem[]>('chats:conversations', 60_000);
 
   // Inbox & Active Thread
-  const [conversations, setConversations] = useState<ConversationListItem[]>([]);
+  const [conversations, setConversations] = useState<ConversationListItem[]>(
+    () => initialCachedInbox ?? [],
+  );
   const [searchQuery, setSearchQuery] = useState('');
-  const [activeConvId, setActiveConvId] = useState<string | null>(null);
+  const [activeConvId, setActiveConvId] = useState<string | null>(() => {
+    if (!initialCachedInbox || initialCachedInbox.length === 0) return null;
+    if (preselectConversationId) {
+      const m = initialCachedInbox.find((c) => c.conversationId === preselectConversationId);
+      if (m) return m.conversationId;
+    }
+    if (preselectMatchId) {
+      const m = initialCachedInbox.find((c) => c.matchId === preselectMatchId);
+      if (m) return m.conversationId;
+    }
+    return initialCachedInbox[0].conversationId;
+  });
   const [connectionEndedNotice, setConnectionEndedNotice] = useState(false);
-  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [messages, setMessages] = useState<ChatMessage[]>(() => {
+    if (!initialCachedInbox || initialCachedInbox.length === 0) return [];
+    const targetId =
+      (preselectConversationId &&
+        initialCachedInbox.find((c) => c.conversationId === preselectConversationId)?.conversationId) ||
+      (preselectMatchId &&
+        initialCachedInbox.find((c) => c.matchId === preselectMatchId)?.conversationId) ||
+      initialCachedInbox[0].conversationId;
+    return (targetId && getCachedQuery<ChatMessage[]>(`chats:history:${targetId}`, 60_000)) || [];
+  });
   const [hasOlderHistory, setHasOlderHistory] = useState(false);
   const [nextCursorSeq, setNextCursorSeq] = useState<number | null>(null);
   const [loadingOlder, setLoadingOlder] = useState(false);
-  const [loadingInbox, setLoadingInbox] = useState(true);
+  const [loadingInbox, setLoadingInbox] = useState(() => !initialCachedInbox);
   const [loadingThread, setLoadingThread] = useState(false);
   const [inboxError, setInboxError] = useState<string | null>(null);
   const [mobileShowThread, setMobileShowThread] = useState(false);
@@ -405,7 +434,20 @@ function ChatsContent() {
   const loadConversationInitial = useCallback(
     async (convId: string) => {
       const requestToken = ++threadRequestTokenRef.current;
-      setLoadingThread(true);
+      const cachedMessages = getCachedQuery<ChatMessage[]>(`chats:history:${convId}`, 60_000);
+      if (cachedMessages) {
+        setMessages((prev) => {
+          const failedOrSendingLocal = prev.filter(
+            (m) =>
+              m.conversationId === convId &&
+              (m.localStatus === 'failed' || m.localStatus === 'sending'),
+          );
+          return mergeChronologicalMessages(failedOrSendingLocal, cachedMessages);
+        });
+        setLoadingThread(false);
+      } else {
+        setLoadingThread(true);
+      }
       setThreadError(null);
       setHasUnreadBelow(false);
       shouldStickBottomRef.current = true;
@@ -419,6 +461,7 @@ function ChatsContent() {
         ) {
           return;
         }
+        setCachedQuery(`chats:history:${convId}`, history.messages);
         setMessages((prev) => {
           const failedOrSendingLocal = prev.filter(
             (m) =>
@@ -448,7 +491,7 @@ function ChatsContent() {
         if (requestToken !== threadRequestTokenRef.current) return;
         if (err?.status === 403 || err?.status === 404) {
           markEndedStateForConversation(convId);
-        } else {
+        } else if (!cachedMessages) {
           setThreadError(
             err?.message || 'Unable to load messages. Please retry.',
           );
@@ -466,19 +509,30 @@ function ChatsContent() {
   useEffect(() => {
     let cancelled = false;
     async function bootInbox() {
-      setLoadingInbox(true);
+      const hasWarmInbox = Boolean(
+        getCachedQuery<ConversationListItem[]>('chats:conversations', 60_000),
+      );
+      if (!hasWarmInbox) {
+        setLoadingInbox(true);
+      }
       setInboxError(null);
       try {
+        const resolvedAuthId = authUser?.id || null;
+        if (resolvedAuthId) {
+          selfAccountIdRef.current = resolvedAuthId;
+          setSelfAccountId(resolvedAuthId);
+        }
         const [meRes, rawList] = await Promise.all([
-          api.getMe().catch(() => null),
+          resolvedAuthId ? Promise.resolve(null) : api.getMe().catch(() => null),
           api.getConversations(),
         ]);
         if (cancelled) return;
-        if (meRes?.id) {
+        if (!resolvedAuthId && meRes?.id) {
           selfAccountIdRef.current = meRes.id;
           setSelfAccountId(meRes.id);
         }
         const list = sortConversationsDeterministically(rawList);
+        setCachedQuery('chats:conversations', list);
         setConversations(list);
 
         if (preselectMatchId || preselectConversationId) {
@@ -508,7 +562,7 @@ function ChatsContent() {
           setDraftText(readConversationDraft(list[0].conversationId));
         }
       } catch (err: any) {
-        if (!cancelled) {
+        if (!cancelled && !getCachedQuery<ConversationListItem[]>('chats:conversations', 60_000)) {
           setInboxError(
             err?.message || 'Unable to reach private messaging right now.',
           );
@@ -521,7 +575,7 @@ function ChatsContent() {
     return () => {
       cancelled = true;
     };
-  }, [preselectMatchId, preselectConversationId]);
+  }, [preselectMatchId, preselectConversationId, authUser?.id]);
 
   const connectLiveKitAudioRoom = useCallback(
     async (params: {
