@@ -12,6 +12,10 @@ export interface WebSocketEventEnvelope<T = unknown> {
     | 'message.delivered'
     | 'conversation.updated'
     | 'conversation.closed'
+    | 'call.invited'
+    | 'call.accepted'
+    | 'call.state_changed'
+    | 'call.ended'
     | 'access.revoked'
     | 'authorization.failed'
     | 'pong';
@@ -42,6 +46,27 @@ export interface ConversationClosedEventData {
   conversationId: string;
   matchId?: string;
   reason: 'connection_ended' | 'connection_unavailable';
+}
+
+export interface CallRealtimeEventData {
+  callSessionId: string;
+  conversationId: string;
+  status:
+    | 'inviting'
+    | 'initiated'
+    | 'ringing'
+    | 'accepted'
+    | 'connecting'
+    | 'active'
+    | 'reconnecting'
+    | 'rejected'
+    | 'ended'
+    | 'missed'
+    | 'failed';
+  callType: 'audio';
+  endedReason?: string | null;
+  expiresAt?: string | null;
+  occurredAt: string;
 }
 
 export interface MessageSendPayload {

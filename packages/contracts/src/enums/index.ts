@@ -85,9 +85,13 @@ export enum DeliveryState {
 }
 
 export enum CallStatus {
+  INVITING = 'inviting',
   INITIATED = 'initiated',
   RINGING = 'ringing',
   ACCEPTED = 'accepted',
+  CONNECTING = 'connecting',
+  ACTIVE = 'active',
+  RECONNECTING = 'reconnecting',
   REJECTED = 'rejected',
   ENDED = 'ended',
   MISSED = 'missed',
