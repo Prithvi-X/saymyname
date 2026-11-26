@@ -1123,6 +1123,111 @@ class ApiClient {
     };
   }
 
+  // --- Phase 4.1 Audio Calling (LiveKit 1:1 Audio-Only via BFF) ---
+
+  async inviteAudioCall(conversationId: string): Promise<{
+    callSession: {
+      id: string;
+      conversationId: string;
+      callerId: string;
+      receiverId: string;
+      callStatus: string;
+      livekitRoomId: string;
+      expiresAt?: string | null;
+      endedReason?: string | null;
+    };
+    expiresAt: string;
+  }> {
+    return this.request('/api/bff/v1/calling/invite', {
+      method: 'POST',
+      body: JSON.stringify({ conversationId }),
+    });
+  }
+
+  async getActiveAudioCall(conversationId: string): Promise<{
+    activeCall: {
+      id: string;
+      conversationId: string;
+      callerId: string;
+      receiverId: string;
+      callStatus: string;
+      livekitRoomId: string;
+      expiresAt?: string | null;
+      endedReason?: string | null;
+    } | null;
+  }> {
+    return this.request(
+      `/api/bff/v1/calling/conversations/${encodeURIComponent(conversationId)}/active`,
+    );
+  }
+
+  async getAudioCallSession(callId: string): Promise<{
+    id: string;
+    conversationId: string;
+    callerId: string;
+    receiverId: string;
+    callStatus: string;
+    livekitRoomId: string;
+    expiresAt?: string | null;
+    endedReason?: string | null;
+  }> {
+    return this.request(`/api/bff/v1/calling/${encodeURIComponent(callId)}`);
+  }
+
+  async respondAudioCall(
+    callId: string,
+    action: 'accept' | 'decline' | 'busy' | 'cancel',
+  ): Promise<{
+    callSessionId: string;
+    livekitRoomId: string;
+    token: string;
+    callStatus: string;
+    livekitUrl?: string;
+    expiresAt?: string;
+    participantIdentity?: string;
+  }> {
+    return this.request(`/api/bff/v1/calling/${encodeURIComponent(callId)}/respond`, {
+      method: 'POST',
+      body: JSON.stringify({ action }),
+    });
+  }
+
+  async fetchAudioCallToken(callId: string): Promise<{
+    callSessionId: string;
+    livekitRoomId: string;
+    token: string;
+    callStatus: string;
+    livekitUrl?: string;
+    expiresAt?: string;
+    participantIdentity?: string;
+  }> {
+    return this.request(`/api/bff/v1/calling/${encodeURIComponent(callId)}/token`, {
+      method: 'POST',
+      body: JSON.stringify({}),
+    });
+  }
+
+  async updateAudioCallState(
+    callId: string,
+    state: 'ringing' | 'connecting' | 'active' | 'reconnecting',
+  ) {
+    return this.request(`/api/bff/v1/calling/${encodeURIComponent(callId)}/state`, {
+      method: 'POST',
+      body: JSON.stringify({ state }),
+    });
+  }
+
+  async endAudioCall(callId: string): Promise<{
+    success: boolean;
+    durationSeconds: number;
+    callStatus: string;
+  }> {
+    return this.request(`/api/bff/v1/calling/${encodeURIComponent(callId)}/end`, {
+      method: 'POST',
+      body: JSON.stringify({}),
+    });
+  }
+
   // --- Safety & Moderation ---
 
   async blockCandidate(targetProfileId: string, reason?: string) {

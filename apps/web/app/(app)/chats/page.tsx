@@ -50,7 +50,22 @@ import {
   IntervalEmptyComposition,
   Skeleton,
 } from '../../../components/ui';
+import {
+  DisconnectReason,
+  Room,
+  RoomEvent,
+  Track,
+} from 'livekit-client';
 import { VoiceNotePlayer } from '../../../components/VoiceNotePlayer';
+import { AudioCallOverlay } from '../../../components/AudioCallOverlay';
+import {
+  ActiveCallSessionModel,
+  CallUiPhase,
+  deriveCallPhaseFromSession,
+  isLiveAudioPhase,
+  isNonTerminalCallUiPhase,
+  mapCallTerminalPhase,
+} from '../../../lib/calling-state';
 import {
   PhoneIcon,
   GameIcon,
@@ -187,8 +202,14 @@ function ChatsContent() {
   const [unmatchSubmitting, setUnmatchSubmitting] = useState(false);
   const [unmatchReason, setUnmatchReason] = useState('');
 
-  // Preserve secondary Phase 4 modal previews without expanding scope
-  const [callStatus, setCallStatus] = useState<string | null>(null);
+  // Phase 4.1 Audio Calling & Secondary Phase 4 modals
+  const [selfAccountId, setSelfAccountId] = useState<string | null>(null);
+  const [activeCall, setActiveCall] = useState<ActiveCallSessionModel | null>(null);
+  const [callUiPhase, setCallUiPhase] = useState<CallUiPhase>('idle');
+  const [callElapsedSeconds, setCallElapsedSeconds] = useState(0);
+  const [callMuted, setCallMuted] = useState(false);
+  const [callActionBusy, setCallActionBusy] = useState(false);
+  const [callEndedReason, setCallEndedReason] = useState<string | null>(null);
   const [gameSelection, setGameSelection] = useState<
     'word_scramble' | 'iitm_trivia'
   >('word_scramble');
@@ -196,7 +217,15 @@ function ChatsContent() {
   const [gameScore, setGameScore] = useState(0);
   const [dateProposed, setDateProposed] = useState(false);
 
-  // Refs for race-safe async cancellation, scroll anchoring & voice recording
+  // Refs for race-safe async cancellation, scroll anchoring & voice/LiveKit cleanup
+  const selfAccountIdRef = useRef<string | null>(null);
+  const activeCallRef = useRef<ActiveCallSessionModel | null>(null);
+  const callPhaseRef = useRef<CallUiPhase>('idle');
+  const callMutedRef = useRef<boolean>(false);
+  const livekitRoomRef = useRef<Room | null>(null);
+  const remoteAudioHostRef = useRef<HTMLDivElement | null>(null);
+  const callTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const callConnectingRef = useRef<boolean>(false);
   const activeConvRef = useRef<string | null>(null);
   const threadRequestTokenRef = useRef(0);
   const threadContainerRef = useRef<HTMLDivElement | null>(null);
@@ -265,9 +294,70 @@ function ChatsContent() {
   }, [activeConvId]);
 
   useEffect(() => {
+    selfAccountIdRef.current = selfAccountId;
+  }, [selfAccountId]);
+
+  useEffect(() => {
+    activeCallRef.current = activeCall;
+  }, [activeCall]);
+
+  useEffect(() => {
+    callPhaseRef.current = callUiPhase;
+  }, [callUiPhase]);
+
+  useEffect(() => {
+    callMutedRef.current = callMuted;
+  }, [callMuted]);
+
+  const stopCallTimer = useCallback(() => {
+    if (callTimerRef.current) {
+      clearInterval(callTimerRef.current);
+      callTimerRef.current = null;
+    }
+  }, []);
+
+  const cleanupCallMediaAndRoom = useCallback(() => {
+    callConnectingRef.current = false;
+    stopCallTimer();
+    const room = livekitRoomRef.current;
+    livekitRoomRef.current = null;
+    if (room) {
+      try {
+        room.removeAllListeners();
+        room.localParticipant?.trackPublications?.forEach((pub) => {
+          try {
+            pub.track?.stop();
+            pub.track?.mediaStreamTrack?.stop();
+          } catch {}
+        });
+        void room.disconnect(true);
+      } catch {}
+    }
+    if (remoteAudioHostRef.current) {
+      try {
+        remoteAudioHostRef.current.querySelectorAll('audio').forEach((el) => {
+          try {
+            el.pause();
+            el.srcObject = null;
+            el.remove();
+          } catch {}
+        });
+      } catch {}
+    }
+  }, [stopCallTimer]);
+
+  useEffect(() => {
+    const handleBeforeUnload = () => {
+      cleanupCallMediaAndRoom();
+    };
+    window.addEventListener('pagehide', handleBeforeUnload);
+    window.addEventListener('beforeunload', handleBeforeUnload);
     return () => {
       unmountedRef.current = true;
+      window.removeEventListener('pagehide', handleBeforeUnload);
+      window.removeEventListener('beforeunload', handleBeforeUnload);
       cleanupMediaRecorder();
+      cleanupCallMediaAndRoom();
       if (voicePreviewUrlRef.current) {
         URL.revokeObjectURL(voicePreviewUrlRef.current);
       }
@@ -276,7 +366,7 @@ function ChatsContent() {
         wsRef.current?.close();
       } catch {}
     };
-  }, [cleanupMediaRecorder]);
+  }, [cleanupMediaRecorder, cleanupCallMediaAndRoom]);
 
   const refreshConversationsList = useCallback(async (): Promise<
     ConversationListItem[]
@@ -287,6 +377,15 @@ function ChatsContent() {
   }, []);
 
   const markEndedStateForConversation = useCallback((closedConvId?: string | null) => {
+    if (
+      activeCallRef.current &&
+      (!closedConvId || activeCallRef.current.conversationId === closedConvId)
+    ) {
+      cleanupCallMediaAndRoom();
+      setCallEndedReason('match_inactive');
+      setCallUiPhase('revoked');
+      setCallMuted(false);
+    }
     if (closedConvId) {
       clearConversationDraft(closedConvId);
     }
@@ -301,7 +400,7 @@ function ChatsContent() {
       discardVoiceDraft();
       setMobileShowThread(true);
     }
-  }, [discardVoiceDraft]);
+  }, [discardVoiceDraft, cleanupCallMediaAndRoom]);
 
   const loadConversationInitial = useCallback(
     async (convId: string) => {
@@ -363,17 +462,23 @@ function ChatsContent() {
     [markEndedStateForConversation],
   );
 
-  // Initial Inbox Boot + Deep-link Resolution (?matchId= & ?conversationId=)
+  // Initial Inbox Boot + Self Identity + Deep-link Resolution (?matchId= & ?conversationId=)
   useEffect(() => {
     let cancelled = false;
     async function bootInbox() {
       setLoadingInbox(true);
       setInboxError(null);
       try {
-        const list = sortConversationsDeterministically(
-          await api.getConversations(),
-        );
+        const [meRes, rawList] = await Promise.all([
+          api.getMe().catch(() => null),
+          api.getConversations(),
+        ]);
         if (cancelled) return;
+        if (meRes?.id) {
+          selfAccountIdRef.current = meRes.id;
+          setSelfAccountId(meRes.id);
+        }
+        const list = sortConversationsDeterministically(rawList);
         setConversations(list);
 
         if (preselectMatchId || preselectConversationId) {
@@ -418,7 +523,287 @@ function ChatsContent() {
     };
   }, [preselectMatchId, preselectConversationId]);
 
-  // Load thread whenever active conversation changes
+  const connectLiveKitAudioRoom = useCallback(
+    async (params: {
+      livekitUrl: string;
+      token: string;
+      callSession: ActiveCallSessionModel;
+    }) => {
+      if (callConnectingRef.current || livekitRoomRef.current) return;
+      callConnectingRef.current = true;
+      setCallUiPhase('connecting');
+      setCallEndedReason(null);
+
+      try {
+        await api
+          .updateAudioCallState(params.callSession.id, 'connecting')
+          .catch(() => null);
+
+        const room = new Room({ adaptiveStream: false, dynacast: false });
+        livekitRoomRef.current = room;
+
+        room.on(RoomEvent.TrackSubscribed, (track) => {
+          if (track.kind !== Track.Kind.Audio || !remoteAudioHostRef.current) return;
+          try {
+            const el = track.attach() as HTMLAudioElement;
+            el.autoplay = true;
+            el.dataset.trackSid = track.sid || '';
+            remoteAudioHostRef.current.appendChild(el);
+          } catch {}
+        });
+
+        room.on(RoomEvent.TrackUnsubscribed, (track) => {
+          try {
+            track.detach().forEach((el) => el.remove());
+          } catch {}
+        });
+
+        room.on(RoomEvent.Reconnecting, () => {
+          setCallUiPhase('reconnecting');
+          void api
+            .updateAudioCallState(params.callSession.id, 'reconnecting')
+            .catch(() => null);
+          void api.fetchAudioCallToken(params.callSession.id).catch(() => null);
+        });
+
+        room.on(RoomEvent.Reconnected, () => {
+          setCallUiPhase(callMutedRef.current ? 'muted' : 'connected');
+          void api
+            .updateAudioCallState(params.callSession.id, 'active')
+            .catch(() => null);
+        });
+
+        room.on(RoomEvent.Disconnected, (reason?: DisconnectReason) => {
+          cleanupCallMediaAndRoom();
+          const currentPhase = callPhaseRef.current;
+          if (currentPhase === 'revoked' || currentPhase === 'mic_permission_denied') {
+            return;
+          }
+          if (
+            reason === DisconnectReason.PARTICIPANT_REMOVED ||
+            reason === DisconnectReason.ROOM_DELETED
+          ) {
+            void api
+              .getAudioCallSession(params.callSession.id)
+              .then((latest) => {
+                setActiveCall(latest);
+                setCallEndedReason(latest.endedReason ?? null);
+                setCallUiPhase(
+                  mapCallTerminalPhase(latest.endedReason, latest.callStatus),
+                );
+              })
+              .catch(() => {
+                setCallEndedReason('match_inactive');
+                setCallUiPhase('revoked');
+              });
+            return;
+          }
+          if (isLiveAudioPhase(currentPhase)) {
+            setCallEndedReason('hangup');
+            setCallUiPhase('ended');
+          }
+        });
+
+        await room.connect(params.livekitUrl, params.token, {
+          autoSubscribe: true,
+        });
+
+        try {
+          await room.localParticipant.setMicrophoneEnabled(true);
+          setCallMuted(false);
+        } catch {
+          cleanupCallMediaAndRoom();
+          setCallUiPhase('mic_permission_denied');
+          setCallEndedReason('mic_permission_denied');
+          void api.endAudioCall(params.callSession.id).catch(() => null);
+          return;
+        }
+
+        await api
+          .updateAudioCallState(params.callSession.id, 'active')
+          .catch(() => null);
+        setCallUiPhase('connected');
+        setCallElapsedSeconds(0);
+        stopCallTimer();
+        callTimerRef.current = setInterval(() => {
+          setCallElapsedSeconds((prev) => prev + 1);
+        }, 1000);
+      } catch (err: any) {
+        cleanupCallMediaAndRoom();
+        if (err?.status === 403) {
+          setCallUiPhase('revoked');
+          setCallEndedReason('match_inactive');
+        } else {
+          setCallUiPhase('provider_unavailable');
+          setCallEndedReason('provider_unavailable');
+        }
+      } finally {
+        callConnectingRef.current = false;
+      }
+    },
+    [cleanupCallMediaAndRoom, stopCallTimer],
+  );
+
+  const connectLiveKitRef = useRef(connectLiveKitAudioRoom);
+  useEffect(() => {
+    connectLiveKitRef.current = connectLiveKitAudioRoom;
+  }, [connectLiveKitAudioRoom]);
+
+  const handleInitiateAudioCall = useCallback(async () => {
+    if (!activeConvRef.current || callActionBusy) return;
+    const convId = activeConvRef.current;
+    setCallActionBusy(true);
+    setActiveModal(null);
+    setCallEndedReason(null);
+    setCallUiPhase('inviting');
+
+    try {
+      const res = await api.inviteAudioCall(convId);
+      setActiveCall(res.callSession);
+      setCallUiPhase('ringing_outgoing');
+    } catch (err: any) {
+      if (err?.status === 409) {
+        try {
+          const existing = await api.getActiveAudioCall(convId);
+          if (existing.activeCall) {
+            setActiveCall(existing.activeCall);
+            setCallUiPhase(
+              deriveCallPhaseFromSession(
+                existing.activeCall,
+                selfAccountIdRef.current,
+              ),
+            );
+            return;
+          }
+        } catch {}
+        setCallUiPhase('failed');
+      } else if (err?.status === 403 || err?.status === 404) {
+        markEndedStateForConversation(convId);
+      } else {
+        setCallEndedReason('provider_unavailable');
+        setCallUiPhase('provider_unavailable');
+      }
+    } finally {
+      setCallActionBusy(false);
+    }
+  }, [callActionBusy, markEndedStateForConversation]);
+
+  const handleAcceptIncomingCall = useCallback(async () => {
+    const call = activeCallRef.current;
+    if (!call || callActionBusy) return;
+    setCallActionBusy(true);
+    setCallUiPhase('accepting');
+    try {
+      const res = await api.respondAudioCall(call.id, 'accept');
+      const updatedSession: ActiveCallSessionModel = {
+        ...call,
+        callStatus: res.callStatus,
+      };
+      setActiveCall(updatedSession);
+      if (!res.livekitUrl || !res.token) {
+        setCallUiPhase('provider_unavailable');
+        return;
+      }
+      await connectLiveKitAudioRoom({
+        livekitUrl: res.livekitUrl,
+        token: res.token,
+        callSession: updatedSession,
+      });
+    } catch (err: any) {
+      cleanupCallMediaAndRoom();
+      if (err?.status === 403 || err?.status === 404) {
+        setCallEndedReason('match_inactive');
+        setCallUiPhase('revoked');
+      } else if (err?.status === 409) {
+        setCallEndedReason('invite_timeout');
+        setCallUiPhase('missed');
+      } else {
+        setCallEndedReason('provider_unavailable');
+        setCallUiPhase('provider_unavailable');
+      }
+    } finally {
+      setCallActionBusy(false);
+    }
+  }, [callActionBusy, cleanupCallMediaAndRoom, connectLiveKitAudioRoom]);
+
+  const handleDeclineIncomingCall = useCallback(async () => {
+    const call = activeCallRef.current;
+    if (!call || callActionBusy) return;
+    setCallActionBusy(true);
+    try {
+      await api.respondAudioCall(call.id, 'decline');
+      cleanupCallMediaAndRoom();
+      setCallEndedReason('declined');
+      setCallUiPhase('declined');
+    } catch {
+      cleanupCallMediaAndRoom();
+      setCallUiPhase('ended');
+    } finally {
+      setCallActionBusy(false);
+    }
+  }, [callActionBusy, cleanupCallMediaAndRoom]);
+
+  const handleCancelOutgoingCall = useCallback(async () => {
+    const call = activeCallRef.current;
+    if (!call || callActionBusy) return;
+    setCallActionBusy(true);
+    try {
+      await api.respondAudioCall(call.id, 'cancel');
+      cleanupCallMediaAndRoom();
+      setCallEndedReason('caller_cancelled');
+      setCallUiPhase('ended');
+    } catch {
+      cleanupCallMediaAndRoom();
+      setCallUiPhase('ended');
+    } finally {
+      setCallActionBusy(false);
+    }
+  }, [callActionBusy, cleanupCallMediaAndRoom]);
+
+  const handleToggleCallMute = useCallback(async () => {
+    const room = livekitRoomRef.current;
+    const nextMuted = !callMutedRef.current;
+    if (room?.localParticipant) {
+      try {
+        await room.localParticipant.setMicrophoneEnabled(!nextMuted);
+      } catch {
+        return;
+      }
+    }
+    setCallMuted(nextMuted);
+    if (callPhaseRef.current === 'connected' || callPhaseRef.current === 'muted') {
+      setCallUiPhase(nextMuted ? 'muted' : 'connected');
+    }
+  }, []);
+
+  const handleEndCall = useCallback(async () => {
+    const call = activeCallRef.current;
+    setCallActionBusy(true);
+    cleanupCallMediaAndRoom();
+    try {
+      if (call) {
+        await api.endAudioCall(call.id);
+      }
+    } catch {
+      // Idempotent UI cleanup even if network already dropped
+    } finally {
+      setCallMuted(false);
+      setCallEndedReason('hangup');
+      setCallUiPhase('ended');
+      setCallActionBusy(false);
+    }
+  }, [cleanupCallMediaAndRoom]);
+
+  const handleDismissCallNotice = useCallback(() => {
+    cleanupCallMediaAndRoom();
+    setActiveCall(null);
+    setCallEndedReason(null);
+    setCallElapsedSeconds(0);
+    setCallMuted(false);
+    setCallUiPhase('idle');
+  }, [cleanupCallMediaAndRoom]);
+
+  // Load thread + any active/ringing audio call whenever active conversation changes
   useEffect(() => {
     if (!activeConvId) return;
     setMessages([]);
@@ -426,6 +811,19 @@ function ChatsContent() {
     setNextCursorSeq(null);
     discardVoiceDraft();
     void loadConversationInitial(activeConvId);
+
+    void api
+      .getActiveAudioCall(activeConvId)
+      .then((res) => {
+        if (activeConvRef.current !== activeConvId) return;
+        if (res.activeCall && !isLiveAudioPhase(callPhaseRef.current)) {
+          setActiveCall(res.activeCall);
+          setCallUiPhase(
+            deriveCallPhaseFromSession(res.activeCall, selfAccountIdRef.current),
+          );
+        }
+      })
+      .catch(() => null);
 
     const ws = wsRef.current;
     if (ws && ws.readyState === WebSocket.OPEN) {
@@ -602,6 +1000,90 @@ function ChatsContent() {
           const upToSeq = Number(envelope?.data?.upToSequenceNo || 0);
           if (convId && upToSeq > 0 && activeConvRef.current === convId) {
             setMessages((prev) => markMessagesDeliveredUpTo(prev, upToSeq));
+          }
+          return;
+        }
+
+        if (eventType === 'call.invited') {
+          const callSessionId = envelope?.data?.callSessionId;
+          if (!callSessionId) return;
+          void api
+            .getAudioCallSession(callSessionId)
+            .then((session) => {
+              if (unmountedRef.current) return;
+              setActiveCall(session);
+              setCallEndedReason(null);
+              const nextPhase = deriveCallPhaseFromSession(
+                session,
+                selfAccountIdRef.current,
+              );
+              setCallUiPhase(nextPhase);
+              if (nextPhase === 'incoming_ringing') {
+                void api.updateAudioCallState(session.id, 'ringing').catch(() => null);
+              }
+            })
+            .catch(() => null);
+          return;
+        }
+
+        if (eventType === 'call.accepted') {
+          const callSessionId = envelope?.data?.callSessionId;
+          if (!callSessionId) return;
+          void api
+            .getAudioCallSession(callSessionId)
+            .then(async (session) => {
+              if (unmountedRef.current) return;
+              setActiveCall(session);
+              if (
+                selfAccountIdRef.current &&
+                session.callerId === selfAccountIdRef.current &&
+                !livekitRoomRef.current &&
+                !callConnectingRef.current
+              ) {
+                const tok = await api.fetchAudioCallToken(session.id);
+                if (tok.livekitUrl && tok.token) {
+                  await connectLiveKitRef.current({
+                    livekitUrl: tok.livekitUrl,
+                    token: tok.token,
+                    callSession: session,
+                  });
+                }
+              }
+            })
+            .catch(() => null);
+          return;
+        }
+
+        if (eventType === 'call.state_changed') {
+          const callSessionId = envelope?.data?.callSessionId;
+          const status = envelope?.data?.status;
+          if (
+            callSessionId &&
+            activeCallRef.current?.id === callSessionId &&
+            !isLiveAudioPhase(callPhaseRef.current)
+          ) {
+            setActiveCall((prev) =>
+              prev ? { ...prev, callStatus: status || prev.callStatus } : prev,
+            );
+          }
+          return;
+        }
+
+        if (eventType === 'call.ended') {
+          const callSessionId = envelope?.data?.callSessionId;
+          const status = envelope?.data?.status;
+          const endedReason = envelope?.data?.endedReason ?? null;
+          if (
+            !callSessionId ||
+            activeCallRef.current?.id === callSessionId ||
+            isNonTerminalCallUiPhase(callPhaseRef.current)
+          ) {
+            cleanupCallMediaAndRoom();
+            setCallMuted(false);
+            setCallEndedReason(endedReason);
+            if (callPhaseRef.current !== 'mic_permission_denied') {
+              setCallUiPhase(mapCallTerminalPhase(endedReason, status));
+            }
           }
           return;
         }
@@ -1166,6 +1648,59 @@ function ChatsContent() {
           : ''
       }`}
     >
+      {/* Always-mounted Hidden Audio Output Sink for LiveKit Remote Tracks */}
+      <div ref={remoteAudioHostRef} className="sr-only" aria-hidden="true" />
+
+      {/* Mobile Inbox & Cross-Conversation Audio Call Visibility */}
+      {callUiPhase !== 'idle' &&
+        (!activePartner ||
+          (activeCall && activeCall.conversationId !== activeConvId) ||
+          !mobileShowThread) && (
+          <div
+            className={
+              !activePartner ||
+              (activeCall && activeCall.conversationId !== activeConvId)
+                ? 'block'
+                : 'md:hidden'
+            }
+          >
+            <AudioCallOverlay
+              phase={callUiPhase}
+              partnerName={
+                conversations.find(
+                  (c) => c.conversationId === activeCall?.conversationId,
+                )?.profile.displayName ||
+                activePartner?.displayName ||
+                'Match'
+              }
+              partnerAvatarUrl={
+                conversations.find(
+                  (c) => c.conversationId === activeCall?.conversationId,
+                )?.profile.photos?.[0]?.photoUrl ||
+                activePartner?.photos?.[0]?.photoUrl ||
+                null
+              }
+              partnerInitials={getInitials(
+                conversations.find(
+                  (c) => c.conversationId === activeCall?.conversationId,
+                )?.profile.displayName ||
+                  activePartner?.displayName ||
+                  'Match',
+              )}
+              elapsedSeconds={callElapsedSeconds}
+              isMuted={callMuted}
+              endedReason={callEndedReason}
+              busy={callActionBusy}
+              onAccept={() => void handleAcceptIncomingCall()}
+              onDecline={() => void handleDeclineIncomingCall()}
+              onCancelOutgoing={() => void handleCancelOutgoingCall()}
+              onToggleMute={() => void handleToggleCallMute()}
+              onEndCall={() => void handleEndCall()}
+              onDismiss={handleDismissCallNotice}
+            />
+          </div>
+        )}
+
       {safetyFeedback && (
         <div
           role="status"
@@ -1462,11 +1997,12 @@ function ChatsContent() {
                     variant="secondary"
                     size="sm"
                     onClick={() => setActiveModal('call')}
+                    disabled={isNonTerminalCallUiPhase(callUiPhase)}
                     leftIcon={<PhoneIcon size={14} />}
                     title="Audio Call (Requires Mutual Acceptance)"
-                    className="hidden sm:inline-flex"
+                    data-testid="open-chat-call-btn"
                   >
-                    Call
+                    <span className="hidden sm:inline">Call</span>
                   </Button>
 
                   <div className="relative hidden sm:block">
@@ -1602,6 +2138,40 @@ function ChatsContent() {
                   </span>
                 )}
               </div>
+
+              {callUiPhase !== 'idle' &&
+                (!activeCall || activeCall.conversationId === activeConvId) && (
+                <AudioCallOverlay
+                  phase={callUiPhase}
+                  partnerName={
+                    conversations.find(
+                      (c) => c.conversationId === activeCall?.conversationId,
+                    )?.profile.displayName || activePartner.displayName
+                  }
+                  partnerAvatarUrl={
+                    conversations.find(
+                      (c) => c.conversationId === activeCall?.conversationId,
+                    )?.profile.photos?.[0]?.photoUrl ||
+                    activePartner.photos?.[0]?.photoUrl ||
+                    null
+                  }
+                  partnerInitials={getInitials(
+                    conversations.find(
+                      (c) => c.conversationId === activeCall?.conversationId,
+                    )?.profile.displayName || activePartner.displayName,
+                  )}
+                  elapsedSeconds={callElapsedSeconds}
+                  isMuted={callMuted}
+                  endedReason={callEndedReason}
+                  busy={callActionBusy}
+                  onAccept={() => void handleAcceptIncomingCall()}
+                  onDecline={() => void handleDeclineIncomingCall()}
+                  onCancelOutgoing={() => void handleCancelOutgoingCall()}
+                  onToggleMute={() => void handleToggleCallMute()}
+                  onEndCall={() => void handleEndCall()}
+                  onDismiss={handleDismissCallNotice}
+                />
+              )}
 
               {/* Scrollable Message Thread Body */}
               <div
@@ -2122,54 +2692,38 @@ function ChatsContent() {
         )}
       </Dialog>
 
-      {/* AUDIO CALL MODAL (Preserved secondary entry-point cleanly bounded from Phase 4) */}
+      {/* PHASE 4.1 AUDIO CALL CONSENT INVITATION DIALOG */}
       <Dialog
         isOpen={Boolean(activeModal === 'call' && activePartner)}
         onClose={() => setActiveModal(null)}
-        title={activePartner ? `Call with ${activePartner.displayName}` : 'Audio Call'}
-        description="Calls require explicit mutual invitation and acceptance before connecting."
+        title={activePartner ? `Audio call with ${activePartner.displayName}` : 'Audio Call'}
+        description="Calls are audio-only and require explicit acceptance before any microphone audio connects."
         maxWidth="sm"
         footer={
-          callStatus ? (
-            <Button
-              variant="destructive"
-              className="w-full"
-              onClick={() => {
-                setCallStatus(null);
-                setActiveModal(null);
-              }}
-            >
-              End Call Preview
+          <>
+            <Button variant="secondary" onClick={() => setActiveModal(null)}>
+              Cancel
             </Button>
-          ) : (
-            <>
-              <Button variant="secondary" onClick={() => setActiveModal(null)}>
-                Cancel
-              </Button>
-              <Button
-                variant="primary"
-                onClick={() =>
-                  setCallStatus(
-                    '1:1 Audio Calling LiveKit SFU room coordination ships in Phase 4.',
-                  )
-                }
-              >
-                Request Audio Call
-              </Button>
-            </>
-          )
+            <Button
+              variant="primary"
+              isLoading={callActionBusy}
+              disabled={callActionBusy || isNonTerminalCallUiPhase(callUiPhase)}
+              onClick={() => void handleInitiateAudioCall()}
+              leftIcon={<PhoneIcon size={14} />}
+              data-testid="confirm-request-call-btn"
+            >
+              Request Audio Call
+            </Button>
+          </>
         }
       >
         <div className="flex flex-col gap-3">
           <div className="rounded-[8px] bg-iron border border-edge p-3.5 text-xs text-silver flex items-start gap-2.5">
             <LockIcon size={15} color="#8580C4" className="shrink-0 mt-0.5" />
             <span>
-              <strong className="text-chalk">No Default Recording:</strong> Voice calls require mutual acceptance and are never recorded by default.
+              <strong className="text-chalk">Privacy &amp; Safety:</strong> Microphone stays off until {activePartner?.displayName || 'your match'} accepts. Video, screen sharing, and call recording are disabled.
             </span>
           </div>
-          {callStatus && (
-            <p className="text-xs font-medium text-iris text-center">{callStatus}</p>
-          )}
         </div>
       </Dialog>
 
