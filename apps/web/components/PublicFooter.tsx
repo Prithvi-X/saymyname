@@ -116,7 +116,11 @@ export default function PublicFooter({
       </div>
 
       <div className="border-t border-edge/70">
-        <div className="container-wide py-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 text-[11px] text-ash">
+        <div
+          className={`container-wide py-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 ${
+            useEditorialFooter ? 'text-[12px] text-silver' : 'text-[11px] text-ash'
+          }`}
+        >
           <span>&copy; {new Date().getFullYear()} SayMyName.in — Phase 1 Non-Campus BS Cohort</span>
           <span>Mutual Match Before Messaging · 18+ Verified Only</span>
         </div>

@@ -15,7 +15,7 @@ export function ProgrammeSection() {
     >
       <div className="container-wide grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-12 items-start">
         <div className="lg:col-span-5 flex flex-col gap-4">
-          <p className="text-xs font-semibold uppercase tracking-[0.14em] text-iris">
+          <p className="text-[12px] font-semibold uppercase tracking-[0.14em] text-iris">
             ELIGIBLE COHORTS
           </p>
           <h2
@@ -45,12 +45,12 @@ export function ProgrammeSection() {
                 className="px-5 py-4 sm:px-6 sm:py-5 flex flex-col sm:flex-row sm:items-center justify-between gap-2"
               >
                 <div className="flex items-baseline gap-4">
-                  <span className="text-xs font-semibold tracking-[0.12em] text-ember shrink-0">
+                  <span className="text-[12px] font-semibold tracking-[0.12em] text-ember shrink-0">
                     {programme.code}
                   </span>
                   <h3 className="text-base font-semibold text-chalk">{programme.name}</h3>
                 </div>
-                <p className="text-xs font-medium text-silver pl-8 sm:pl-0">
+                <p className="text-[12px] font-medium text-silver pl-8 sm:pl-0">
                   {programme.scopeNote}
                 </p>
               </div>

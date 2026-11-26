@@ -16,10 +16,10 @@ export function AcrossCitiesSection() {
         <div className="lg:col-span-6 order-2 lg:order-1">
           <div className="rounded-[12px] border border-edge bg-void p-6 sm:p-8 smn-surface-elevated">
             <div className="flex items-center justify-between gap-4 pb-5 border-b border-edge/70">
-              <span className="text-xs font-semibold uppercase tracking-[0.12em] text-iris">
+              <span className="text-[12px] font-semibold uppercase tracking-[0.12em] text-iris">
                 Non-Campus Orbit
               </span>
-              <span className="text-xs text-silver">Four BS Tracks · Nationwide</span>
+              <span className="text-[12px] text-silver">Four BS Tracks &middot; Nationwide</span>
             </div>
 
             <div className="py-7 sm:py-8 relative">
@@ -67,13 +67,13 @@ export function AcrossCitiesSection() {
                 <circle cx="372" cy="78" r="4.5" fill="#8580C4" />
 
                 {/* Typographic Labels */}
-                <text x="64" y="156" fill="#F0F1EE" fontSize="11" fontFamily="Instrument Sans, sans-serif">
+                <text x="64" y="156" fill="#F0F1EE" fontSize="12" fontFamily="Instrument Sans, sans-serif">
                   Bengaluru
                 </text>
-                <text x="206" y="42" fill="#B6BDC4" fontSize="11" fontFamily="Instrument Sans, sans-serif">
+                <text x="202" y="42" fill="#B6BDC4" fontSize="12" fontFamily="Instrument Sans, sans-serif">
                   Mutual Match
                 </text>
-                <text x="358" y="102" fill="#F0F1EE" fontSize="11" fontFamily="Instrument Sans, sans-serif">
+                <text x="358" y="102" fill="#F0F1EE" fontSize="12" fontFamily="Instrument Sans, sans-serif">
                   Chennai
                 </text>
               </svg>
@@ -83,7 +83,7 @@ export function AcrossCitiesSection() {
               {ACROSS_CITIES_CONTENT.cities.map((city) => (
                 <span
                   key={city}
-                  className="px-2.5 py-1 rounded-[4px] border border-edge bg-iron text-xs font-medium text-silver"
+                  className="px-2.5 py-1 rounded-[4px] border border-edge bg-iron text-[12px] font-medium text-silver"
                 >
                   {city}
                 </span>
@@ -94,7 +94,7 @@ export function AcrossCitiesSection() {
 
         {/* Narrative Text Column */}
         <div className="lg:col-span-6 order-1 lg:order-2 flex flex-col gap-5">
-          <p className="text-xs font-semibold uppercase tracking-[0.14em] text-ember">
+          <p className="text-[12px] font-semibold uppercase tracking-[0.14em] text-ember">
             {ACROSS_CITIES_CONTENT.eyebrow}
           </p>
           <h2

@@ -53,7 +53,7 @@ export function ShareSection() {
       <div className="container-wide">
         <div className="rounded-[12px] border border-edge bg-coal px-6 py-10 sm:px-10 sm:py-12 lg:px-14 lg:py-14 flex flex-col lg:flex-row lg:items-center justify-between gap-8 smn-surface-elevated">
           <div className="flex flex-col gap-3 max-w-2xl">
-            <p className="text-xs font-semibold uppercase tracking-[0.14em] text-iris">
+            <p className="text-[12px] font-semibold uppercase tracking-[0.14em] text-iris">
               {SHARE_SECTION_CONTENT.eyebrow}
             </p>
             <h2
@@ -85,7 +85,7 @@ export function ShareSection() {
             <p
               role="status"
               aria-live="polite"
-              className="text-xs text-silver min-h-[1.25rem]"
+              className="text-[12px] text-silver min-h-[1.25rem]"
             >
               {feedback ?? 'Clean link without tracking parameters: https://saymyname.in'}
             </p>

@@ -16,7 +16,7 @@ export function HowItWorksSection() {
       <div className="container-wide flex flex-col gap-10">
         <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
           <div className="flex flex-col gap-3 max-w-2xl">
-            <p className="text-xs font-semibold uppercase tracking-[0.14em] text-iris">
+            <p className="text-[12px] font-semibold uppercase tracking-[0.14em] text-iris">
               HOW IT WORKS
             </p>
             <h2
@@ -40,7 +40,7 @@ export function HowItWorksSection() {
               key={item.step}
               className="rounded-[12px] border border-edge bg-void/90 p-5 flex flex-col gap-3"
             >
-              <span className="text-xs font-semibold uppercase tracking-[0.14em] text-ember">
+              <span className="text-[12px] font-semibold uppercase tracking-[0.14em] text-ember">
                 Step {item.step}
               </span>
               <h3 className="text-base font-semibold text-chalk leading-snug">{item.title}</h3>

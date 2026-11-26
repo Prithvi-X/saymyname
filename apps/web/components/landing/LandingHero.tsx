@@ -75,7 +75,7 @@ export function LandingHero({
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-12 items-center">
           {/* Primary Editorial Narrative */}
           <div className="lg:col-span-7 flex flex-col items-start gap-6">
-            <p className="text-xs font-semibold uppercase tracking-[0.14em] text-iris">
+            <p className="text-[12px] font-semibold uppercase tracking-[0.14em] text-iris">
               {copy.eyebrow}
             </p>
 
@@ -108,8 +108,8 @@ export function LandingHero({
 
             {/* Grounded Trust & Non-Affiliation Micro-Block */}
             <div className="pt-3 border-t border-edge/70 w-full max-w-xl flex flex-col gap-1.5">
-              <p className="text-xs font-medium text-chalk/90">{HERO_TRUST_SUMMARY}</p>
-              <p className="text-xs text-ash leading-relaxed">{HERO_INDEPENDENCE_DISCLOSURE}</p>
+              <p className="text-[13px] font-medium text-chalk/90">{HERO_TRUST_SUMMARY}</p>
+              <p className="text-[12px] text-silver leading-relaxed">{HERO_INDEPENDENCE_DISCLOSURE}</p>
             </div>
           </div>
 
@@ -133,7 +133,7 @@ export function LandingHero({
                   }}
                 />
                 <div className="absolute inset-x-4 bottom-4 flex flex-col gap-1">
-                  <span className="text-xs font-semibold uppercase tracking-[0.12em] text-ember">
+                  <span className="text-[12px] font-semibold uppercase tracking-[0.12em] text-ember">
                     Two Lights · Editorial Direction
                   </span>
                   <p className="text-sm text-chalk font-medium leading-snug">

@@ -16,7 +16,7 @@ export function TrustSection() {
       <div className="container-wide flex flex-col gap-10">
         <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
           <div className="flex flex-col gap-3 max-w-2xl">
-            <p className="text-xs font-semibold uppercase tracking-[0.14em] text-ember">
+            <p className="text-[12px] font-semibold uppercase tracking-[0.14em] text-ember">
               SAFETY &amp; CONSENT
             </p>
             <h2

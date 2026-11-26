@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import Link from 'next/link';
 import { Badge, Button } from '../ui';
 import {
@@ -23,6 +23,7 @@ const PREVIEW_TABS: readonly { id: ProductTabId; label: string; stepCode: string
 export function ProductPreview() {
   const [activeTab, setActiveTab] = useState<ProductTabId>('discover');
   const [interestSent, setInterestSent] = useState(false);
+  const tabRefs = useRef<Array<HTMLButtonElement | null>>([]);
 
   const handleTabKeyDown = (event: React.KeyboardEvent<HTMLButtonElement>, index: number) => {
     if (event.key !== 'ArrowRight' && event.key !== 'ArrowLeft') return;
@@ -30,6 +31,7 @@ export function ProductPreview() {
     const delta = event.key === 'ArrowRight' ? 1 : -1;
     const nextIndex = (index + delta + PREVIEW_TABS.length) % PREVIEW_TABS.length;
     setActiveTab(PREVIEW_TABS[nextIndex].id);
+    tabRefs.current[nextIndex]?.focus();
   };
 
   return (
@@ -41,7 +43,7 @@ export function ProductPreview() {
       <div className="container-wide flex flex-col gap-10">
         <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
           <div className="flex flex-col gap-3 max-w-2xl">
-            <p className="text-xs font-semibold uppercase tracking-[0.14em] text-iris">
+            <p className="text-[12px] font-semibold uppercase tracking-[0.14em] text-iris">
               INSIDE SAYMYNAME
             </p>
             <h2
@@ -51,7 +53,7 @@ export function ProductPreview() {
               Calm discovery, mutual match, and private conversation.
             </h2>
           </div>
-          <p className="text-xs font-medium text-silver border border-edge bg-coal px-3 py-1.5 rounded-[4px] self-start md:self-auto">
+          <p className="text-[12px] font-medium text-silver border border-edge bg-coal px-3 py-1.5 rounded-[4px] self-start md:self-auto">
             Sample product preview &middot; Illustrative layout
           </p>
         </div>
@@ -69,6 +71,9 @@ export function ProductPreview() {
                 return (
                   <button
                     key={tab.id}
+                    ref={(el) => {
+                      tabRefs.current[index] = el;
+                    }}
                     type="button"
                     role="tab"
                     id={`preview-tab-${tab.id}`}
@@ -86,8 +91,8 @@ export function ProductPreview() {
                     <div className="flex items-center justify-between gap-3">
                       <span className="text-sm font-semibold">{tab.label}</span>
                       <span
-                        className={`text-xs font-medium uppercase tracking-[0.1em] ${
-                          isSelected ? 'text-iris' : 'text-ash'
+                        className={`text-[12px] font-medium uppercase tracking-[0.1em] ${
+                          isSelected ? 'text-iris' : 'text-silver'
                         }`}
                       >
                         {tab.stepCode}
@@ -98,7 +103,7 @@ export function ProductPreview() {
               })}
             </div>
 
-            <div className="rounded-[8px] border border-edge bg-coal/60 p-4 text-xs text-silver leading-relaxed">
+            <div className="rounded-[8px] border border-edge bg-coal/60 p-4 text-[13px] text-silver leading-relaxed">
               Every step enforces Phase 1 server rules: 18+ and BS student verification before entering Discover, mutual Like before opening Chat, and zero unsolicited stranger DMs.
             </div>
           </div>
@@ -125,13 +130,13 @@ export function ProductPreview() {
                         <p className="text-base font-semibold text-chalk">
                           {SAMPLE_DISCOVER_CARD.name}, {SAMPLE_DISCOVER_CARD.age}
                         </p>
-                        <p className="text-xs text-silver">
+                        <p className="text-[13px] text-silver">
                           {SAMPLE_DISCOVER_CARD.track} &middot; {SAMPLE_DISCOVER_CARD.city}
                         </p>
                       </div>
                     </div>
-                    <Badge variant="verified" size="sm">
-                      Verified 18+ &amp; BS
+                    <Badge variant="verified" size="md" className="!text-[12px]">
+                      Verified
                     </Badge>
                   </div>
 
@@ -143,7 +148,7 @@ export function ProductPreview() {
                     {SAMPLE_DISCOVER_CARD.interests.map((tag) => (
                       <span
                         key={tag}
-                        className="px-2.5 py-1 rounded-[4px] border border-edge bg-iron text-xs text-silver"
+                        className="px-2.5 py-1 rounded-[4px] border border-edge bg-iron text-[12px] text-silver"
                       >
                         {tag}
                       </span>
@@ -151,7 +156,7 @@ export function ProductPreview() {
                   </div>
 
                   <div className="pt-4 border-t border-edge/70 flex flex-wrap items-center justify-between gap-3">
-                    <span className="text-xs text-silver" aria-live="polite">
+                    <span className="text-[12px] text-silver" aria-live="polite">
                       {interestSent
                         ? 'Preview state: Like noted locally. Chat opens only on mutual match.'
                         : 'Sample card · Interactive preview does not send real requests'}
@@ -161,6 +166,7 @@ export function ProductPreview() {
                         type="button"
                         variant="secondary"
                         size="sm"
+                        className="!text-[13px]"
                         onClick={() => setInterestSent(false)}
                       >
                         Pass
@@ -169,6 +175,7 @@ export function ProductPreview() {
                         type="button"
                         variant="primary"
                         size="sm"
+                        className="!text-[13px]"
                         onClick={() => setInterestSent(true)}
                       >
                         {interestSent ? 'Interest Sent' : 'Express Interest'}
@@ -182,14 +189,14 @@ export function ProductPreview() {
                 <div className="flex flex-col gap-5">
                   <div className="flex flex-wrap items-center justify-between gap-3 pb-4 border-b border-edge/70">
                     <div>
-                      <p className="text-xs font-semibold uppercase tracking-[0.12em] text-success">
+                      <p className="text-[12px] font-semibold uppercase tracking-[0.12em] text-success">
                         Mutual Match Confirmed
                       </p>
                       <h3 className="text-xl font-semibold text-chalk mt-1">
                         {SAMPLE_MATCH_CARD.pairLabel}
                       </h3>
                     </div>
-                    <Badge variant="verified" size="sm">
+                    <Badge variant="verified" size="md" className="!text-[12px]">
                       Mutual Consent
                     </Badge>
                   </div>
@@ -198,7 +205,7 @@ export function ProductPreview() {
                     <p className="text-sm font-medium text-chalk">
                       {SAMPLE_MATCH_CARD.trackSummary}
                     </p>
-                    <p className="text-xs text-silver">{SAMPLE_MATCH_CARD.citiesSummary}</p>
+                    <p className="text-[13px] text-silver">{SAMPLE_MATCH_CARD.citiesSummary}</p>
                   </div>
 
                   <p className="text-sm text-silver leading-relaxed">
@@ -210,6 +217,7 @@ export function ProductPreview() {
                       type="button"
                       variant="primary"
                       size="sm"
+                      className="!text-[13px]"
                       onClick={() => setActiveTab('chat')}
                     >
                       Inspect Private Chat View &rarr;
@@ -225,9 +233,9 @@ export function ProductPreview() {
                       <p className="text-base font-semibold text-chalk">
                         {SAMPLE_CHAT_DATA.peerName}
                       </p>
-                      <p className="text-xs text-silver">{SAMPLE_CHAT_DATA.peerTrack}</p>
+                      <p className="text-[13px] text-silver">{SAMPLE_CHAT_DATA.peerTrack}</p>
                     </div>
-                    <span className="px-2.5 py-1 rounded-[4px] border border-edge bg-iron text-xs font-medium text-success">
+                    <span className="px-2.5 py-1 rounded-[4px] border border-edge bg-iron text-[12px] font-medium text-success">
                       {SAMPLE_CHAT_DATA.statusLabel}
                     </span>
                   </div>
@@ -243,8 +251,8 @@ export function ProductPreview() {
                         }`}
                       >
                         <div className="flex items-center justify-between gap-4 mb-1">
-                          <span className="text-xs font-semibold text-chalk">{msg.author}</span>
-                          <span className="text-xs text-ash">{msg.timestamp}</span>
+                          <span className="text-[12px] font-semibold text-chalk">{msg.author}</span>
+                          <span className="text-[12px] text-silver">{msg.timestamp}</span>
                         </div>
                         <p className="text-sm leading-relaxed text-chalk/90">{msg.text}</p>
                       </div>
@@ -252,10 +260,10 @@ export function ProductPreview() {
                   </div>
 
                   <div className="pt-3 border-t border-edge/70 flex flex-wrap items-center justify-between gap-3">
-                    <p className="text-xs text-ash">{SAMPLE_CHAT_DATA.footerNote}</p>
+                    <p className="text-[12px] text-silver">{SAMPLE_CHAT_DATA.footerNote}</p>
                     <Link
                       href="/onboarding"
-                      className="text-xs font-semibold text-iris hover:text-iris-hover transition-colors"
+                      className="text-[13px] font-semibold text-iris hover:text-iris-hover transition-colors"
                     >
                       Create Account &rarr;
                     </Link>
