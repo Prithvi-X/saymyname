@@ -4,6 +4,12 @@
 
 @import '@saymyname/design-tokens/css';
 
+:root {
+  --smn-nav-height: 68px;
+  --smn-bubble-own-bg: #29283B;
+  --smn-bubble-own-border: #514C7D;
+}
+
 *, *::before, *::after {
   box-sizing: border-box;
   margin: 0;
@@ -11,7 +17,7 @@
 }
 
 html {
-  font-size: 15px;
+  font-size: 16px;
   text-size-adjust: 100%;
 }
 
@@ -114,6 +120,61 @@ button {
   max-width: 1200px;
   margin: 0 auto;
   padding: 0 32px;
+}
+
+/* Primary Member Workspace Container (12/8/4 col responsive margins across 1920 -> 320px) */
+.container-app {
+  width: 100%;
+  max-width: 1344px;
+  margin: 0 auto;
+  padding-left: 16px;
+  padding-right: 16px;
+}
+
+@media (min-width: 640px) {
+  .container-app {
+    padding-left: 24px;
+    padding-right: 24px;
+  }
+}
+
+@media (min-width: 1024px) {
+  .container-app {
+    padding-left: 40px;
+    padding-right: 40px;
+  }
+}
+
+/* Solid Architectural Chrome & Surfaces (Document 10: No glassmorphism navigation/UI blur) */
+.smn-solid-nav {
+  background-color: var(--smn-surface-base, #12161B);
+  border-color: var(--smn-border-subtle, #343D48);
+}
+
+.smn-dialog-surface {
+  background-color: var(--smn-surface-raised, #1A2027);
+  border: 1px solid var(--smn-border-subtle, #343D48);
+  box-shadow: 0 20px 56px rgba(0, 0, 0, 0.65);
+}
+
+.smn-list-row {
+  background-color: var(--smn-surface-base, #12161B);
+  border-bottom: 1px solid var(--smn-border-subtle, #343D48);
+  transition: background-color var(--smn-motion-fast, 120ms) ease-out;
+}
+
+.smn-list-row:hover {
+  background-color: var(--smn-surface-raised, #1A2027);
+}
+
+.smn-list-row-active {
+  background-color: var(--smn-surface-active, #252D37);
+}
+
+.smn-bubble-own {
+  background-color: var(--smn-bubble-own-bg, #29283B);
+  border: 1px solid var(--smn-bubble-own-border, #514C7D);
+  color: var(--smn-text-primary, #F0F1EE);
 }
 
 /* 2-Column Desktop Grid for Discover & Profile (1024px+) */
@@ -489,9 +550,63 @@ button {
   animation: smn-ambient-breathe 14s ease-in-out infinite;
 }
 
+@keyframes smn-interval-converge-left {
+  from {
+    opacity: 0.72;
+    transform: translateX(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes smn-interval-converge-right {
+  from {
+    opacity: 0.72;
+    transform: translateX(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes smn-interval-signal-appear {
+  0% {
+    opacity: 0;
+    transform: scale(0.75);
+  }
+  55% {
+    opacity: 0;
+    transform: scale(0.85);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.smn-threshold-left {
+  animation: smn-interval-converge-left 320ms cubic-bezier(0.2, 0.7, 0.2, 1) forwards;
+}
+
+.smn-threshold-right {
+  animation: smn-interval-converge-right 320ms cubic-bezier(0.2, 0.7, 0.2, 1) forwards;
+}
+
+.smn-threshold-signal {
+  transform-origin: center;
+  transform-box: fill-box;
+  animation: smn-interval-signal-appear 340ms cubic-bezier(0.2, 0.7, 0.2, 1) forwards;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .smn-dialog-enter,
-  .smn-ambient-breathe {
+  .smn-ambient-breathe,
+  .smn-threshold-left,
+  .smn-threshold-right,
+  .smn-threshold-signal {
     animation: none !important;
     opacity: 1 !important;
     transform: none !important;

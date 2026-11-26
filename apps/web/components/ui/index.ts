@@ -8,3 +8,5 @@ export * from './EmptyState';
 export * from './IntervalEmptyComposition';
 export * from './Skeleton';
 export * from './Divider';
+export * from './PageHeader';
+export * from './StructuredListRow';

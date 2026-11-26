@@ -22,23 +22,23 @@ export const Badge: React.FC<BadgeProps> = ({
   ...props
 }) => {
   const sizeStyles = {
-    sm: 'text-[11px] px-1.5 py-0.5 gap-1 rounded-[3px]',
-    md: 'text-xs px-2.5 py-1 gap-1.5 rounded-[4px]',
+    sm: 'text-xs px-2 py-0.5 gap-1.5 rounded-[4px]',
+    md: 'text-[13px] px-2.5 py-1 gap-1.5 rounded-[4px]',
   };
 
   const variantStyles = {
     verified:
-      'bg-[#10241A] text-success border border-success/30 font-medium',
+      'bg-[#10241A] text-success border border-[#396A56] font-medium',
     programme:
       'bg-iron text-silver border border-edge font-medium',
     neutral:
-      'bg-coal text-ash border border-edge/80',
+      'bg-coal text-silver border border-edge/90',
     accent:
-      'bg-[#1C1C2E] text-iris border border-iris/30 font-medium',
+      'bg-[#1C1C2E] text-iris border border-iris/35 font-medium',
     warning:
-      'bg-[#2B2211] text-warning border border-warning/30 font-medium',
+      'bg-[#2B2211] text-warning border border-warning/35 font-medium',
     danger:
-      'bg-[#2E1417] text-danger border border-danger/30 font-medium',
+      'bg-[#2E1417] text-danger border border-danger/35 font-medium',
   };
 
   // Default verified icon (architectural checkmark, strictly fixed 12px)

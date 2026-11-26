@@ -39,20 +39,20 @@ export const Tabs: React.FC<TabsProps> = ({
             role="tab"
             aria-selected={isActive}
             onClick={() => onChange(tab.id)}
-            className={`h-11 px-4 inline-flex items-center gap-2 text-sm font-medium transition-colors duration-120 relative select-none whitespace-nowrap focus-visible:outline-2 focus-visible:outline-iris focus-visible:outline-offset-2 ${
+            className={`h-12 px-4 inline-flex items-center gap-2 text-sm font-medium transition-colors duration-120 relative select-none whitespace-nowrap focus-visible:outline-2 focus-visible:outline-iris focus-visible:outline-offset-2 ${
               isActive
                 ? 'text-chalk font-semibold'
-                : 'text-ash hover:text-silver'
+                : 'text-silver/75 hover:text-chalk'
             }`}
           >
             {tab.icon && <span className="shrink-0">{tab.icon}</span>}
             <span>{tab.label}</span>
             {tab.badge !== undefined && (
               <span
-                className={`text-[11px] px-1.5 py-0.2 rounded-[3px] border ${
+                className={`text-xs px-1.5 py-0.5 rounded-[4px] border tabular-nums ${
                   isActive
                     ? 'bg-slate text-chalk border-edge'
-                    : 'bg-coal text-ash border-edge/60'
+                    : 'bg-coal text-silver border-edge/70'
                 }`}
               >
                 {tab.badge}
