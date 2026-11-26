@@ -382,11 +382,14 @@ model ConversationMember {
   conversationId     String   @map("conversation_id") @db.Uuid
   accountId          String   @map("account_id") @db.Uuid
   lastReadMessageId  String?  @map("last_read_message_id") @db.Uuid
+  lastReadSeq        BigInt   @default(0) @map("last_read_seq")
+  lastDeliveredSeq   BigInt   @default(0) @map("last_delivered_seq")
   joinedAt           DateTime @default(now()) @map("joined_at") @db.Timestamptz
 
   conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
 
   @@id([conversationId, accountId])
+  @@index([accountId], map: "conversation_members_account_idx")
   @@map("conversation_members")
   @@schema("messaging")
 }
@@ -408,18 +411,24 @@ model Message {
   conversation Conversation  @relation(fields: [conversationId], references: [id], onDelete: Cascade)
   media        MessageMedia?
 
+  @@unique([conversationId, sequenceNo], map: "messages_conv_seq_key")
+  @@index([conversationId, sequenceNo(sort: Desc)], map: "messages_conv_seq_desc_idx")
+  @@index([conversationId, senderAccountId, sequenceNo], map: "messages_unread_count_idx")
   @@map("messages")
   @@schema("messaging")
 }
 
 model MessageMedia {
-  id              String   @id @default(uuid()) @db.Uuid
-  messageId       String   @unique @map("message_id") @db.Uuid
-  mediaType       String   @map("media_type") @db.Text
-  durationSeconds Int?     @map("duration_seconds")
-  s3Key           String   @map("s3_key") @db.Text
-  fileSizeBytes   Int      @map("file_size_bytes")
-  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz
+  id                String   @id @default(uuid()) @db.Uuid
+  messageId         String   @unique @map("message_id") @db.Uuid
+  mediaType         String   @map("media_type") @db.Text
+  durationSeconds   Int?     @map("duration_seconds")
+  s3Key             String   @map("s3_key") @db.Text
+  fileSizeBytes     Int      @map("file_size_bytes")
+  sha256            String?  @db.Text
+  processingStatus  String   @default("ready") @map("processing_status") @db.Text
+  uploaderAccountId String?  @map("uploader_account_id") @db.Uuid
+  createdAt         DateTime @default(now()) @map("created_at") @db.Timestamptz
 
   message Message @relation(fields: [messageId], references: [id], onDelete: Cascade)
 
@@ -583,6 +592,8 @@ model Report {
   id             String    @id @default(uuid()) @db.Uuid
   reporterId     String    @map("reporter_id") @db.Uuid
   reportedId     String    @map("reported_id") @db.Uuid
+  conversationId String?   @map("conversation_id") @db.Uuid
+  messageId      String?   @map("message_id") @db.Uuid
   reportCategory String    @map("report_category") @db.Text
   description    String?   @db.Text
   status         String    @default("pending") @db.Text
@@ -592,6 +603,7 @@ model Report {
 
   evidence ReportEvidenceRef[]
 
+  @@index([conversationId], map: "reports_conversation_idx")
   @@map("reports")
   @@schema("safety")
 }
@@ -662,9 +674,17 @@ model OutboxEvent {
   payload       Json      @db.JsonB
   status        String    @default("pending") @db.Text
   retryCount    Int       @default(0) @map("retry_count")
+  nextAttemptAt DateTime  @default(now()) @map("next_attempt_at") @db.Timestamptz
+  lockedBy      String?   @map("locked_by") @db.Text
+  lockedUntil   DateTime? @map("locked_until") @db.Timestamptz
+  lastErrorCode String?   @map("last_error_code") @db.Text
+  lastErrorAt   DateTime? @map("last_error_at") @db.Timestamptz
   createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz
   processedAt   DateTime? @map("processed_at") @db.Timestamptz
 
+  @@index([status, createdAt], map: "outbox_events_status_created_idx")
+  @@index([status, nextAttemptAt, createdAt], map: "outbox_events_relay_poll_idx")
+  @@index([status, lockedUntil], map: "outbox_events_lease_expiry_idx")
   @@map("outbox_events")
   @@schema("platform")
 }

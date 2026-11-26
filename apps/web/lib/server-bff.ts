@@ -171,10 +171,23 @@ export async function forwardAuthenticatedRequest(
     }
   }
 
+  const forwardHeadersBase: Record<string, string> = {};
+  const rangeHeader = request.headers.get('range');
+  const ifRangeHeader = request.headers.get('if-range');
+  if (rangeHeader) {
+    forwardHeadersBase['Range'] = rangeHeader;
+  }
+  if (ifRangeHeader) {
+    forwardHeadersBase['If-Range'] = ifRangeHeader;
+  }
+
   const doFetch = async (token: string) => {
     const headers: Record<string, string> = {
-      'Content-Type': 'application/json',
+      ...forwardHeadersBase,
     };
+    if (options.body !== undefined) {
+      headers['Content-Type'] = 'application/json';
+    }
     if (token) {
       headers['Authorization'] = `Bearer ${token}`;
     }
@@ -183,6 +196,7 @@ export async function forwardAuthenticatedRequest(
       headers,
       body: options.body !== undefined ? options.body : undefined,
       cache: 'no-store',
+      signal: request.signal,
     });
   };
 
@@ -204,27 +218,62 @@ export async function forwardAuthenticatedRequest(
     }
   }
 
-  const rawText = await backendRes.text();
-  let parsed: any = {};
-  try {
-    parsed = rawText ? JSON.parse(rawText) : {};
-  } catch {
-    parsed = { message: rawText };
-  }
+  const methodUpper = (options.method || request.method || 'GET').toUpperCase();
+  const contentType = (backendRes.headers.get('content-type') || '').toLowerCase();
+  const isBinaryOrStreamResponse =
+    backendRes.status === 206 ||
+    backendRes.status === 416 ||
+    methodUpper === 'HEAD' ||
+    contentType.startsWith('audio/') ||
+    contentType.startsWith('application/octet-stream');
 
-  // If backend returned rotated session tokens inside an eligibility call, preserve them inside HttpOnly cookies cleanly
-  if (backendRes.ok && parsed && typeof parsed === 'object' && !Array.isArray(parsed) && parsed.accessToken) {
-    rotatedTokens = {
-      accessToken: parsed.accessToken,
-      refreshToken: parsed.refreshToken || rotatedTokens?.refreshToken || refreshToken,
-    };
-    parsed = stripSensitiveTokens(parsed);
-  }
+  let response: NextResponse;
+  if (isBinaryOrStreamResponse) {
+    const headers = new Headers();
+    for (const h of [
+      'content-type',
+      'content-length',
+      'content-range',
+      'accept-ranges',
+      'content-disposition',
+    ]) {
+      const val = backendRes.headers.get(h);
+      if (val) headers.set(h, val);
+    }
+    headers.set('Cache-Control', 'private, no-store, no-cache, must-revalidate, max-age=0');
+    headers.set('Pragma', 'no-cache');
+    headers.set('Expires', '0');
+    headers.set('X-Content-Type-Options', 'nosniff');
+    headers.set('Cross-Origin-Resource-Policy', 'same-origin');
+    headers.set('Vary', 'Cookie');
 
-  const response = NextResponse.json(parsed, { status: backendRes.status });
-  response.headers.set('Cache-Control', 'private, no-store, no-cache, must-revalidate, max-age=0');
-  response.headers.set('Pragma', 'no-cache');
-  response.headers.set('Vary', 'Cookie');
+    response = new NextResponse(
+      methodUpper === 'HEAD' || backendRes.status === 416 ? null : backendRes.body,
+      { status: backendRes.status, headers },
+    );
+  } else {
+    const rawText = await backendRes.text();
+    let parsed: any = {};
+    try {
+      parsed = rawText ? JSON.parse(rawText) : {};
+    } catch {
+      parsed = { message: rawText };
+    }
+
+    // If backend returned rotated session tokens inside an eligibility call, preserve them inside HttpOnly cookies cleanly
+    if (backendRes.ok && parsed && typeof parsed === 'object' && !Array.isArray(parsed) && parsed.accessToken) {
+      rotatedTokens = {
+        accessToken: parsed.accessToken,
+        refreshToken: parsed.refreshToken || rotatedTokens?.refreshToken || refreshToken,
+      };
+      parsed = stripSensitiveTokens(parsed);
+    }
+
+    response = NextResponse.json(parsed, { status: backendRes.status });
+    response.headers.set('Cache-Control', 'private, no-store, no-cache, must-revalidate, max-age=0');
+    response.headers.set('Pragma', 'no-cache');
+    response.headers.set('Vary', 'Cookie');
+  }
 
   if (backendRes.status === 401) {
     clearAuthCookies(request, response);

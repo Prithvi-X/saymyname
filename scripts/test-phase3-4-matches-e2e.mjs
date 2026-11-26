@@ -606,8 +606,9 @@ async function run() {
 
     // Send a real persisted message via Chats UI -> /api/bff/v1/messaging/conversations/:conversationId/messages
     await evalJs(`(() => {
-      const inp = document.querySelector('input[placeholder*="Message Kavya"]');
-      const setter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value').set;
+      const inp = document.querySelector('textarea[placeholder*="Message Kavya"], input[placeholder*="Message Kavya"]');
+      const proto = inp?.tagName === 'TEXTAREA' ? window.HTMLTextAreaElement.prototype : window.HTMLInputElement.prototype;
+      const setter = Object.getOwnPropertyDescriptor(proto, 'value').set;
       setter.call(inp, 'Hello Kavya from Matches!');
       inp.dispatchEvent(new Event('input', { bubbles: true }));
     })()`);

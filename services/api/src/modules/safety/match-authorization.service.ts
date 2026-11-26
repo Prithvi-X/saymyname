@@ -552,9 +552,16 @@ export class MatchAuthorizationService {
       actorId?: string;
       metadata?: Record<string, unknown>;
     },
-  ): Promise<{ invalidatedCount: number }> {
+  ): Promise<{
+    invalidatedCount: number;
+    closedConversations: Array<{
+      matchId: string;
+      conversationId: string;
+      participantAccountIds: string[];
+    }>;
+  }> {
     if (!this.hasDbLookup(tx, 'match', 'findMany')) {
-      return { invalidatedCount: 0 };
+      return { invalidatedCount: 0, closedConversations: [] };
     }
 
     const activeMatches = await tx.match.findMany({
@@ -566,11 +573,16 @@ export class MatchAuthorizationService {
     });
 
     if (!Array.isArray(activeMatches) || activeMatches.length === 0) {
-      return { invalidatedCount: 0 };
+      return { invalidatedCount: 0, closedConversations: [] };
     }
 
     const now = new Date();
     const actorUuid = params.actorId || accountId;
+    const closedConversations: Array<{
+      matchId: string;
+      conversationId: string;
+      participantAccountIds: string[];
+    }> = [];
 
     for (const match of activeMatches) {
       await this.closeMatchDownstreamState(tx, {
@@ -585,8 +597,15 @@ export class MatchAuthorizationService {
         },
         now,
       });
+      if (match.conversation?.id) {
+        closedConversations.push({
+          matchId: match.id,
+          conversationId: match.conversation.id,
+          participantAccountIds: [match.userLowId, match.userHighId],
+        });
+      }
     }
 
-    return { invalidatedCount: activeMatches.length };
+    return { invalidatedCount: activeMatches.length, closedConversations };
   }
 }

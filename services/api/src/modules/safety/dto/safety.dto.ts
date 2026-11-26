@@ -65,4 +65,14 @@ export class ReportUserDto {
   @IsString()
   @MaxLength(1000)
   description?: string;
+
+  @ApiPropertyOptional({ description: 'Optional conversation UUID when reporting chat behavior' })
+  @IsOptional()
+  @IsUUID()
+  conversationId?: string;
+
+  @ApiPropertyOptional({ description: 'Optional message or voice-note UUID attached to report context' })
+  @IsOptional()
+  @IsUUID()
+  messageId?: string;
 }

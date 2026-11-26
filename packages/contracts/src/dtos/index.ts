@@ -292,6 +292,68 @@ export interface MessageDto {
   createdAt: string;
 }
 
+export interface SanitizedChatMessageDto {
+  id: string;
+  conversationId: string;
+  sequenceNo: number;
+  senderName: string;
+  isOwn: boolean;
+  messageType: MessageType | 'text' | 'voice_note';
+  bodyText: string | null;
+  mediaId?: string | null;
+  mediaUrl?: string | null;
+  mimeType?: string | null;
+  durationSeconds?: number | null;
+  fileSizeBytes?: number | null;
+  deliveryState: 'sent' | 'delivered';
+  createdAt: string;
+  clientAssignedUuid?: string | null;
+}
+
+export interface MessagesHistoryResponseDto {
+  messages: SanitizedChatMessageDto[];
+  nextCursor: string | null;
+  hasOlder: boolean;
+  latestSequenceNo: number;
+  ownLastReadSeq: number;
+  conversationStatus: 'active' | 'closed';
+}
+
+export interface ConversationSummaryDto {
+  conversationId: string;
+  matchId: string;
+  matchedAt: string;
+  lastMessageAt: string | null;
+  lastMessage: {
+    id: string;
+    sequenceNo: number;
+    messageType: MessageType | 'text' | 'voice_note';
+    previewText: string;
+    isOwn: boolean;
+    createdAt: string;
+  } | null;
+  unreadCount: number;
+  latestSequenceNo: number;
+  ownLastReadSeq: number;
+  profile: DiscoveryCandidateDto;
+}
+
+export interface MessagingVoiceNotePresignResponseDto {
+  uploadUrl: string | null;
+  adapterMode: 'r2_presigned_put' | 'local_stub_non_prod';
+  mediaRefId: string;
+  uploadToken: string;
+  expiresInSeconds: number;
+  maxBytes: number;
+  maxDurationSeconds: number;
+}
+
+export interface MessagingRealtimeTicketDto {
+  ticket: string;
+  wsPath: string;
+  expiresInSeconds: number;
+}
+
 export interface CallSessionDto {
   id: string;
   conversationId: string;

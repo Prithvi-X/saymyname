@@ -136,3 +136,8 @@ This document serves as the shared coordination and synchronization registry for
 
 
 
+### [2026-11-26] Phase 3.5 Final Security Boundaries & Phase 4 `MATCH-22` Dependency Handoff:
+- **Authoritative Security Boundaries & Diff Review:** Recorded in [PHASE3_5_SECURITY_BOUNDARIES_AND_DEPENDENCIES.md](file:///i:/saymyname/docs/implementation/PHASE3_5_SECURITY_BOUNDARIES_AND_DEPENDENCIES.md) and [PHASE3_5_FINAL_GIT_DIFF_REVIEW.md](file:///i:/saymyname/docs/implementation/PHASE3_5_FINAL_GIT_DIFF_REVIEW.md).
+- **Mandatory Phase 4 `MATCH-22` Action Item (`PARTIAL` -> Required for Calling Release):**
+  - Integrate `livekit-server-sdk` (`RoomServiceClient.removeParticipant` / `deleteRoom`) in `CallingModule` subscribed to `RealtimeEventBusService` (`match_ended`, `account_revoked`) so Unmatch, Block, Account Suspension/Deletion, and Verification Revocation forcibly terminate active external LiveKit SFU rooms/participants (closing the current `3600s` room-token window), plus idempotent `404` handling, retry/dead-letter audit trail, shortened initial join TTLs, and real integration tests across all 4 revocation triggers + API outage handling.
+  - Deprecate or harden legacy prototype endpoints `POST /api/v1/calling/voice-notes/presign` and `/send` in `CallingController` in favor of the Phase 3.5.2 Option A streaming proxy & `audio-security.ts` pipeline.

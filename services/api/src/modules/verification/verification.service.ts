@@ -11,6 +11,7 @@ import { S3Client, PutObjectCommand, GetObjectCommand } from '@aws-sdk/client-s3
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { PrismaService } from '../../prisma/prisma.service';
 import { MatchAuthorizationService } from '../safety/match-authorization.service';
+import { RealtimeEventBusService } from '../realtime/realtime-event-bus.service';
 import {
   AgeVerificationAdapter,
   StudentEnrolmentAdapter,
@@ -38,6 +39,7 @@ export class VerificationService {
   constructor(
     private readonly prisma: PrismaService,
     @Optional() matchAuthService?: MatchAuthorizationService,
+    @Optional() private readonly realtimeBus?: RealtimeEventBusService,
   ) {
     this.matchAuth = matchAuthService ?? new MatchAuthorizationService(this.prisma);
   }
@@ -694,8 +696,14 @@ export class VerificationService {
         select: { id: true, accountStatus: true },
       });
 
+      let revokedConversations: Array<{
+        matchId: string;
+        conversationId: string;
+        participantAccountIds: string[];
+      }> = [];
+
       if (!canDiscover) {
-        await this.matchAuth.invalidateActiveMatchesForAccount(tx, vCase.accountId, {
+        const inv = await this.matchAuth.invalidateActiveMatchesForAccount(tx, vCase.accountId, {
           reasonCode: 'verification_revoked',
           actorId: vCase.accountId,
           metadata: {
@@ -703,6 +711,7 @@ export class VerificationService {
             decision: dto.decision,
           },
         });
+        revokedConversations = inv.closedConversations || [];
       }
 
       await tx.auditEvent.create({
@@ -725,6 +734,25 @@ export class VerificationService {
         eligibility: updatedElig,
         accountStatus: updatedAccount.accountStatus,
         discoveryEligible: canDiscover,
+        revokedConversations,
+      };
+    }).then((result) => {
+      if (!result.discoveryEligible) {
+        for (const conv of result.revokedConversations || []) {
+          this.realtimeBus?.publishMatchEnded({
+            matchId: conv.matchId,
+            conversationId: conv.conversationId,
+            participantAccountIds: conv.participantAccountIds,
+            reason: 'connection_unavailable',
+          });
+        }
+        this.realtimeBus?.publishAccountRevoked(result.case.accountId);
+      }
+      return {
+        case: result.case,
+        eligibility: result.eligibility,
+        accountStatus: result.accountStatus,
+        discoveryEligible: result.discoveryEligible,
       };
     });
   }

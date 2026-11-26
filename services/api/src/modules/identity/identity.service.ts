@@ -7,6 +7,7 @@ import {
   AccountInvalidationReason,
   MatchAuthorizationService,
 } from '../safety/match-authorization.service';
+import { RealtimeEventBusService } from '../realtime/realtime-event-bus.service';
 import {
   RegisterDto,
   LoginDto,
@@ -39,6 +40,7 @@ export class IdentityService {
     private readonly crypto: CryptoService,
     private readonly verificationService: VerificationService,
     @Optional() matchAuthService?: MatchAuthorizationService,
+    @Optional() private readonly realtimeBus?: RealtimeEventBusService,
   ) {
     this.matchAuth = matchAuthService ?? new MatchAuthorizationService(this.prisma);
   }
@@ -838,14 +840,15 @@ export class IdentityService {
         })
         .catch(() => null);
 
-      const { invalidatedCount } = await this.matchAuth.invalidateActiveMatchesForAccount(
-        tx,
-        accountId,
-        {
-          reasonCode,
-          actorId: params.actorId || accountId,
-        },
-      );
+      const { invalidatedCount, closedConversations } =
+        await this.matchAuth.invalidateActiveMatchesForAccount(
+          tx,
+          accountId,
+          {
+            reasonCode,
+            actorId: params.actorId || accountId,
+          },
+        );
 
       await tx.auditEvent
         .create({
@@ -863,6 +866,22 @@ export class IdentityService {
         accountId,
         reasonCode,
         invalidatedMatches: invalidatedCount,
+        closedConversations,
+      };
+    }).then((result) => {
+      for (const conv of result.closedConversations || []) {
+        this.realtimeBus?.publishMatchEnded({
+          matchId: conv.matchId,
+          conversationId: conv.conversationId,
+          participantAccountIds: conv.participantAccountIds,
+          reason: 'connection_unavailable',
+        });
+      }
+      this.realtimeBus?.publishAccountRevoked(accountId);
+      return {
+        accountId: result.accountId,
+        reasonCode: result.reasonCode,
+        invalidatedMatches: result.invalidatedMatches,
       };
     });
   }

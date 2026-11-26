@@ -16,13 +16,36 @@ export const REPORT_REASONS = [
 
 export type ReportReason = (typeof REPORT_REASONS)[number];
 
-export function validateTextMessage(content: string): { valid: boolean; error?: string } {
+export const MAX_TEXT_MESSAGE_LENGTH = 1000;
+export const VOICE_NOTE_MAX_DURATION_SEC = 60;
+export const VOICE_NOTE_DEFAULT_MAX_BYTES = 5 * 1024 * 1024;
+
+export const ALLOWED_VOICE_NOTE_MIMES = [
+  'audio/webm',
+  'audio/ogg',
+  'audio/mp4',
+  'audio/m4a',
+  'audio/x-m4a',
+  'audio/mpeg',
+  'audio/mp3',
+  'audio/wav',
+  'audio/x-wav',
+  'audio/aac',
+] as const;
+
+export function validateTextMessage(
+  content: string,
+  maxLength: number = MAX_TEXT_MESSAGE_LENGTH,
+): { valid: boolean; error?: string } {
   const trimmed = content ? content.trim() : '';
   if (trimmed.length === 0) {
     return { valid: false, error: 'Message cannot be empty.' };
   }
-  if (trimmed.length > 2000) {
-    return { valid: false, error: 'Message cannot exceed 2000 characters.' };
+  if (trimmed.length > maxLength) {
+    return {
+      valid: false,
+      error: `Message cannot exceed ${maxLength} characters.`,
+    };
   }
   return { valid: true };
 }

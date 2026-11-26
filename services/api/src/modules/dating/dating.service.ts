@@ -12,6 +12,7 @@ import { PrismaService } from '../../prisma/prisma.service';
 import { ProfilesService } from '../profiles/profiles.service';
 import { DiscoveryEligibilityService } from './discovery-eligibility.service';
 import { MatchAuthorizationService } from '../safety/match-authorization.service';
+import { RealtimeEventBusService } from '../realtime/realtime-event-bus.service';
 import {
   decodeDiscoveryCursor,
   encodeDiscoveryCursor,
@@ -44,6 +45,7 @@ export class DatingService {
     @Optional() private readonly profilesService?: ProfilesService,
     @Optional() eligibilityService?: DiscoveryEligibilityService,
     @Optional() matchAuthService?: MatchAuthorizationService,
+    @Optional() private readonly realtimeBus?: RealtimeEventBusService,
   ) {
     this.eligibility = eligibilityService ?? new DiscoveryEligibilityService();
     this.matchAuth = matchAuthService ?? new MatchAuthorizationService(this.prisma);
@@ -2072,7 +2074,13 @@ export class DatingService {
     const cleanKey = idempotencyKey?.trim() || null;
 
     try {
-      return await this.runInTx(async (tx) => {
+      let postCommitEnded: {
+        matchId: string;
+        conversationId: string;
+        participantAccountIds: string[];
+      } | null = null;
+
+      const result = await this.runInTx(async (tx) => {
         const scopedKey = cleanKey ? `${accountId}:unmatch:${cleanKey}` : null;
         const requestHash = crypto
           .createHash('sha256')
@@ -2123,6 +2131,14 @@ export class DatingService {
           markLikesStatus: 'unmatched',
         });
 
+        if (match.conversation?.id) {
+          postCommitEnded = {
+            matchId: match.id,
+            conversationId: match.conversation.id,
+            participantAccountIds: [match.userLowId, match.userHighId],
+          };
+        }
+
         const responseBody = {
           matchId: match.id,
           status: 'ended' as const,
@@ -2133,6 +2149,19 @@ export class DatingService {
         await this.saveIdempotency(tx, scopedKey, accountId, requestHash, responseBody);
         return responseBody;
       });
+
+      if (postCommitEnded) {
+        this.realtimeBus?.publishMatchEnded({
+          ...(postCommitEnded as {
+            matchId: string;
+            conversationId: string;
+            participantAccountIds: string[];
+          }),
+          reason: 'connection_ended',
+        });
+      }
+
+      return result;
     } catch (err) {
       this.wrapStorageFailure(err);
     }

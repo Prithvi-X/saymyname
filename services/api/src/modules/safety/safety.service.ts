@@ -7,6 +7,7 @@ import {
 } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { MatchAuthorizationService } from './match-authorization.service';
+import { RealtimeEventBusService } from '../realtime/realtime-event-bus.service';
 import {
   ALLOWED_REPORT_CATEGORIES,
   BlockUserDto,
@@ -22,6 +23,7 @@ export class SafetyService {
   constructor(
     private readonly prisma: PrismaService,
     @Optional() matchAuthService?: MatchAuthorizationService,
+    @Optional() private readonly realtimeBus?: RealtimeEventBusService,
   ) {
     this.matchAuth = matchAuthService ?? new MatchAuthorizationService(this.prisma);
   }
@@ -66,7 +68,13 @@ export class SafetyService {
    */
   async blockUser(blockerId: string, dto: BlockUserDto) {
     try {
-      return await this.runInTx(async (tx) => {
+      let postCommitClosed: {
+        matchId: string;
+        conversationId: string;
+        participantAccountIds: string[];
+      } | null = null;
+
+      const result = await this.runInTx(async (tx) => {
         const targetAccountId = await this.resolveTargetAccountId(
           tx,
           dto.targetProfileId,
@@ -122,6 +130,13 @@ export class SafetyService {
             stateMetadata: { action: 'user_block' },
             markLikesStatus: 'blocked',
           });
+          if (match.conversation?.id) {
+            postCommitClosed = {
+              matchId: match.id,
+              conversationId: match.conversation.id,
+              participantAccountIds: [userLowId, userHighId],
+            };
+          }
         }
 
         return {
@@ -130,6 +145,19 @@ export class SafetyService {
             'User blocked successfully. Active matches and conversations have been terminated.',
         };
       });
+
+      if (postCommitClosed) {
+        this.realtimeBus?.publishMatchEnded({
+          ...(postCommitClosed as {
+            matchId: string;
+            conversationId: string;
+            participantAccountIds: string[];
+          }),
+          reason: 'connection_unavailable',
+        });
+      }
+
+      return result;
     } catch (err: any) {
       if (err instanceof BadRequestException || err instanceof NotFoundException) {
         throw err;
@@ -173,6 +201,26 @@ export class SafetyService {
         }
       }
 
+      const reportConversationId = dto.conversationId || null;
+      let reportMessageId: string | null = null;
+
+      if (dto.messageId && typeof prismaAny.message?.findUnique === 'function') {
+        const msg = await prismaAny.message.findUnique({
+          where: { id: dto.messageId },
+          include: { conversation: { include: { members: true } } },
+        });
+        const members: any[] = msg?.conversation?.members || [];
+        const callerIsMember = members.some((m) => m.accountId === reporterId);
+        const targetIsMember = members.some((m) => m.accountId === targetAccountId);
+        if (!msg || !callerIsMember || !targetIsMember) {
+          throw new BadRequestException('Referenced message could not be verified in your conversation.');
+        }
+        if (reportConversationId && msg.conversationId !== reportConversationId) {
+          throw new BadRequestException('Message does not belong to the specified conversation.');
+        }
+        reportMessageId = msg.id;
+      }
+
       if (typeof prismaAny.report?.findFirst === 'function') {
         const tenMinsAgo = new Date(Date.now() - 10 * 60 * 1000);
         const recentDuplicate = await prismaAny.report.findFirst({
@@ -180,6 +228,7 @@ export class SafetyService {
             reporterId,
             reportedId: targetAccountId,
             reportCategory: dto.reportCategory,
+            ...(reportMessageId ? { messageId: reportMessageId } : {}),
             status: 'pending',
             createdAt: { gte: tenMinsAgo },
           },
@@ -199,6 +248,8 @@ export class SafetyService {
         data: {
           reporterId,
           reportedId: targetAccountId,
+          ...(reportConversationId ? { conversationId: reportConversationId } : {}),
+          ...(reportMessageId ? { messageId: reportMessageId } : {}),
           reportCategory: dto.reportCategory,
           description: cleanDescription,
           status: 'pending',

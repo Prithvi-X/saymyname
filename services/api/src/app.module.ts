@@ -11,6 +11,7 @@ import { MessagingModule } from './modules/messaging/messaging.module';
 import { SafetyModule } from './modules/safety/safety.module';
 import { CallingModule } from './modules/calling/calling.module';
 import { TogetherModule } from './modules/together/together.module';
+import { RealtimeModule } from './modules/realtime/realtime.module';
 
 @Module({
   imports: [
@@ -19,6 +20,7 @@ import { TogetherModule } from './modules/together/together.module';
       envFilePath: ['.env.local', 'services/api/.env.local', '.env'],
     }),
     PrismaModule,
+    RealtimeModule,
     SecurityModule,
     VerificationModule,
     HealthModule,

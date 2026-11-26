@@ -203,12 +203,50 @@ export interface MatchProfile {
 export interface ChatMessage {
   id: string;
   conversationId: string;
+  sequenceNo: number;
   senderId: string;
   senderName: string;
+  messageType: 'text' | 'voice_note' | 'system_event';
   text: string;
+  mediaId?: string | null;
+  mediaUrl?: string | null;
+  mimeType?: string | null;
+  durationSeconds?: number | null;
+  fileSizeBytes?: number | null;
   createdAt: string;
+  createdAtIso?: string;
   isOwn: boolean;
-  deliveryState: 'sent' | 'delivered' | 'read';
+  deliveryState: 'sent' | 'delivered';
+  clientAssignedUuid?: string | null;
+  localStatus?: 'sending' | 'failed';
+}
+
+export interface ConversationListItem {
+  conversationId: string;
+  matchId: string;
+  matchedAt: string;
+  lastMessageAt: string | null;
+  lastMessage: {
+    id: string;
+    sequenceNo: number;
+    messageType: 'text' | 'voice_note' | 'system_event';
+    previewText: string;
+    isOwn: boolean;
+    createdAt: string;
+  } | null;
+  unreadCount: number;
+  latestSequenceNo: number;
+  ownLastReadSeq: number;
+  profile: DiscoveryCandidate;
+}
+
+export interface ConversationMessagesHistory {
+  messages: ChatMessage[];
+  nextCursor: string | null;
+  hasOlder: boolean;
+  latestSequenceNo: number;
+  ownLastReadSeq: number;
+  conversationStatus: 'active' | 'closed';
 }
 
 export interface VerificationCaseSummary {
@@ -838,28 +876,115 @@ class ApiClient {
     );
   }
 
-  // --- Bilateral Messaging ---
+  // --- Bilateral Messaging (Phase 3.5: Conversations, Pagination, Realtime, Voice Notes) ---
 
-  async getMessages(conversationId: string): Promise<ChatMessage[]> {
-    const res = await this.request<any[]>(
-      `/api/bff/v1/messaging/conversations/${encodeURIComponent(conversationId)}/messages`,
-    );
-    if (!Array.isArray(res)) return [];
-    return res.map((msg) => ({
+  private mapChatMessage(msg: any, fallbackConversationId: string): ChatMessage {
+    const rawIso =
+      typeof msg.createdAt === 'string' && msg.createdAt.includes('T')
+        ? msg.createdAt
+        : new Date().toISOString();
+    const deliveryState: 'sent' | 'delivered' =
+      msg.deliveryState === 'delivered' || msg.deliveryState === 'read'
+        ? 'delivered'
+        : 'sent';
+    return {
       id: msg.id,
-      conversationId: msg.conversationId || conversationId,
+      conversationId: msg.conversationId || fallbackConversationId,
+      sequenceNo: Number(msg.sequenceNo || 0),
       senderId: msg.isOwn ? 'self' : 'partner',
       senderName: msg.senderName || (msg.isOwn ? 'You' : 'Match'),
+      messageType: msg.messageType || 'text',
       text: msg.bodyText || msg.text || '',
+      mediaId: msg.mediaId ?? null,
+      mediaUrl: msg.mediaUrl ?? null,
+      mimeType: msg.mimeType ?? null,
+      durationSeconds:
+        typeof msg.durationSeconds === 'number' ? msg.durationSeconds : null,
+      fileSizeBytes:
+        typeof msg.fileSizeBytes === 'number' ? msg.fileSizeBytes : null,
       createdAt: msg.createdAt
-        ? new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+        ? new Date(msg.createdAt).toLocaleTimeString([], {
+            hour: '2-digit',
+            minute: '2-digit',
+          })
         : '',
+      createdAtIso: rawIso,
       isOwn: Boolean(msg.isOwn),
-      deliveryState: msg.deliveryState || 'delivered',
+      deliveryState,
+      clientAssignedUuid: msg.clientAssignedUuid ?? null,
+    };
+  }
+
+  async getConversations(): Promise<ConversationListItem[]> {
+    const res = await this.request<any[]>('/api/bff/v1/messaging/conversations');
+    if (!Array.isArray(res)) return [];
+    return res.map((c) => ({
+      conversationId: c.conversationId,
+      matchId: c.matchId,
+      matchedAt: c.matchedAt || new Date().toISOString(),
+      lastMessageAt: c.lastMessageAt ?? null,
+      lastMessage: c.lastMessage
+        ? {
+            id: c.lastMessage.id,
+            sequenceNo: Number(c.lastMessage.sequenceNo || 0),
+            messageType: c.lastMessage.messageType || 'text',
+            previewText: c.lastMessage.previewText || c.lastMessage.bodyText || '',
+            isOwn: Boolean(c.lastMessage.isOwn),
+            createdAt: c.lastMessage.createdAt,
+          }
+        : null,
+      unreadCount: Number(c.unreadCount || 0),
+      latestSequenceNo: Number(c.latestSequenceNo || 0),
+      ownLastReadSeq: Number(c.ownLastReadSeq || 0),
+      profile: this.mapCandidate(c.profile || {}),
     }));
   }
 
-  async sendMessage(conversationId: string, text: string): Promise<ChatMessage> {
+  async issueRealtimeWsTicket(): Promise<{
+    ticket: string;
+    wsPath: string;
+    wsUrl: string;
+    expiresInSeconds: number;
+  }> {
+    return this.request('/api/auth/ws-ticket', {
+      method: 'POST',
+      body: JSON.stringify({}),
+    });
+  }
+
+  async getMessageHistory(
+    conversationId: string,
+    params?: { beforeSeq?: number; afterSeq?: number; limit?: number },
+  ): Promise<ConversationMessagesHistory> {
+    const qs = new URLSearchParams();
+    if (typeof params?.beforeSeq === 'number') qs.set('beforeSeq', String(params.beforeSeq));
+    if (typeof params?.afterSeq === 'number') qs.set('afterSeq', String(params.afterSeq));
+    if (typeof params?.limit === 'number') qs.set('limit', String(params.limit));
+    const suffix = qs.toString() ? `?${qs.toString()}` : '';
+    const res = await this.request<any>(
+      `/api/bff/v1/messaging/conversations/${encodeURIComponent(conversationId)}/history${suffix}`,
+    );
+    const rawList = Array.isArray(res?.messages) ? res.messages : [];
+    return {
+      messages: rawList.map((m: any) => this.mapChatMessage(m, conversationId)),
+      nextCursor: typeof res?.nextCursor === 'string' ? res.nextCursor : null,
+      hasOlder: Boolean(res?.hasOlder),
+      latestSequenceNo: Number(res?.latestSequenceNo || 0),
+      ownLastReadSeq: Number(res?.ownLastReadSeq || 0),
+      conversationStatus: res?.conversationStatus === 'closed' ? 'closed' : 'active',
+    };
+  }
+
+  async getMessages(conversationId: string): Promise<ChatMessage[]> {
+    const history = await this.getMessageHistory(conversationId, { limit: 50 });
+    return history.messages;
+  }
+
+  async sendMessage(
+    conversationId: string,
+    text: string,
+    options?: { clientAssignedUuid?: string; idempotencyKey?: string },
+  ): Promise<ChatMessage> {
     const trimmed = text.trim();
     if (!trimmed) throw new Error('Message cannot be empty');
     if (trimmed.length > 1000) {
@@ -870,21 +995,131 @@ class ApiClient {
       `/api/bff/v1/messaging/conversations/${encodeURIComponent(conversationId)}/messages`,
       {
         method: 'POST',
-        body: JSON.stringify({ bodyText: trimmed }),
+        headers: options?.idempotencyKey
+          ? { 'Idempotency-Key': options.idempotencyKey }
+          : undefined,
+        body: JSON.stringify({
+          bodyText: trimmed,
+          ...(options?.clientAssignedUuid
+            ? { clientAssignedUuid: options.clientAssignedUuid }
+            : {}),
+        }),
       },
     );
 
-    return {
-      id: res.id || `msg-${Date.now()}`,
+    return this.mapChatMessage(
+      {
+        ...res,
+        isOwn: true,
+        senderName: res.senderName || 'You',
+        bodyText: res.bodyText || trimmed,
+        deliveryState: res.deliveryState || 'sent',
+      },
       conversationId,
-      senderId: 'self',
-      senderName: res.senderName || 'You',
-      text: res.bodyText || trimmed,
-      createdAt: res.createdAt
-        ? new Date(res.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-        : new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-      isOwn: true,
-      deliveryState: 'sent',
+    );
+  }
+
+  async markInboxSeen(
+    conversationId: string,
+    upToSequenceNo: number,
+  ): Promise<{ conversationId: string; ownLastReadSeq: number; unreadCount: number }> {
+    return this.request(
+      `/api/bff/v1/messaging/conversations/${encodeURIComponent(conversationId)}/inbox-seen`,
+      {
+        method: 'POST',
+        body: JSON.stringify({ upToSequenceNo }),
+      },
+    );
+  }
+
+  async ackMessageDelivery(
+    conversationId: string,
+    upToSequenceNo: number,
+  ): Promise<{ conversationId: string; acknowledgedSeq: number; transitionedCount: number }> {
+    return this.request(
+      `/api/bff/v1/messaging/conversations/${encodeURIComponent(conversationId)}/delivery-ack`,
+      {
+        method: 'POST',
+        body: JSON.stringify({ upToSequenceNo }),
+      },
+    );
+  }
+
+  async presignMessagingVoiceNote(
+    conversationId: string,
+    payload: {
+      filename: string;
+      mimeType: string;
+      durationSeconds: number;
+      fileSizeBytes?: number;
+    },
+  ): Promise<{
+    uploadUrl: string | null;
+    adapterMode: string;
+    mediaRefId: string;
+    uploadToken: string;
+    expiresInSeconds: number;
+    maxBytes: number;
+    maxDurationSeconds: number;
+  }> {
+    return this.request(
+      `/api/bff/v1/messaging/conversations/${encodeURIComponent(conversationId)}/voice-notes/presign`,
+      {
+        method: 'POST',
+        body: JSON.stringify(payload),
+      },
+    );
+  }
+
+  async uploadBlobToPresignedUrl(
+    uploadUrl: string,
+    blob: Blob,
+    contentType: string,
+  ): Promise<void> {
+    const res = await fetch(uploadUrl, {
+      method: 'PUT',
+      headers: { 'Content-Type': contentType },
+      body: blob,
+    });
+    if (!res.ok) {
+      throw new Error(`Private voice-note upload failed with status ${res.status}.`);
+    }
+  }
+
+  async sendMessagingVoiceNote(
+    conversationId: string,
+    payload: {
+      mediaRefId: string;
+      uploadToken: string;
+      durationSeconds: number;
+      clientAssignedUuid?: string;
+    },
+    idempotencyKey?: string,
+  ): Promise<ChatMessage> {
+    const res = await this.request<any>(
+      `/api/bff/v1/messaging/conversations/${encodeURIComponent(conversationId)}/voice-notes`,
+      {
+        method: 'POST',
+        headers: idempotencyKey ? { 'Idempotency-Key': idempotencyKey } : undefined,
+        body: JSON.stringify(payload),
+      },
+    );
+    return this.mapChatMessage({ ...res, isOwn: true, messageType: 'voice_note' }, conversationId);
+  }
+
+  async getAuthorizedVoiceNoteUrl(mediaId: string): Promise<{
+    mediaId: string;
+    url: string | null;
+    mimeType: string;
+    durationSeconds: number | null;
+    expiresInSeconds: number | null;
+  }> {
+    return {
+      mediaId,
+      url: `/api/bff/v1/messaging/media/${encodeURIComponent(mediaId)}/stream`,
+      mimeType: 'audio/webm',
+      durationSeconds: null,
+      expiresInSeconds: null,
     };
   }
 
@@ -902,6 +1137,7 @@ class ApiClient {
     reportCategory: ReportCategory,
     description?: string,
     idempotencyKey?: string,
+    context?: { conversationId?: string; messageId?: string },
   ) {
     return this.request<{
       success: boolean;
@@ -911,7 +1147,13 @@ class ApiClient {
     }>('/api/bff/v1/safety/report', {
       method: 'POST',
       headers: idempotencyKey ? { 'Idempotency-Key': idempotencyKey } : undefined,
-      body: JSON.stringify({ targetProfileId, reportCategory, description }),
+      body: JSON.stringify({
+        targetProfileId,
+        reportCategory,
+        description,
+        ...(context?.conversationId ? { conversationId: context.conversationId } : {}),
+        ...(context?.messageId ? { messageId: context.messageId } : {}),
+      }),
     });
   }
 

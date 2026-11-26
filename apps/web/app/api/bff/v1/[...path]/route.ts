@@ -42,6 +42,9 @@ async function handleProxy(
 export async function GET(request: NextRequest, context: any) {
   return handleProxy(request, context);
 }
+export async function HEAD(request: NextRequest, context: any) {
+  return handleProxy(request, context);
+}
 export async function POST(request: NextRequest, context: any) {
   return handleProxy(request, context);
 }

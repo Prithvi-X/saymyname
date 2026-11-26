@@ -4,6 +4,7 @@ import React, { createContext, useContext, useState, useEffect, useCallback } fr
 import { useRouter } from 'next/navigation';
 import { AccountLifecycleState } from '@saymyname/contracts';
 import { api, sanitizeDisplayName } from './api';
+import { clearAllConversationDrafts } from './chats-state';
 
 export type AuthState =
   | 'LOADING'
@@ -108,6 +109,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setUser(null);
     setLifecycleState(AccountLifecycleState.UNAUTHENTICATED);
     setAuthState('UNAUTHENTICATED');
+    clearAllConversationDrafts();
     router.push('/');
   };
 
