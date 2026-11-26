@@ -1,6 +1,31 @@
+import type { Metadata } from 'next';
 import React from 'react';
 import Link from 'next/link';
 import { Button } from '../components/ui';
+
+export const metadata: Metadata = {
+  title: {
+    absolute: 'SayMyName.in — Intentional dating for verified IIT Madras non-campus BS adults',
+  },
+  description:
+    'An independent dating-first community for verified adults (18+) currently enrolled in IIT Madras non-campus BS programmes. Mutual interest before conversation.',
+  alternates: {
+    canonical: '/',
+  },
+  openGraph: {
+    title: 'SayMyName.in — Same world. Different cities. A chance to meet.',
+    description:
+      'An independent dating space for verified adults (18+) in IIT Madras non-campus BS programmes, built around mutual consent and unhurried conversation.',
+    url: 'https://saymyname.in',
+    type: 'website',
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'SayMyName.in — Same world. Different cities. A chance to meet.',
+    description:
+      'Independent dating space for verified adults (18+) enrolled in IIT Madras non-campus BS programmes.',
+  },
+};
 
 const PROGRAMME_FAMILIES = [
   {

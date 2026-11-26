@@ -1,6 +1,16 @@
+import type { Metadata } from 'next';
 import React from 'react';
 import Link from 'next/link';
 import { getConfiguredSupportEmail } from '../../lib/public-config';
+
+export const metadata: Metadata = {
+  title: 'Privacy Notice',
+  description:
+    'How SayMyName handles IIT Madras BS institutional email data, age and enrolment verification evidence, private portrait storage, and member privacy controls.',
+  alternates: {
+    canonical: '/privacy',
+  },
+};
 
 export default function PrivacyPage() {
   const supportEmail = getConfiguredSupportEmail();

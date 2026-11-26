@@ -1,5 +1,15 @@
+import type { Metadata } from 'next';
 import React from 'react';
 import Link from 'next/link';
+
+export const metadata: Metadata = {
+  title: 'Terms of Use',
+  description:
+    'Independent platform status, strict 18+ and non-campus BS eligibility criteria, member conduct rules, and pre-launch governance for SayMyName.in.',
+  alternates: {
+    canonical: '/terms',
+  },
+};
 
 export default function TermsPage() {
   return (

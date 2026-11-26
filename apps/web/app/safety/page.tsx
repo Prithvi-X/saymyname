@@ -1,6 +1,16 @@
+import type { Metadata } from 'next';
 import React from 'react';
 import Link from 'next/link';
 import { Button } from '../../components/ui';
+
+export const metadata: Metadata = {
+  title: 'Safety Architecture & Consent Rules',
+  description:
+    'Learn how SayMyName enforces server-side eligibility checks, mutual-match messaging gates, instant block and unmatch isolation, coarse city/state privacy, and private portrait media links.',
+  alternates: {
+    canonical: '/safety',
+  },
+};
 
 const ENFORCED_CONTROLS = [
   {
