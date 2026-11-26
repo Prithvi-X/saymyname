@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>SayMyName.in — Open Graph Artwork Source (Directions A &amp; B, 1200x630)</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: #050608;
+      color: #F0F1EE;
+      font-family: "Instrument Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      padding: 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 32px;
+      align-items: flex-start;
+    }
+    .og-canvas {
+      width: 1200px;
+      height: 630px;
+      position: relative;
+      overflow: hidden;
+      background: #0B0D10;
+      border: 1px solid #343D48;
+      flex-shrink: 0;
+    }
+    /* Direction A: Editorial Left Type + Right 3D Sculpture */
+    .og-a {
+      display: grid;
+      grid-template-columns: 700px 500px;
+      background: radial-gradient(50% 60% at 80% 48%, rgba(225, 138, 98, 0.08), transparent 72%), #0B0D10;
+    }
+    .og-a-left {
+      padding: 58px 40px 52px 72px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      z-index: 2;
+    }
+    .brand-row {
+      display: inline-flex;
+      align-items: center;
+      gap: 12px;
+      font-size: 23px;
+      font-weight: 700;
+      letter-spacing: -0.025em;
+      color: #F0F1EE;
+    }
+    .mark {
+      width: 28px;
+      height: 28px;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+    }
+    .mark span {
+      display: block;
+      width: 10px;
+      height: 26px;
+      background: #F0F1EE;
+      border-radius: 1.5px;
+    }
+    .mark i {
+      display: block;
+      width: 4px;
+      height: 4px;
+      background: #8580C4;
+      border-radius: 1px;
+    }
+    .og-eyebrow {
+      font-size: 14px;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: #8580C4;
+      font-weight: 600;
+      margin-bottom: 18px;
+    }
+    .og-h1 {
+      font-size: 54px;
+      line-height: 1.03;
+      letter-spacing: -0.028em;
+      font-weight: 600;
+      color: #F0F1EE;
+      max-width: 15.5ch;
+      margin-bottom: 20px;
+    }
+    .og-sub {
+      font-size: 20px;
+      line-height: 1.42;
+      color: #B6BDC4;
+      max-width: 44ch;
+    }
+    .og-foot {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-top: 1px solid #222831;
+      padding-top: 18px;
+      font-size: 14px;
+      color: #8B949E;
+    }
+    .og-a-right {
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: #0B0D10;
+    }
+    .og-a-right img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      object-position: center;
+      display: block;
+      mask-image: linear-gradient(to right, transparent 0%, black 18%);
+      -webkit-mask-image: linear-gradient(to right, transparent 0%, black 18%);
+    }
+
+    /* Direction B: Centered Safe-Crop WhatsApp + Square Iconic Edition */
+    .og-b {
+      background: #0B0D10;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .og-b-bg {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      opacity: 0.72;
+      filter: brightness(0.95);
+    }
+    .og-b-scrim {
+      position: absolute;
+      inset: 0;
+      background: radial-gradient(circle at 50% 50%, rgba(11, 13, 16, 0.35) 0%, rgba(11, 13, 16, 0.88) 72%);
+    }
+    /* Safe 630x630 center zone guarantee for WhatsApp square thumbnail crop */
+    .og-b-safe {
+      position: relative;
+      z-index: 2;
+      width: 590px;
+      height: 550px;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      background: rgba(11, 13, 16, 0.72);
+      padding: 44px 48px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      text-align: center;
+      align-items: center;
+      border-radius: 12px;
+    }
+    .og-b-h1 {
+      font-size: 46px;
+      line-height: 1.04;
+      letter-spacing: -0.025em;
+      font-weight: 600;
+      color: #F0F1EE;
+      max-width: 12ch;
+    }
+    .og-b-sub {
+      font-size: 17px;
+      line-height: 1.45;
+      color: #B6BDC4;
+      max-width: 34ch;
+    }
+  </style>
+</head>
+<body>
+  <!-- DIRECTION A -->
+  <div id="og-direction-a" class="og-canvas og-a">
+    <div class="og-a-left">
+      <div class="brand-row">
+        <span class="mark" aria-hidden="true"><span></span><i></i><span></span></span>
+        SayMyName
+      </div>
+      <div>
+        <div class="og-eyebrow">Dating · 18+ IIT Madras BS Community</div>
+        <h1 class="og-h1">Same world. Different cities. A chance to meet.</h1>
+        <p class="og-sub">Thoughtful profiles, mutual interest, and calm 1:1 conversations for verified IITM non-campus BS adults.</p>
+      </div>
+      <div class="og-foot">
+        <span style="color:#F0F1EE;font-weight:600;">saymyname.in</span>
+        <span>Independent platform · Not affiliated with IIT Madras</span>
+      </div>
+    </div>
+    <div class="og-a-right">
+      <img src="../3d/two-lights-desktop-10bit.avif" alt="" />
+    </div>
+  </div>
+
+  <!-- DIRECTION B -->
+  <div id="og-direction-b" class="og-canvas og-b">
+    <img class="og-b-bg" src="../3d/two-lights-mobile-10bit.avif" alt="" />
+    <div class="og-b-scrim"></div>
+    <div class="og-b-safe">
+      <div class="brand-row">
+        <span class="mark" aria-hidden="true"><span></span><i></i><span></span></span>
+        SayMyName
+      </div>
+      <div style="display:flex;flex-direction:column;align-items:center;gap:16px;">
+        <div class="og-eyebrow" style="margin-bottom:0;color:#E18A62;">18+ Non-Campus BS Cohort</div>
+        <h1 class="og-b-h1">Same world. Different cities. A chance to meet.</h1>
+        <p class="og-b-sub">Verified peer dating for IIT Madras BS students. Mutual match before messaging.</p>
+      </div>
+      <div style="font-size:13px;color:#8B949E;">saymyname.in · Independent platform</div>
+    </div>
+  </div>
+</body>
+</html>

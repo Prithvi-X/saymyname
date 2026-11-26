@@ -1,0 +1,1053 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SayMyName.in — Phase 2 High-Fidelity Landing Prototype (PROPOSED)</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --void: #0B0D10;
+      --coal: #12161B;
+      --iron: #1A2027;
+      --slate: #252D37;
+      --edge: #343D48;
+      --chalk: #F0F1EE;
+      --silver: #B6BDC4;
+      --ash: #8B949E;
+      --iris: #8580C4;
+      --iris-hover: #9894D1;
+      --ember: #E18A62;
+      --success: #77C5A1;
+      --warning: #E6BC69;
+      --ease-enter: cubic-bezier(0.2, 0.7, 0.2, 1);
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { font-size: 15px; scroll-behavior: smooth; }
+    body {
+      background-color: var(--void);
+      color: var(--chalk);
+      font-family: "Instrument Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      line-height: 1.55;
+      -webkit-font-smoothing: antialiased;
+      overflow-x: clip;
+    }
+    a { color: inherit; text-decoration: none; }
+    button { font-family: inherit; cursor: pointer; background: none; border: none; color: inherit; }
+    :focus-visible { outline: 2px solid var(--iris); outline-offset: 3px; }
+
+    .container {
+      width: 100%;
+      max-width: 1280px;
+      margin: 0 auto;
+      padding-left: 48px;
+      padding-right: 48px;
+    }
+
+    /* Skip Link */
+    .skip-link {
+      position: absolute;
+      left: -9999px;
+      top: 8px;
+      z-index: 100;
+      padding: 10px 16px;
+      background: var(--iris);
+      color: var(--void);
+      font-weight: 600;
+      border-radius: 6px;
+    }
+    .skip-link:focus { left: 16px; }
+
+    /* Sticky Glass Header (Doc 10) */
+    .site-header {
+      position: sticky;
+      top: 0;
+      z-index: 40;
+      background: rgba(18, 22, 27, 0.84);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      border-bottom: 1px solid rgba(52, 61, 72, 0.75);
+    }
+    .nav-bar {
+      height: 66px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 24px;
+    }
+    .nav-left { display: flex; align-items: center; gap: 36px; }
+    .brand-lockup { display: inline-flex; align-items: center; gap: 11px; font-weight: 700; font-size: 18px; letter-spacing: -0.025em; }
+    .nav-links { display: flex; align-items: center; gap: 28px; }
+    .nav-links a { font-size: 14px; font-weight: 500; color: var(--silver); transition: color 140ms ease; }
+    .nav-links a:hover { color: var(--chalk); }
+    .nav-actions { display: flex; align-items: center; gap: 12px; }
+    .nav-signin { font-size: 14px; font-weight: 500; color: var(--silver); padding: 8px 14px; border-radius: 6px; white-space: nowrap; }
+    .nav-signin:hover { color: var(--chalk); background: var(--iron); }
+    .mobile-menu-btn {
+      display: none;
+      width: 44px; height: 44px;
+      border: 1px solid var(--edge);
+      border-radius: 8px;
+      background: var(--coal);
+      align-items: center;
+      justify-content: center;
+      color: var(--chalk);
+    }
+    .mobile-drawer {
+      display: none;
+      background: var(--coal);
+      border-bottom: 1px solid var(--edge);
+      padding: 16px 20px 22px;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .mobile-drawer.open { display: flex; }
+    .mobile-drawer a { padding: 11px 12px; border-radius: 6px; font-size: 15px; color: var(--silver); min-height: 44px; display: flex; align-items: center; }
+    .mobile-drawer a.cta-mob { background: var(--iris); color: var(--void); font-weight: 600; justify-content: center; margin-top: 6px; }
+
+    /* Architectural Buttons (Zero pills) */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 600;
+      border-radius: 8px;
+      transition: background-color 130ms ease, transform 130ms ease, border-color 130ms ease;
+      white-space: nowrap;
+      min-height: 44px;
+      padding: 0 20px;
+      font-size: 14px;
+    }
+    .btn:active { transform: scale(0.985); }
+    .btn-primary { background: var(--iris); color: var(--void); height: 48px; padding: 0 24px; font-size: 15px; }
+    .btn-primary:hover { background: var(--iris-hover); }
+    .btn-nav { background: var(--iris); color: var(--void); height: 38px; min-height: 38px; padding: 0 16px; font-size: 13.5px; }
+    .btn-nav:hover { background: var(--iris-hover); }
+    .btn-secondary { background: var(--iron); color: var(--chalk); border: 1px solid var(--edge); height: 46px; }
+    .btn-secondary:hover { background: var(--slate); border-color: #4A5666; }
+
+    section { scroll-margin-top: 82px; border-bottom: 1px solid rgba(52, 61, 72, 0.35); }
+    .surface-void { background: var(--void); }
+    .surface-coal { background: var(--coal); }
+    .eyebrow {
+      font-size: 12.5px;
+      font-weight: 600;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--iris);
+      margin-bottom: 14px;
+    }
+    .eyebrow.ember { color: var(--ember); }
+
+    /* 01 HERO */
+    .hero-band {
+      position: relative;
+      background-color: var(--void);
+      background-image:
+        radial-gradient(48% 52% at 78% 36%, rgba(225, 138, 98, 0.065), transparent 72%),
+        radial-gradient(38% 40% at 14% 12%, rgba(133, 128, 196, 0.045), transparent 75%);
+      padding: 58px 0 68px;
+    }
+    .grid-12 { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: 28px; align-items: center; }
+    .col-7 { grid-column: span 7; }
+    .col-5 { grid-column: span 5; }
+    .col-4 { grid-column: span 4; }
+    .col-8 { grid-column: span 8; }
+
+    .hero-h1 {
+      font-size: clamp(2.45rem, 4.4vw, 4.25rem); /* ~39px mobile -> 64px @ 1440 */
+      line-height: 0.99;
+      letter-spacing: -0.028em;
+      font-weight: 600;
+      color: var(--chalk);
+      max-width: 13.5ch;
+      margin-bottom: 20px;
+    }
+    .hero-sub {
+      font-size: 17px;
+      line-height: 1.54;
+      color: var(--silver);
+      max-width: 50ch;
+      margin-bottom: 28px;
+    }
+    .hero-ctas { display: flex; align-items: center; gap: 22px; flex-wrap: wrap; margin-bottom: 24px; }
+    .hero-secondary-link {
+      font-size: 14.5px;
+      font-weight: 500;
+      color: var(--chalk);
+      padding: 10px 4px;
+      border-bottom: 1px solid rgba(240, 241, 238, 0.25);
+      transition: border-color 150ms ease, color 150ms ease;
+    }
+    .hero-secondary-link:hover { color: var(--ember); border-bottom-color: var(--ember); }
+    .hero-trust-strip {
+      font-size: 13px;
+      color: var(--silver);
+      padding-top: 16px;
+      border-top: 1px solid rgba(52, 61, 72, 0.55);
+      max-width: 52ch;
+      margin-bottom: 6px;
+    }
+    .hero-eligibility-note {
+      font-size: 12.5px;
+      color: var(--ash);
+      max-width: 56ch;
+      line-height: 1.48;
+    }
+
+    /* Hero Visual Stage (DEC-LP-02 Modes) */
+    .hero-visual-stage {
+      position: relative;
+      border-radius: 10px;
+      overflow: hidden;
+      border: 1px solid rgba(52, 61, 72, 0.65);
+      background: #080A0D;
+      aspect-ratio: 4 / 4.15;
+      box-shadow: 0 24px 56px rgba(0, 0, 0, 0.55);
+      animation: heroSettle 280ms var(--ease-enter) both;
+    }
+    @keyframes heroSettle {
+      from { opacity: 0.72; transform: translateY(6px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .hero-stage-paired {
+      display: grid;
+      grid-template-columns: 1.08fr 0.92fr;
+      width: 100%;
+      height: 100%;
+    }
+    .hero-stage-3d {
+      position: relative;
+      width: 100%;
+      height: 100%;
+      background: var(--void);
+      overflow: hidden;
+    }
+    .hero-stage-3d img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      object-position: center;
+      display: block;
+    }
+    .hero-stage-photo {
+      position: relative;
+      width: 100%;
+      height: 100%;
+      border-left: 1px solid rgba(52, 61, 72, 0.6);
+      overflow: hidden;
+    }
+    .hero-stage-photo img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+    }
+    .asset-caption-chip {
+      position: absolute;
+      bottom: 10px;
+      right: 10px;
+      background: rgba(11, 13, 16, 0.86);
+      border: 1px solid rgba(52, 61, 72, 0.8);
+      padding: 4px 8px;
+      border-radius: 4px;
+      font-size: 12px;
+      color: var(--ash);
+    }
+
+    /* 02 ACROSS CITIES */
+    .band-pad { padding: 82px 0; }
+    .editorial-h2 {
+      font-size: clamp(1.75rem, 2.7vw, 2.55rem);
+      line-height: 1.08;
+      letter-spacing: -0.022em;
+      font-weight: 600;
+      margin-bottom: 18px;
+      max-width: 18ch;
+    }
+    .editorial-p { font-size: 16px; line-height: 1.62; color: var(--silver); max-width: 54ch; margin-bottom: 16px; }
+    .story-frame {
+      position: relative;
+      border: 1px solid var(--edge);
+      background: var(--void);
+      aspect-ratio: 4 / 3;
+      overflow: hidden;
+    }
+    .story-frame img { width: 100%; height: 100%; object-fit: cover; display: block; }
+    .story-pillars {
+      display: flex;
+      gap: 28px;
+      flex-wrap: wrap;
+      margin-top: 24px;
+      padding-top: 18px;
+      border-top: 1px solid rgba(52, 61, 72, 0.65);
+      font-size: 13.5px;
+      color: var(--chalk);
+      font-weight: 500;
+    }
+    .story-pillars span { display: inline-flex; align-items: center; gap: 8px; }
+    .story-pillars i { width: 6px; height: 6px; background: var(--ember); display: inline-block; border-radius: 1px; }
+
+    /* 03 INSIDE SAYMYNAME */
+    .preview-tabs-rail { display: flex; flex-direction: column; gap: 12px; margin-top: 24px; }
+    .preview-tab {
+      width: 100%;
+      text-align: left;
+      padding: 16px 18px;
+      background: var(--coal);
+      border: 1px solid var(--edge);
+      border-radius: 8px;
+      transition: border-color 150ms ease, background-color 150ms ease;
+    }
+    .preview-tab:hover { border-color: #4D5968; }
+    .preview-tab[aria-selected="true"] { background: var(--iron); border-color: var(--iris); }
+    .preview-tab-num { font-family: monospace; font-size: 12px; color: var(--iris); margin-bottom: 4px; display: block; }
+    .preview-tab-title { font-size: 15.5px; font-weight: 600; color: var(--chalk); display: block; margin-bottom: 3px; }
+    .preview-tab-desc { font-size: 13.5px; color: var(--silver); display: block; }
+
+    .preview-device {
+      background: var(--coal);
+      border: 1px solid var(--edge);
+      border-radius: 12px;
+      overflow: hidden;
+      box-shadow: 0 20px 52px rgba(0, 0, 0, 0.45);
+    }
+    .preview-device-bar {
+      padding: 12px 18px;
+      background: var(--iron);
+      border-bottom: 1px solid var(--edge);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      font-size: 12.5px;
+      color: var(--silver);
+    }
+    .sample-pill { color: var(--warning); font-weight: 600; }
+    .preview-panel { padding: 22px; min-height: 396px; }
+    .discover-grid { display: grid; grid-template-columns: 220px 1fr; gap: 22px; align-items: start; }
+    .discover-photo { position: relative; aspect-ratio: 4 / 4.2; border: 1px solid var(--edge); background: var(--void); overflow: hidden; }
+    .discover-photo img { width: 100%; height: 100%; object-fit: cover; display: block; }
+    .badge { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; padding: 3px 8px; border-radius: 4px; font-weight: 500; }
+    .badge-verified { background: #10241A; color: var(--success); border: 1px solid rgba(119, 197, 161, 0.35); }
+    .badge-track { background: var(--iron); color: var(--silver); border: 1px solid var(--edge); }
+    .chip-meta { display: inline-block; font-size: 12.5px; padding: 4px 9px; border-radius: 4px; background: var(--iron); border: 1px solid rgba(52, 61, 72, 0.8); color: var(--silver); margin: 0 6px 6px 0; }
+    .prompt-box { background: var(--void); border: 1px solid var(--edge); border-radius: 8px; padding: 14px; margin: 14px 0 18px; }
+    .prompt-label { font-size: 12.5px; font-weight: 600; color: var(--iris); margin-bottom: 4px; }
+    .prompt-ans { font-size: 14px; color: var(--chalk); line-height: 1.5; }
+    .sample-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .sample-btn-muted { border: 1px solid var(--edge); background: var(--iron); color: var(--silver); border-radius: 8px; height: 42px; display: flex; align-items: center; justify-content: center; font-size: 13.5px; font-weight: 600; }
+    .sample-btn-iris { background: rgba(133, 128, 196, 0.16); border: 1px solid rgba(133, 128, 196, 0.5); color: var(--chalk); border-radius: 8px; height: 42px; display: flex; align-items: center; justify-content: center; font-size: 13.5px; font-weight: 600; }
+
+    .match-view { display: none; padding: 36px 20px; text-align: center; }
+    .match-interval-svg { margin: 0 auto 20px; display: block; }
+    .chat-view { display: none; }
+    .chat-header { display: flex; align-items: center; justify-content: space-between; padding-bottom: 14px; border-bottom: 1px solid var(--edge); margin-bottom: 18px; }
+    .chat-bubble { padding: 12px 16px; border-radius: 10px; font-size: 14px; line-height: 1.5; max-width: 82%; margin-bottom: 12px; }
+    .chat-in { background: var(--iron); color: var(--chalk); border: 1px solid var(--edge); }
+    .chat-out { background: #232238; color: var(--chalk); border: 1px solid rgba(133, 128, 196, 0.45); margin-left: auto; }
+
+    /* 04 HOW JOINING WORKS */
+    .steps-row { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 16px; margin-top: 32px; }
+    .step-card {
+      background: var(--void);
+      border: 1px solid var(--edge);
+      border-radius: 8px;
+      padding: 20px 18px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .step-code { font-family: monospace; font-size: 12.5px; color: var(--iris); font-weight: 600; }
+    .step-card h3 { font-size: 15.5px; font-weight: 600; color: var(--chalk); line-height: 1.25; }
+    .step-card p { font-size: 13.5px; color: var(--silver); line-height: 1.5; }
+    .review-callout {
+      margin-top: 22px;
+      padding: 14px 18px;
+      background: rgba(11, 13, 16, 0.65);
+      border: 1px solid var(--edge);
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      flex-wrap: wrap;
+      font-size: 13.5px;
+      color: var(--silver);
+    }
+
+    /* 05 SHARED COMMUNITY LEDGER */
+    .ledger-list { border-top: 1px solid var(--edge); }
+    .ledger-row {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 20px;
+      padding: 20px 4px;
+      border-bottom: 1px solid var(--edge);
+    }
+    .ledger-code { font-family: monospace; font-size: 13px; color: var(--ember); min-width: 82px; font-weight: 600; }
+    .ledger-name { font-size: 18px; font-weight: 600; color: var(--chalk); flex: 1; }
+    .ledger-stages { font-size: 13px; color: var(--ash); white-space: nowrap; }
+
+    /* 06 TRUST */
+    .trust-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 22px; margin-top: 32px; }
+    .trust-card {
+      background: var(--void);
+      border: 1px solid var(--edge);
+      border-radius: 10px;
+      padding: 26px 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+    .trust-icon {
+      width: 38px; height: 38px;
+      border-radius: 6px;
+      background: var(--iron);
+      border: 1px solid var(--edge);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--iris);
+    }
+    .trust-card h3 { font-size: 17px; font-weight: 600; color: var(--chalk); }
+    .trust-card p { font-size: 14px; color: var(--silver); line-height: 1.55; }
+
+    /* 07 INVITATION & SHARE */
+    .share-panel {
+      background: var(--coal);
+      border: 1px solid var(--edge);
+      border-radius: 12px;
+      padding: 30px;
+    }
+    .share-toast {
+      margin-top: 10px;
+      font-size: 13px;
+      color: var(--success);
+      min-height: 20px;
+    }
+
+    /* FOOTER */
+    .site-footer {
+      background: var(--coal);
+      padding: 52px 0 42px;
+      border-top: 1px solid var(--edge);
+      font-size: 13.5px;
+      color: var(--ash);
+    }
+    .footer-grid { display: grid; grid-template-columns: 2fr 1fr 1fr 1fr; gap: 36px; }
+    .footer-heading { font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.1em; color: var(--silver); margin-bottom: 14px; }
+    .footer-links { list-style: none; display: flex; flex-direction: column; gap: 9px; }
+    .footer-links a:hover { color: var(--chalk); }
+
+    /* Subtle Phase 2 Design Review Switcher (Not part of final prod UI) */
+    .review-dock {
+      position: fixed;
+      bottom: 14px;
+      right: 14px;
+      z-index: 60;
+      background: rgba(26, 32, 39, 0.96);
+      border: 1px solid var(--iris);
+      border-radius: 10px;
+      padding: 12px 14px;
+      font-size: 12px;
+      max-width: 340px;
+      box-shadow: 0 12px 32px rgba(0,0,0,0.65);
+    }
+    .review-dock select, .review-dock button.min-btn {
+      background: var(--void);
+      color: var(--chalk);
+      border: 1px solid var(--edge);
+      border-radius: 4px;
+      padding: 4px 8px;
+      font-size: 12px;
+      margin-top: 4px;
+      width: 100%;
+    }
+    .review-dock.collapsed .review-body { display: none; }
+
+    /* Responsive Rules matching Phase 1 Wireframes */
+    @media (max-width: 1279px) {
+      .container { padding-left: 36px; padding-right: 36px; }
+    }
+    @media (max-width: 1024px) {
+      .hero-h1 { font-size: 50px; }
+      .steps-row { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    }
+    @media (max-width: 880px) {
+      .col-7, .col-5, .col-4, .col-8 { grid-column: span 12; }
+      .hero-band { padding: 38px 0 48px; }
+      .hero-h1 { font-size: 46px; max-width: 15ch; }
+      .hero-visual-stage { aspect-ratio: 16 / 9; max-height: 320px; }
+      .band-pad { padding: 60px 0; }
+      .steps-row { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .trust-grid { grid-template-columns: 1fr; }
+      .footer-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    }
+    @media (max-width: 640px) {
+      .container { padding-left: 18px; padding-right: 18px; }
+      .nav-bar { height: 56px; }
+      .nav-links, .nav-actions .btn-nav { display: none; }
+      .mobile-menu-btn { display: inline-flex; }
+      .hero-band { padding: 14px 0 32px; }
+      .eyebrow { font-size: 12px; margin-bottom: 6px; letter-spacing: 0.06em; }
+      .hero-h1 { font-size: 35px; line-height: 1.04; margin-bottom: 10px; }
+      .hero-sub { font-size: 14.5px; line-height: 1.42; margin-bottom: 14px; }
+      .hero-ctas { gap: 8px 16px; margin-bottom: 10px; }
+      .hero-ctas .btn-primary { width: 100%; height: 46px; }
+      .hero-secondary-link { padding: 4px 2px; font-size: 14px; }
+      .hero-trust-strip { font-size: 12px; padding-top: 8px; margin-bottom: 4px; }
+      .hero-eligibility-note { font-size: 12px; line-height: 1.38; }
+      .hero-visual-stage { aspect-ratio: 16 / 9; height: 176px; max-height: 196px; }
+      .band-pad { padding: 48px 0; }
+      .discover-grid { grid-template-columns: 1fr; }
+      .discover-photo { max-height: 260px; }
+      .steps-row { grid-template-columns: 1fr; }
+      .ledger-row { flex-direction: column; gap: 4px; padding: 16px 0; }
+      .footer-grid { grid-template-columns: 1fr; gap: 24px; }
+      .review-dock { display: none; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { animation: none !important; transition: none !important; scroll-behavior: auto !important; }
+    }
+  </style>
+</head>
+<body>
+  <a href="#main-content" class="skip-link">Skip to main content</a>
+
+  <header class="site-header">
+    <div class="container nav-bar">
+      <div class="nav-left">
+        <a href="#top" class="brand-lockup" aria-label="SayMyName Home">
+          <svg width="26" height="26" viewBox="0 0 48 48" fill="none" aria-hidden="true">
+            <path d="M8 8H20C21.6569 8 23 9.34315 23 11V37C23 38.6569 21.6569 40 20 40H8V8Z" fill="#F0F1EE"/>
+            <path d="M14 16H23V24H14V16Z" fill="#0B0D10"/>
+            <path d="M27 8H39C40.6569 8 42 9.34315 42 11V37C42 38.6569 40.6569 40 39 40H27V8Z" fill="#F0F1EE"/>
+            <path d="M27 24H36V32H27V24Z" fill="#0B0D10"/>
+            <rect x="22.5" y="22.5" width="3" height="3" rx="0.75" fill="#8580C4"/>
+          </svg>
+          <span>SayMyName</span>
+        </a>
+        <nav class="nav-links" aria-label="Public Navigation">
+          <a href="#how-it-works">How It Works</a>
+          <a href="#community">Eligibility</a>
+          <a href="#trust">Safety</a>
+        </nav>
+      </div>
+      <div class="nav-actions">
+        <a href="#footer" class="nav-signin">Sign In</a>
+        <a href="#how-it-works" class="btn btn-nav">Create Account</a>
+        <button type="button" class="mobile-menu-btn" aria-label="Open navigation menu" aria-expanded="false" onclick="toggleMobileNav(this)">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="4" y1="7" x2="20" y2="7"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="17" x2="20" y2="17"/></svg>
+        </button>
+      </div>
+    </div>
+    <div id="mobile-drawer" class="mobile-drawer">
+      <a href="#how-it-works" onclick="closeMobileNav()">How It Works</a>
+      <a href="#community" onclick="closeMobileNav()">Eligibility</a>
+      <a href="#trust" onclick="closeMobileNav()">Safety</a>
+      <a href="#footer" onclick="closeMobileNav()">Sign In</a>
+      <a href="#how-it-works" class="cta-mob" onclick="closeMobileNav()">Create Account</a>
+    </div>
+  </header>
+
+  <main id="main-content">
+    <!-- 01 HERO -->
+    <section id="top" class="hero-band">
+      <div class="container grid-12">
+        <div class="col-7">
+          <p id="hero-eyebrow" class="eyebrow">Dating for verified 18+ IIT Madras BS students</p>
+          <h1 id="hero-h1" class="hero-h1">Same world. Different cities. A chance to meet.</h1>
+          <p id="hero-sub" class="hero-sub">
+            An intentional dating space for verified adults (18+) currently enrolled in IIT Madras’s four non-campus BS programmes. Discover peers beyond study channels, match on mutual interest, and start thoughtful conversations.
+          </p>
+          <div class="hero-ctas">
+            <a href="#how-it-works" class="btn btn-primary">Create Account</a>
+            <a id="hero-sec-link" href="#how-it-works" class="hero-secondary-link">See how it works ↓</a>
+          </div>
+          <p id="hero-trust" class="hero-trust-strip">Confirmed BS inbox · Manual 18+ review · Private photos · No stranger DMs</p>
+          <p id="hero-elig" class="hero-eligibility-note">
+            Independent platform—not owned, operated, or endorsed by IIT Madras. Open to adults 18+ in Data Science, Electronic Systems, Aeronautics &amp; Space Tech, or Management &amp; Data Science.
+          </p>
+        </div>
+
+        <div class="col-5">
+          <div id="hero-visual-stage" class="hero-visual-stage">
+            <!-- Paired Composition (Option C Default Proposed) -->
+            <div id="mode-paired" class="hero-stage-paired">
+              <div class="hero-stage-3d">
+                <picture>
+                  <source media="(max-width: 880px)" srcset="assets/3d/two-lights-mobile-10bit.avif" type="image/avif" />
+                  <source media="(max-width: 880px)" srcset="assets/3d/two-lights-mobile.webp" type="image/webp" />
+                  <source srcset="assets/3d/two-lights-desktop-10bit.avif" type="image/avif" />
+                  <img src="assets/3d/two-lights-desktop.webp" alt="Two architectural obsidian monoliths separated by warm amber light across an interval" />
+                </picture>
+              </div>
+              <div class="hero-stage-photo">
+                <img src="assets/photography/img-01-hero-placeholder.webp" alt="Editorial campaign atmosphere frame placeholder" />
+              </div>
+            </div>
+
+            <!-- 3D Only Comparison (Option A) -->
+            <div id="mode-3d" class="hero-stage-3d" style="display:none;">
+              <picture>
+                <source media="(max-width: 880px)" srcset="assets/3d/two-lights-mobile-10bit.avif" type="image/avif" />
+                <source srcset="assets/3d/two-lights-desktop-10bit.avif" type="image/avif" />
+                <img src="assets/3d/two-lights-desktop.webp" alt="Two Lights Across the Interval ceramic sculpture render" />
+              </picture>
+            </div>
+
+            <!-- Photo Only Comparison (Option B) -->
+            <div id="mode-photo" class="hero-stage-photo" style="display:none; border-left:none;">
+              <img src="assets/photography/img-01-hero-placeholder.webp" alt="Editorial photography hero option placeholder" />
+            </div>
+
+            <span id="hero-asset-badge" class="asset-caption-chip">3D-01 + IMG-01 Placeholder</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 02 ACROSS CITIES -->
+    <section class="surface-coal band-pad">
+      <div class="container grid-12">
+        <div class="col-5">
+          <div class="story-frame">
+            <img src="assets/photography/img-02-cities-placeholder.webp" alt="Editorial dusk study window scene placeholder" loading="lazy" />
+          </div>
+        </div>
+        <div class="col-7">
+          <p class="eyebrow">Why we built this</p>
+          <h2 class="editorial-h2">You share the same term. Just rarely the same city.</h2>
+          <p class="editorial-p">
+            Studying for an IIT Madras non-campus BS degree means balancing deadlines, OPPE sessions, and career goals from bedroom desks, cafés, and hometown libraries across India. You share the same coursework and late nights as thousands of driven adults—yet outside exam halls and brief campus events, there is rarely an ordinary, respectful way to ask someone out.
+          </p>
+          <p class="editorial-p">
+            SayMyName gives that shared context a private, intentional space of its own: calm enough to read someone’s story properly, and clear enough that study groups never have to turn into awkward DM requests.
+          </p>
+          <div class="story-pillars">
+            <span><i></i>Across cities</span>
+            <span><i></i>Beyond study chats</span>
+            <span><i></i>Adult pacing</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 03 INSIDE SAYMYNAME -->
+    <section id="inside-saymyname" class="surface-void band-pad">
+      <div class="container grid-12" style="align-items:start;">
+        <div class="col-5">
+          <p class="eyebrow ember">Inside the platform</p>
+          <h2 class="editorial-h2">Profiles worth reading. Conversations that start only when both agree.</h2>
+          <p class="editorial-p">
+            No endless swipe decks, compatibility scores, or random chat roulette. Browse verified BS adults one full profile at a time—express quiet interest, and message once a match is mutual.
+          </p>
+
+          <div class="preview-tabs-rail" role="tablist" aria-label="Product experience steps">
+            <button type="button" class="preview-tab" role="tab" aria-selected="true" onclick="switchPreview('discover', this)">
+              <span class="preview-tab-num">01 · DISCOVER</span>
+              <span class="preview-tab-title">Full profile cards &amp; honest prompts</span>
+              <span class="preview-tab-desc">See city, degree track, stage, and written answers together.</span>
+            </button>
+            <button type="button" class="preview-tab" role="tab" aria-selected="false" onclick="switchPreview('match', this)">
+              <span class="preview-tab-num">02 · MUTUAL MATCH</span>
+              <span class="preview-tab-title">The Interval alignment moment</span>
+              <span class="preview-tab-desc">Private messaging unlocks strictly after reciprocal interest.</span>
+            </button>
+            <button type="button" class="preview-tab" role="tab" aria-selected="false" onclick="switchPreview('chat', this)">
+              <span class="preview-tab-num">03 · PRIVATE 1:1 CHAT</span>
+              <span class="preview-tab-title">Unhurried text conversation</span>
+              <span class="preview-tab-desc">Respond asynchronously at your pace with instant Unmatch &amp; Report.</span>
+            </button>
+          </div>
+        </div>
+
+        <div class="col-7">
+          <div class="preview-device">
+            <div class="preview-device-bar">
+              <span class="sample-pill">Sample product preview · Illustrative</span>
+              <span>Zero live user profiles shown</span>
+            </div>
+
+            <div class="preview-panel">
+              <!-- Tab 1: Discover -->
+              <div id="view-discover" class="discover-grid">
+                <div class="discover-photo">
+                  <img src="assets/photography/img-03-discover-sample-placeholder.webp" alt="Illustrative Discover portrait placeholder" loading="lazy" />
+                </div>
+                <div>
+                  <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;">
+                    <span class="badge badge-verified">✓ Verified</span>
+                    <span class="badge badge-track">BS Data Science &amp; Applications</span>
+                  </div>
+                  <h3 style="font-size:26px;font-weight:600;margin-bottom:10px;">
+                    Ananya, 22 <span style="font-size:12.5px;color:var(--ash);font-weight:400;">(Illustrative sample)</span>
+                  </h3>
+                  <div>
+                    <span class="chip-meta">Diploma Level</span>
+                    <span class="chip-meta">Pune, Maharashtra</span>
+                    <span class="chip-meta">Long-term intentional relationship</span>
+                  </div>
+                  <div class="prompt-box">
+                    <div class="prompt-label">A quiet Sunday outside coursework usually looks like...</div>
+                    <div class="prompt-ans">Filter coffee, a long walk past Fergusson Road, and pretending I’m not behind on Statistics lectures.</div>
+                  </div>
+                  <div class="sample-actions" aria-hidden="true">
+                    <div class="sample-btn-muted">Pass</div>
+                    <div class="sample-btn-iris">Send Like</div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Tab 2: Mutual Match -->
+              <div id="view-match" class="match-view">
+                <svg class="match-interval-svg" width="84" height="56" viewBox="0 0 84 56" fill="none" aria-hidden="true">
+                  <rect x="10" y="6" width="24" height="44" rx="2" fill="#1A2027" stroke="#343D48"/>
+                  <rect x="40" y="10" width="4" height="36" rx="1" fill="#E18A62"/>
+                  <rect x="50" y="6" width="24" height="44" rx="2" fill="#1A2027" stroke="#8580C4"/>
+                </svg>
+                <p class="eyebrow" style="margin-bottom:8px;">The Interval Alignment</p>
+                <h3 style="font-size:26px;font-weight:600;margin-bottom:10px;">It is a mutual match</h3>
+                <p style="font-size:15px;color:var(--silver);max-width:42ch;margin:0 auto 22px;">
+                  You both expressed interest independently. Private conversation is now open.
+                </p>
+                <div style="display:inline-flex;gap:12px;flex-wrap:wrap;justify-content:center;" aria-hidden="true">
+                  <span class="sample-btn-muted" style="padding:0 18px;">Keep Discovering</span>
+                  <span class="sample-btn-iris" style="padding:0 18px;">Open Conversation</span>
+                </div>
+              </div>
+
+              <!-- Tab 3: Chat -->
+              <div id="view-chat" class="chat-view">
+                <div class="chat-header">
+                  <div>
+                    <strong style="font-size:16px;display:block;">Ananya · BS-DSA · Pune</strong>
+                    <span style="font-size:12.5px;color:var(--ash);">Matched independently · 1:1 Text Chat</span>
+                  </div>
+                  <span style="font-size:12.5px;color:var(--silver);border:1px solid var(--edge);padding:5px 10px;border-radius:6px;">Unmatch · Report</span>
+                </div>
+                <div class="chat-bubble chat-in">
+                  Saw your prompt about switching from mechanical engineering—how are you finding the Diploma project term?
+                </div>
+                <div class="chat-bubble chat-out">
+                  Honestly surviving on late-evening chai. Would love to trade notes properly—also glad I spotted someone else near the Pune exam centre.
+                </div>
+                <p style="font-size:12.5px;color:var(--ash);margin-top:24px;border-top:1px solid var(--edge);padding-top:12px;">
+                  Conversations stay private between matches. Unmatch or Block removes access immediately.
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 04 HOW JOINING WORKS -->
+    <section id="how-it-works" class="surface-coal band-pad">
+      <div class="container">
+        <p class="eyebrow">Transparent onboarding</p>
+        <h2 class="editorial-h2" style="max-width:26ch;">Verified once, calmly—before Discover opens.</h2>
+        <p class="editorial-p" style="max-width:62ch;">
+          Every profile you see inside belongs to an adult student who passed the same thoughtful check. An institutional email starts your account, and a human reviewer confirms eligibility before matching unlocks.
+        </p>
+
+        <div class="steps-row">
+          <div class="step-card">
+            <span class="step-code">STEP 01</span>
+            <h3>Confirm BS inbox &amp; password</h3>
+            <p>Register with your @study.iitm.ac.in email and confirm a 6-digit code.</p>
+          </div>
+          <div class="step-card">
+            <span class="step-code">STEP 02</span>
+            <h3>Confirm 18+ eligibility</h3>
+            <p>Submit birth date once to verify adulthood; exact dates stay hidden.</p>
+          </div>
+          <div class="step-card">
+            <span class="step-code">STEP 03</span>
+            <h3>BS track &amp; optional proof</h3>
+            <p>Pick programme &amp; level. Optional portal/fee note—never Aadhaar or passports.</p>
+          </div>
+          <div class="step-card">
+            <span class="step-code">STEP 04</span>
+            <h3>Draft while review runs</h3>
+            <p>Human reviewers check eligibility once while you save bio and prompts.</p>
+          </div>
+          <div class="step-card">
+            <span class="step-code">STEP 05</span>
+            <h3>Add portrait &amp; enter Discover</h3>
+            <p>Upload a genuine portrait into private storage and publish your card.</p>
+          </div>
+        </div>
+
+        <div class="review-callout">
+          <span><strong>Important:</strong> Manual eligibility verification protects real peers, so approval is not instantaneous. Government IDs are never requested.</span>
+          <a href="/eligibility" style="color:var(--iris);font-weight:600;white-space:nowrap;">Read full eligibility criteria →</a>
+        </div>
+      </div>
+    </section>
+
+    <!-- 05 THE SHARED COMMUNITY -->
+    <section id="community" class="surface-void band-pad">
+      <div class="container grid-12" style="align-items:start;">
+        <div class="col-4">
+          <p class="eyebrow">Phase 1 community scope</p>
+          <h2 class="editorial-h2">Four non-campus BS tracks. One shared community.</h2>
+          <p class="editorial-p" style="font-size:15px;">
+            SayMyName brings together verified adult learners (18+) across all four IIT Madras non-campus BS pathways.
+          </p>
+          <p style="font-size:13px;color:var(--ash);">
+            On-campus degrees, alumni, qualifier-only learners, and external universities are not included in Phase 1.
+          </p>
+        </div>
+        <div class="col-8">
+          <div class="ledger-list">
+            <div class="ledger-row">
+              <span class="ledger-code">BS · DSA</span>
+              <span class="ledger-name">BS in Data Science and Applications</span>
+              <span class="ledger-stages">Foundation · Diploma · Degree</span>
+            </div>
+            <div class="ledger-row">
+              <span class="ledger-code">BS · ES</span>
+              <span class="ledger-name">BS in Electronic Systems</span>
+              <span class="ledger-stages">Foundation · Diploma · Degree</span>
+            </div>
+            <div class="ledger-row">
+              <span class="ledger-code">BS · AST</span>
+              <span class="ledger-name">BS in Aeronautics and Space Technology</span>
+              <span class="ledger-stages">Foundation · Diploma · Degree</span>
+            </div>
+            <div class="ledger-row">
+              <span class="ledger-code">BS · MDS</span>
+              <span class="ledger-name">BS in Management and Data Science</span>
+              <span class="ledger-stages">Foundation · Diploma · Degree</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 06 TRUST AND PERSONAL CONTROL -->
+    <section id="trust" class="surface-coal band-pad">
+      <div class="container">
+        <div style="display:flex;justify-content:space-between;align-items:flex-end;gap:20px;flex-wrap:wrap;">
+          <div>
+            <p class="eyebrow">Built around calm boundaries</p>
+            <h2 class="editorial-h2" style="max-width:24ch;margin-bottom:0;">Respect is designed into how people connect.</h2>
+          </div>
+          <a href="/safety" style="color:var(--iris);font-size:14px;font-weight:600;">Read Safety &amp; Consent Architecture →</a>
+        </div>
+
+        <div class="trust-grid">
+          <div class="trust-card">
+            <div class="trust-icon" aria-hidden="true">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/></svg>
+            </div>
+            <h3>Verified 18+ peer community</h3>
+            <p>Email confirmation and manual age &amp; BS review happen before Discover unlocks. Study emails and roll numbers never appear on profile cards.</p>
+          </div>
+          <div class="trust-card">
+            <div class="trust-icon" aria-hidden="true">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect width="18" height="11" x="3" y="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+            </div>
+            <h3>Private chat only on mutual match</h3>
+            <p>Sending a Like is never permission to message. Direct text chat opens strictly when both adults independently match—zero stranger DMs.</p>
+          </div>
+          <div class="trust-card">
+            <div class="trust-icon" aria-hidden="true">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="8" r="4"/><path d="M5 20a7 7 0 0 1 14 0"/></svg>
+            </div>
+            <h3>Your privacy, always in your hands</h3>
+            <p>Coarse city and state only—never live GPS. Portraits live in private storage for short-lived display links, and Unmatch or Block removes access immediately.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 07 INVITATION & NATURAL SHARING -->
+    <section id="share" class="surface-void band-pad">
+      <div class="container grid-12">
+        <div class="col-7">
+          <p class="eyebrow ember">Begin when you are ready</p>
+          <h2 class="editorial-h2">There are people in your world you haven’t met yet.</h2>
+          <p class="editorial-p">
+            Join SayMyName with your IIT Madras BS study email, move at your own pace, and discover peers across cities who are here for something genuine.
+          </p>
+          <a href="#how-it-works" class="btn btn-primary">Create Account</a>
+        </div>
+        <div class="col-5">
+          <div class="share-panel">
+            <h3 style="font-size:18px;font-weight:600;margin-bottom:10px;">Know someone eligible who might appreciate something calmer?</h3>
+            <p style="font-size:14px;color:var(--silver);margin-bottom:18px;line-height:1.55;">
+              SayMyName grows through real classmates—not loud ads. If a friend in the IITM BS programme is single and tired of noisy dating apps, send them the link quietly.
+            </p>
+            <button type="button" class="btn btn-secondary" onclick="shareDemo()">Share SayMyName</button>
+            <div id="share-toast" class="share-toast" role="status" aria-live="polite"></div>
+            <p style="font-size:12px;color:var(--ash);margin-top:6px;">
+              No referral points, contact syncing, or invite requirements.
+            </p>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer id="footer" class="site-footer">
+    <div class="container footer-grid">
+      <div>
+        <strong style="color:var(--chalk);font-size:16px;display:block;margin-bottom:10px;">SayMyName</strong>
+        <p style="max-width:40ch;line-height:1.55;margin-bottom:10px;">
+          An independent dating-first platform built strictly for verified adults (18+) currently enrolled in approved IIT Madras non-campus BS programmes.
+        </p>
+        <p style="font-size:12.5px;">Not owned, operated, endorsed, or officially affiliated with IIT Madras.</p>
+      </div>
+      <div>
+        <div class="footer-heading">Platform</div>
+        <ul class="footer-links">
+          <li><a href="#top">Overview</a></li>
+          <li><a href="#inside-saymyname">Inside SayMyName</a></li>
+          <li><a href="#how-it-works">How It Works</a></li>
+          <li><a href="/eligibility">Eligibility Guide</a></li>
+          <li><a href="/safety">Safety &amp; Consent</a></li>
+        </ul>
+      </div>
+      <div>
+        <div class="footer-heading">Access</div>
+        <ul class="footer-links">
+          <li><a href="/login">Member Sign In</a></li>
+          <li><a href="/onboarding">Create Account</a></li>
+          <li><a href="/forgot-password">Password Recovery</a></li>
+        </ul>
+      </div>
+      <div>
+        <div class="footer-heading">Governance</div>
+        <ul class="footer-links">
+          <li><a href="/privacy">Privacy Notice</a></li>
+          <li><a href="/terms">Terms of Use</a></li>
+          <li><a href="/support">Member Support</a></li>
+        </ul>
+      </div>
+    </div>
+  </footer>
+
+  <!-- Interactive Phase 2 Approval Review Control (Prototype Helper Only) -->
+  <aside id="review-dock" class="review-dock" aria-label="Phase 2 Review Switcher">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+      <strong style="color:var(--iris);">Phase 2 Review Switcher</strong>
+      <button type="button" onclick="document.getElementById('review-dock').classList.toggle('collapsed')" style="color:var(--silver);font-size:12px;">Hide / Show</button>
+    </div>
+    <div class="review-body">
+      <label style="display:block;margin-bottom:8px;color:var(--silver);">
+        DEC-LP-01 Hero Copy (PROPOSED):
+        <select onchange="setHeadlineVariant(this.value)">
+          <option value="A">Candidate A — Same world. Different cities.</option>
+          <option value="B">Candidate B — Built for real connection...</option>
+          <option value="C">Candidate C — A calmer place to meet...</option>
+        </select>
+      </label>
+      <label style="display:block;color:var(--silver);">
+        DEC-LP-02 Hero Visual (PROPOSED):
+        <select onchange="setHeroVisualMode(this.value)">
+          <option value="paired">Option C — Paired (3D-01 + IMG-01)</option>
+          <option value="3d">Option A — 3D-01 Sculpture Only</option>
+          <option value="photo">Option B — IMG-01 Photo Only</option>
+        </select>
+      </label>
+    </div>
+  </aside>
+
+  <script>
+    const VARIANTS = {
+      A: {
+        eyebrow: 'Dating for verified 18+ IIT Madras BS students',
+        h1: 'Same world. Different cities. A chance to meet.',
+        sub: 'An intentional dating space for verified adults (18+) currently enrolled in IIT Madras’s four non-campus BS programmes. Discover peers beyond study channels, match on mutual interest, and start thoughtful conversations.',
+        secText: 'See how it works ↓',
+        secHref: '#how-it-works',
+        trust: 'Confirmed BS inbox · Manual 18+ review · Private photos · No stranger DMs'
+      },
+      B: {
+        eyebrow: 'Independent dating · 18+ IIT Madras BS cohort',
+        h1: 'Built for real connection across your BS world.',
+        sub: 'Your degree brings people together through quizzes, projects, and shared ambition across cities—without giving you a natural way to date. Meet verified adult peers (18+) privately, where interest stays quiet unless it is mutual.',
+        secText: 'See how it works ↓',
+        secHref: '#how-it-works',
+        trust: 'No government ID required · Manual enrolment check · Mutual match before messaging'
+      },
+      C: {
+        eyebrow: 'Dating across distance · Verified IITM BS adults (18+)',
+        h1: 'A calmer place to meet someone who shares your pace.',
+        sub: 'Built for verified adult learners (18+) across IIT Madras’s four non-campus BS programmes—away from endless swipe loops and chaotic group chats. Read honest prompts, connect city to city, and message only after mutual interest.',
+        secText: 'See the product ↓',
+        secHref: '#inside-saymyname',
+        trust: 'Verified peers · Coarse city only · Unmatch or block anytime'
+      }
+    };
+
+    function setHeadlineVariant(key) {
+      const v = VARIANTS[key] || VARIANTS.A;
+      document.getElementById('hero-eyebrow').textContent = v.eyebrow;
+      document.getElementById('hero-h1').textContent = v.h1;
+      document.getElementById('hero-sub').textContent = v.sub;
+      const sec = document.getElementById('hero-sec-link');
+      sec.textContent = v.secText;
+      sec.setAttribute('href', v.secHref);
+      document.getElementById('hero-trust').textContent = v.trust;
+    }
+
+    function setHeroVisualMode(mode) {
+      document.getElementById('mode-paired').style.display = mode === 'paired' ? 'grid' : 'none';
+      document.getElementById('mode-3d').style.display = mode === '3d' ? 'block' : 'none';
+      document.getElementById('mode-photo').style.display = mode === 'photo' ? 'block' : 'none';
+      const labels = {
+        paired: '3D-01 + IMG-01 Placeholder',
+        '3d': '3D-01 Two Lights Sculpture Only',
+        photo: 'IMG-01 Photography Only Placeholder'
+      };
+      document.getElementById('hero-asset-badge').textContent = labels[mode];
+    }
+
+    function switchPreview(tab, btn) {
+      document.querySelectorAll('.preview-tab').forEach(b => b.setAttribute('aria-selected', 'false'));
+      btn.setAttribute('aria-selected', 'true');
+      document.getElementById('view-discover').style.display = tab === 'discover' ? 'grid' : 'none';
+      document.getElementById('view-match').style.display = tab === 'match' ? 'block' : 'none';
+      document.getElementById('view-chat').style.display = tab === 'chat' ? 'block' : 'none';
+    }
+
+    function toggleMobileNav(btn) {
+      const drawer = document.getElementById('mobile-drawer');
+      const open = drawer.classList.toggle('open');
+      btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+    }
+    function closeMobileNav() {
+      document.getElementById('mobile-drawer').classList.remove('open');
+    }
+
+    async function shareDemo() {
+      const url = 'https://saymyname.in/?src=peer';
+      const toast = document.getElementById('share-toast');
+      if (navigator.share) {
+        try {
+          await navigator.share({
+            title: 'SayMyName.in — Same world. Different cities.',
+            text: 'An independent dating space for verified 18+ IIT Madras non-campus BS students.',
+            url
+          });
+          toast.textContent = 'Shared via device share sheet (no tracking enabled).';
+          return;
+        } catch {}
+      }
+      if (navigator.clipboard) {
+        await navigator.clipboard.writeText(url).catch(() => {});
+      }
+      toast.textContent = 'Link copied: ' + url + ' (static preview, zero tracking).';
+    }
+  </script>
+</body>
+</html>

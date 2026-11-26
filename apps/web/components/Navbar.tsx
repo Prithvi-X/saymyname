@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useAuth } from '../lib/auth-context';
@@ -16,18 +16,24 @@ import {
   ShieldIcon,
 } from './icons';
 
+export interface NavbarProps {
+  editorialEnabled?: boolean;
+}
+
 /**
  * SayMyName Navigation Bar (Document 10)
  * - Mineral Night Surfaces: Coal #12161B with Edge #343D48 bottom separator
  * - Logo Lockup: Approved Interval Symbol + Grotesk Wordmark (strictly preserved)
  * - Visitor Header: Logo + Eligibility Guide + Safety & Consent + Sign In + Register
+ *   (or Editorial scoped variant on `/` when LANDING_PAGE_EDITORIAL_ENABLED=true)
  * - Member Header (ACTIVE_MEMBER only): Member tabs + Avatar/Display Name + Verified badge + Sign Out
- * - Mobile Visitor Drawer (< 768px): Accessible toggle menu for public navigation & auth actions
+ * - Mobile Visitor Drawer (< 768px): Accessible toggle menu with Escape close & focus return
  */
-export default function Navbar() {
+export default function Navbar({ editorialEnabled = false }: NavbarProps) {
   const pathname = usePathname();
   const { authState, lifecycleState, user, logout } = useAuth();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const mobileToggleRef = useRef<HTMLButtonElement | null>(null);
 
   const isActiveMember =
     lifecycleState === 'ACTIVE_MEMBER' || authState === 'VERIFIED_MEMBER';
@@ -35,10 +41,24 @@ export default function Navbar() {
     !isActiveMember &&
     lifecycleState !== 'UNAUTHENTICATED' &&
     authState !== 'UNAUTHENTICATED';
+  const useEditorialVisitorNav =
+    editorialEnabled && pathname === '/' && !isActiveMember && !isAuthenticatedIncomplete;
 
   useEffect(() => {
     setMobileMenuOpen(false);
   }, [pathname]);
+
+  useEffect(() => {
+    if (!mobileMenuOpen) return;
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key === 'Escape') {
+        setMobileMenuOpen(false);
+        mobileToggleRef.current?.focus();
+      }
+    }
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [mobileMenuOpen]);
 
   const cleanDisplayName = sanitizeDisplayName(user?.displayName);
 
@@ -50,10 +70,16 @@ export default function Navbar() {
     { label: 'Profile', href: '/profile', icon: UserIcon },
   ];
 
-  const publicNavItems = [
-    { label: 'Eligibility Guide', href: '/eligibility' },
-    { label: 'Safety & Consent', href: '/safety' },
-  ];
+  const publicNavItems = useEditorialVisitorNav
+    ? [
+        { label: 'How It Works', href: '#how-it-works' },
+        { label: 'Eligibility', href: '/eligibility' },
+        { label: 'Safety', href: '/safety' },
+      ]
+    : [
+        { label: 'Eligibility Guide', href: '/eligibility' },
+        { label: 'Safety & Consent', href: '/safety' },
+      ];
 
   return (
     <header className="smn-glass-nav border-b border-edge/80 sticky top-0 z-50 font-ui select-none">
@@ -177,15 +203,16 @@ export default function Navbar() {
                   </Link>
                   <Link href="/onboarding">
                     <Button variant="primary" size="sm">
-                      Register
+                      {useEditorialVisitorNav ? 'Create Account' : 'Register'}
                     </Button>
                   </Link>
                 </div>
               )}
 
               <button
+                ref={mobileToggleRef}
                 type="button"
-                className="md:hidden inline-flex items-center justify-center w-10 h-10 rounded-[6px] border border-edge bg-iron text-chalk hover:bg-slate transition-colors"
+                className="md:hidden inline-flex items-center justify-center w-[44px] h-[44px] rounded-[6px] border border-edge bg-iron text-chalk hover:bg-slate transition-colors"
                 aria-label={mobileMenuOpen ? 'Close navigation menu' : 'Open navigation menu'}
                 aria-expanded={mobileMenuOpen}
                 aria-controls="mobile-public-drawer"
@@ -219,29 +246,23 @@ export default function Navbar() {
           aria-label="Mobile Public Navigation"
           className="md:hidden border-t border-edge/80 bg-coal/95 backdrop-blur-md px-4 py-4 flex flex-col gap-2"
         >
-          <Link
-            href="/eligibility"
-            className={`px-3 py-2.5 rounded-[6px] text-sm font-medium ${
-              pathname === '/eligibility'
-                ? 'bg-iron text-chalk border border-edge'
-                : 'text-silver hover:bg-iron/60 hover:text-chalk'
-            }`}
-          >
-            Eligibility Guide
-          </Link>
-          <Link
-            href="/safety"
-            className={`px-3 py-2.5 rounded-[6px] text-sm font-medium ${
-              pathname === '/safety'
-                ? 'bg-iron text-chalk border border-edge'
-                : 'text-silver hover:bg-iron/60 hover:text-chalk'
-            }`}
-          >
-            Safety &amp; Consent
-          </Link>
+          {publicNavItems.map((item) => (
+            <Link
+              key={item.href}
+              href={item.href}
+              onClick={() => setMobileMenuOpen(false)}
+              className={`px-3 py-2.5 rounded-[6px] text-sm font-medium ${
+                pathname === item.href
+                  ? 'bg-iron text-chalk border border-edge'
+                  : 'text-silver hover:bg-iron/60 hover:text-chalk'
+              }`}
+            >
+              {item.label}
+            </Link>
+          ))}
           {isAuthenticatedIncomplete ? (
             <div className="grid grid-cols-2 gap-2.5 pt-2 border-t border-edge/70 mt-1 sm:hidden">
-              <Link href="/onboarding" className="w-full">
+              <Link href="/onboarding" className="w-full" onClick={() => setMobileMenuOpen(false)}>
                 <Button variant="primary" size="sm" className="w-full">
                   Continue Setup
                 </Button>
@@ -252,14 +273,14 @@ export default function Navbar() {
             </div>
           ) : (
             <div className="grid grid-cols-2 gap-2.5 pt-2 border-t border-edge/70 mt-1 sm:hidden">
-              <Link href="/login" className="w-full">
+              <Link href="/login" className="w-full" onClick={() => setMobileMenuOpen(false)}>
                 <Button variant="secondary" size="sm" className="w-full">
                   Sign In
                 </Button>
               </Link>
-              <Link href="/onboarding" className="w-full">
+              <Link href="/onboarding" className="w-full" onClick={() => setMobileMenuOpen(false)}>
                 <Button variant="primary" size="sm" className="w-full">
-                  Register
+                  {useEditorialVisitorNav ? 'Create Account' : 'Register'}
                 </Button>
               </Link>
             </div>

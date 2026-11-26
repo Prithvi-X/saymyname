@@ -43,8 +43,8 @@ const config: Config = {
         },
       },
       fontFamily: {
-        ui: ['Instrument Sans', 'sans-serif'],
-        display: ['Instrument Sans', 'sans-serif'],
+        ui: ['var(--font-instrument-sans)', 'Instrument Sans', 'sans-serif'],
+        display: ['var(--font-instrument-sans)', 'Instrument Sans', 'sans-serif'],
         mono: ['JetBrains Mono', 'monospace'],
       },
       boxShadow: {

@@ -1,7 +1,17 @@
+import type { Metadata } from 'next';
 import React from 'react';
 import Link from 'next/link';
 import { getConfiguredSupportEmail } from '../../lib/public-config';
 import { Button } from '../../components/ui';
+
+export const metadata: Metadata = {
+  title: 'Member Support & Account Recovery',
+  description:
+    'Password reset, verification review status lookup, and safety escalation resources for SayMyName.in members.',
+  alternates: {
+    canonical: '/support',
+  },
+};
 
 export default function SupportPage() {
   const supportEmail = getConfiguredSupportEmail();

@@ -1,14 +1,57 @@
 import type { Metadata } from 'next';
+import localFont from 'next/font/local';
 import './globals.css';
 import Navbar from '../components/Navbar';
 import BottomNav from '../components/BottomNav';
 import PublicFooter from '../components/PublicFooter';
 import { AuthProvider } from '../lib/auth-context';
 import { getConfiguredSupportEmail } from '../lib/public-config';
+import { isEditorialLandingEnabled } from '../lib/landing-flag';
+
+const instrumentSans = localFont({
+  src: [
+    {
+      path: './fonts/instrument-sans-latin-normal.woff2',
+      weight: '400 700',
+      style: 'normal',
+    },
+    {
+      path: './fonts/instrument-sans-latin-ext-normal.woff2',
+      weight: '400 700',
+      style: 'normal',
+    },
+    {
+      path: './fonts/instrument-sans-latin-italic.woff2',
+      weight: '400 700',
+      style: 'italic',
+    },
+    {
+      path: './fonts/instrument-sans-latin-ext-italic.woff2',
+      weight: '400 700',
+      style: 'italic',
+    },
+  ],
+  variable: '--font-instrument-sans',
+  display: 'swap',
+  fallback: ['-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Roboto', 'sans-serif'],
+});
 
 export const metadata: Metadata = {
-  title: 'SayMyName.in — For verified IIT Madras non-campus BS students',
-  description: 'An independent, dating-first platform for adult learners across distance. Built around mutual consent, intentional connection, and relationship continuity.',
+  metadataBase: new URL('https://saymyname.in'),
+  title: {
+    default: 'SayMyName.in — For verified IIT Madras non-campus BS students',
+    template: '%s | SayMyName.in',
+  },
+  description:
+    'An independent, dating-first platform for adult learners across distance. Built around mutual consent, intentional connection, and relationship continuity.',
+  openGraph: {
+    siteName: 'SayMyName.in',
+    type: 'website',
+    locale: 'en_IN',
+  },
+  twitter: {
+    card: 'summary_large_image',
+  },
 };
 
 export default function RootLayout({
@@ -16,8 +59,11 @@ export default function RootLayout({
 }: {
   children: React.ReactNode;
 }) {
+  const editorialEnabled = isEditorialLandingEnabled();
+  const supportEmail = getConfiguredSupportEmail();
+
   return (
-    <html lang="en">
+    <html lang="en" className={instrumentSans.variable}>
       <head>
         <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
         <link rel="alternate icon" href="/favicon.ico" />
@@ -51,20 +97,20 @@ export default function RootLayout({
             `,
           }}
         />
-        <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
-        <link
-          href="https://fonts.googleapis.com/css2?family=Instrument+Sans:ital,wght@0,400..700;1,400..700&display=swap"
-          rel="stylesheet"
-        />
       </head>
       <body>
+        <a
+          href="#main-content"
+          className="sr-only focus:not-sr-only focus:fixed focus:top-3 focus:left-3 focus:z-[100] focus:px-4 focus:py-2.5 focus:rounded-[8px] focus:bg-iris focus:text-void focus:font-semibold focus:text-sm focus:shadow-lg"
+        >
+          Skip to main content
+        </a>
         <AuthProvider>
-          <Navbar />
-          <main className="app-main-content">
+          <Navbar editorialEnabled={editorialEnabled} />
+          <main id="main-content" tabIndex={-1} className="app-main-content focus:outline-none">
             {children}
           </main>
-          <PublicFooter supportEmail={getConfiguredSupportEmail()} />
+          <PublicFooter supportEmail={supportEmail} editorialEnabled={editorialEnabled} />
           <BottomNav />
         </AuthProvider>
       </body>

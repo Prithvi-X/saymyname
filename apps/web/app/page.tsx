@@ -1,6 +1,42 @@
+import type { Metadata } from 'next';
 import React from 'react';
 import Link from 'next/link';
 import { Button } from '../components/ui';
+import { LandingPage } from '../components/landing';
+import { isEditorialLandingEnabled } from '../lib/landing-flag';
+
+export const metadata: Metadata = {
+  title: {
+    absolute: 'SayMyName.in — Intentional dating for verified IIT Madras non-campus BS adults',
+  },
+  description:
+    'An independent dating-first community for verified adults (18+) currently enrolled in IIT Madras non-campus BS programmes. Mutual interest before conversation.',
+  alternates: {
+    canonical: '/',
+  },
+  openGraph: {
+    title: 'SayMyName.in — Same world. Different cities. A chance to meet.',
+    description:
+      'An independent dating space for verified adults (18+) in IIT Madras non-campus BS programmes, built around mutual consent and unhurried conversation.',
+    url: 'https://saymyname.in',
+    type: 'website',
+    images: [
+      {
+        url: '/images/landing/og/saymyname-og-direction-a.png',
+        width: 1200,
+        height: 630,
+        alt: 'SayMyName.in — Same world. Different cities. A chance to meet.',
+      },
+    ],
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'SayMyName.in — Same world. Different cities. A chance to meet.',
+    description:
+      'Independent dating space for verified adults (18+) enrolled in IIT Madras non-campus BS programmes.',
+    images: ['/images/landing/og/saymyname-og-direction-a.png'],
+  },
+};
 
 const PROGRAMME_FAMILIES = [
   {
@@ -76,6 +112,13 @@ const CONSENT_INVARIANTS = [
 ];
 
 export default function HomePage() {
+  if (isEditorialLandingEnabled()) {
+    return <LandingPage candidateId="A" />;
+  }
+  return <LegacyHomePage />;
+}
+
+function LegacyHomePage() {
   return (
     <div className="bg-void text-chalk font-ui smn-stage-wrap">
       {/* HERO SECTION: 12-Column Asymmetric Architectural Grid */}

@@ -4,6 +4,10 @@ import React, { createContext, useContext, useState, useEffect, useCallback } fr
 import { useRouter } from 'next/navigation';
 import { AccountLifecycleState } from '@saymyname/contracts';
 import { api, sanitizeDisplayName } from './api';
+import {
+  isAuthenticatedMePayload,
+  shouldFetchAuthenticatedMe,
+} from './auth-session-status';
 
 export type AuthState =
   | 'LOADING'
@@ -72,9 +76,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const refreshUser = useCallback(async (): Promise<UserContext | null> => {
     try {
+      const sessionProbe = await api.probeSessionHint().catch(() => null);
+      if (!shouldFetchAuthenticatedMe(sessionProbe)) {
+        setUser(null);
+        setLifecycleState(AccountLifecycleState.UNAUTHENTICATED);
+        setAuthState('UNAUTHENTICATED');
+        return null;
+      }
+
       const data = await api.getMe();
-      if (!data || !data.id) {
-        throw new Error('Unauthenticated');
+      if (!isAuthenticatedMePayload(data)) {
+        setUser(null);
+        setLifecycleState(AccountLifecycleState.UNAUTHENTICATED);
+        setAuthState('UNAUTHENTICATED');
+        return null;
       }
       const cleanName = sanitizeDisplayName(data.displayName);
       const normalizedUser: UserContext = {

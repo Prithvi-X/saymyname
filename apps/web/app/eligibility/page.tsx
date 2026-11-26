@@ -1,6 +1,16 @@
+import type { Metadata } from 'next';
 import React from 'react';
 import Link from 'next/link';
 import { Button } from '../../components/ui';
+
+export const metadata: Metadata = {
+  title: 'Eligibility Guide — Phase 1 IIT Madras BS Scope',
+  description:
+    'Review Phase 1 eligibility: verified adults aged 18+ actively enrolled in the four approved IIT Madras non-campus BS programme families. Institutional inbox confirmation precedes manual review.',
+  alternates: {
+    canonical: '/eligibility',
+  },
+};
 
 const ELIGIBLE_TRACKS = [
   {

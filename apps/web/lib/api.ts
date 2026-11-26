@@ -366,18 +366,28 @@ class ApiClient {
     });
   }
 
+  async probeSessionHint() {
+    return this.request<{ ok: boolean; csrfToken: string; hasSession: boolean }>(
+      '/api/auth/csrf',
+    );
+  }
+
   async getMe() {
-    return this.request<{
-      id: string;
-      email: string;
-      displayName: string | null;
-      accountStatus: string;
-      emailVerified: boolean;
-      hasPassword: boolean;
-      lifecycleState: AccountLifecycleState;
-      eligibility: any;
-      profile?: any;
-    }>('/api/auth/me');
+    return this.request<
+      | { authenticated: false; user: null }
+      | {
+          authenticated?: true;
+          id: string;
+          email: string;
+          displayName: string | null;
+          accountStatus: string;
+          emailVerified: boolean;
+          hasPassword: boolean;
+          lifecycleState: AccountLifecycleState;
+          eligibility: any;
+          profile?: any;
+        }
+    >('/api/auth/me');
   }
 
   async logout() {
