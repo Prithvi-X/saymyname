@@ -9,6 +9,7 @@ const MEMBER_WORKSPACE_PREFIXES = ['/discover', '/likes', '/matches', '/chats', 
 
 export interface PublicFooterProps {
   supportEmail?: string | null;
+  editorialEnabled?: boolean;
 }
 
 /**
@@ -16,11 +17,15 @@ export interface PublicFooterProps {
  * Rendered on public, authentication, and onboarding routes.
  * Hidden inside active dating workspace views so mobile BottomNav stays unobstructed.
  */
-export default function PublicFooter({ supportEmail = null }: PublicFooterProps) {
+export default function PublicFooter({
+  supportEmail = null,
+  editorialEnabled = false,
+}: PublicFooterProps) {
   const pathname = usePathname();
   const isMemberWorkspace = MEMBER_WORKSPACE_PREFIXES.some(
     (prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`),
   );
+  const useEditorialFooter = editorialEnabled && pathname === '/';
 
   if (isMemberWorkspace) {
     return null;
@@ -35,19 +40,30 @@ export default function PublicFooter({ supportEmail = null }: PublicFooterProps)
             An independent, dating-first space built strictly for verified adults (18+)
             currently enrolled in approved IIT Madras non-campus BS programmes.
           </p>
-          <p className="text-[11px] text-ash leading-relaxed max-w-sm">
+          <p className={`${useEditorialFooter ? 'text-xs' : 'text-[11px]'} text-ash leading-relaxed max-w-sm`}>
             Independent platform. SayMyName.in is not owned, endorsed, operated by, or
             officially affiliated with IIT Madras.
           </p>
         </div>
 
         <div className="md:col-span-2 flex flex-col gap-2.5 text-xs">
-          <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-ash">
+          <p className={`${useEditorialFooter ? 'text-xs' : 'text-[11px]'} font-semibold uppercase tracking-[0.12em] text-ash`}>
             Platform
           </p>
-          <Link href="/" className="text-silver hover:text-chalk transition-colors">
-            Overview
-          </Link>
+          {useEditorialFooter ? (
+            <>
+              <a href="#inside-saymyname" className="text-silver hover:text-chalk transition-colors">
+                Inside SayMyName
+              </a>
+              <a href="#how-it-works" className="text-silver hover:text-chalk transition-colors">
+                How It Works
+              </a>
+            </>
+          ) : (
+            <Link href="/" className="text-silver hover:text-chalk transition-colors">
+              Overview
+            </Link>
+          )}
           <Link href="/eligibility" className="text-silver hover:text-chalk transition-colors">
             Eligibility Guide
           </Link>

@@ -2,6 +2,8 @@ import type { Metadata } from 'next';
 import React from 'react';
 import Link from 'next/link';
 import { Button } from '../components/ui';
+import { LandingPage } from '../components/landing';
+import { isEditorialLandingEnabled } from '../lib/landing-flag';
 
 export const metadata: Metadata = {
   title: {
@@ -101,6 +103,13 @@ const CONSENT_INVARIANTS = [
 ];
 
 export default function HomePage() {
+  if (isEditorialLandingEnabled()) {
+    return <LandingPage candidateId="A" />;
+  }
+  return <LegacyHomePage />;
+}
+
+function LegacyHomePage() {
   return (
     <div className="bg-void text-chalk font-ui smn-stage-wrap">
       {/* HERO SECTION: 12-Column Asymmetric Architectural Grid */}

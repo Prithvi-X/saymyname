@@ -6,6 +6,7 @@ import BottomNav from '../components/BottomNav';
 import PublicFooter from '../components/PublicFooter';
 import { AuthProvider } from '../lib/auth-context';
 import { getConfiguredSupportEmail } from '../lib/public-config';
+import { isEditorialLandingEnabled } from '../lib/landing-flag';
 
 const instrumentSans = localFont({
   src: [
@@ -58,6 +59,9 @@ export default function RootLayout({
 }: {
   children: React.ReactNode;
 }) {
+  const editorialEnabled = isEditorialLandingEnabled();
+  const supportEmail = getConfiguredSupportEmail();
+
   return (
     <html lang="en" className={instrumentSans.variable}>
       <head>
@@ -95,12 +99,18 @@ export default function RootLayout({
         />
       </head>
       <body>
+        <a
+          href="#main-content"
+          className="sr-only focus:not-sr-only focus:fixed focus:top-3 focus:left-3 focus:z-[100] focus:px-4 focus:py-2.5 focus:rounded-[8px] focus:bg-iris focus:text-void focus:font-semibold focus:text-sm focus:shadow-lg"
+        >
+          Skip to main content
+        </a>
         <AuthProvider>
-          <Navbar />
-          <main className="app-main-content">
+          <Navbar editorialEnabled={editorialEnabled} />
+          <main id="main-content" tabIndex={-1} className="app-main-content focus:outline-none">
             {children}
           </main>
-          <PublicFooter supportEmail={getConfiguredSupportEmail()} />
+          <PublicFooter supportEmail={supportEmail} editorialEnabled={editorialEnabled} />
           <BottomNav />
         </AuthProvider>
       </body>
