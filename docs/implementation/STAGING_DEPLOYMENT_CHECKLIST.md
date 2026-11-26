@@ -1,7 +1,7 @@
-# SayMyName.in — Staging Deployment Checklist (Phase 2 Gate)
+# SayMyName.in — Staging Deployment Checklist (Cumulative Phases 1–4.2)
 
-**Scope:** Preparing an isolated **Staging** environment for Phase 2 verification without touching Production data or Production DNS.  
-**Precondition Blocker:** Repository files previously referenced only one remote Supabase pooler (`aws-0-ap-southeast-1.pooler.supabase.com`) and a Render service (`saymyname-ri9e.onrender.com`, service ID `srv-dc2ogom8bjmc738ai63g`) tracking branch `master` (`761ef79`), while local development is on branch `main` (`cfb5079+`). An operator MUST explicitly confirm which Supabase project ref is **Staging** vs **Production** and reconcile `main` vs `master` before running any step below.
+**Scope:** Preparing an isolated **Staging** environment for Phases 1–4.2 verification (Auth, Verification, Profiles, Discover, Likes, Matches, Outbox Messaging & Streaming Voice Notes, 1:1 LiveKit Calling/`MATCH-22`, and Together Space) without touching Production data or Production DNS.  
+**Precondition Blocker:** Repository files previously referenced only one remote Supabase pooler (`aws-0-ap-southeast-1.pooler.supabase.com`) and a Render service (`saymyname-ri9e.onrender.com`, service ID `srv-dc2ogom8bjmc738ai63g`) tracking branch `master` (`761ef79`), while latest verified work is on branch `phase-4-2-together-experience` (branched from `phase-4-1-calling-safety` / `phase-3-5-chats` / `main`). An operator MUST explicitly confirm which Supabase project ref is **Staging** vs **Production** and approve branch promotion before running any step below.
 
 ---
 
@@ -68,6 +68,20 @@ Ensure every required variable is configured in Staging secret storage (never co
 | `SUPPORT_EMAIL` / `NEXT_PUBLIC_SUPPORT_EMAIL` | Verified support mailbox if active, otherwise omit (never invent unconfigured email) | `apps/web/lib/public-config.ts` |
 | `NEXT_PUBLIC_ALLOW_DESIGN_SYSTEM` | Unset / omitted so `/design-system` remains gated in production builds | `apps/web/app/design-system/page.tsx` |
 | `NEXT_PUBLIC_API_ORIGIN` | Optional fallback only when `API_BACKEND_URL` is absent; prefer explicit `API_BACKEND_URL` | `apps/web/lib/server-bff.ts` |
+| `NEXT_PUBLIC_WS_URL` | Public WebSocket endpoint (`wss://<staging-api-host>/api/v1/ws`) for live chats, calling signals, and Together sync | `apps/web/app/(app)/chats/page.tsx` |
+
+## 4.1 Phase 3.5–4.2 Realtime, Voice-Note & LiveKit Calling Environment Variables (API Service)
+
+| Variable | Requirement / Notes | Verified Usage in Code |
+|---|---|---|
+| `LIVEKIT_URL` | Managed LiveKit Cloud `wss://...` origin (HTTPS/WSS required in `NODE_ENV=production`) | `LiveKitProviderAdapter` |
+| `LIVEKIT_SERVICE_URL` | Derived or explicit `https://...` Twirp RoomService endpoint | `LiveKitProviderAdapter` |
+| `LIVEKIT_API_KEY` / `LIVEKIT_API_SECRET` | Staging LiveKit project credentials (**enforce `room.auto_create: false` on LiveKit project per `ADR-024`**) | `LiveKitProviderAdapter` |
+| `CALLING_IDENTITY_HMAC_SECRET` | Dedicated >= 32 char HMAC secret for pseudonymous `smn_p_*` LiveKit participant IDs | `CallingService` |
+| `LIVEKIT_JOIN_TOKEN_TTL_SECONDS` | `300` (bounded `60..300`; never >= `3600`) | `CallingService` |
+| `CALL_INVITE_TTL_SECONDS` | `45` (ring timeout) | `CallingService` |
+| `DISABLE_OUTBOX_WORKER` | `false` (enable durable `MessagingOutboxRelayService`) | `MessagingOutboxRelayService` |
+| `DISABLE_CALL_EVICTION_WORKER` | `false` (enable durable `CallEvictionRelayService` for `MATCH-22`) | `CallEvictionRelayService` |
 
 ## 5. Post-Deploy Staging Verification Checklist
 1. Confirm `GET https://<staging-api>/api/v1/health` returns HTTP `200`.
@@ -80,4 +94,5 @@ Ensure every required variable is configured in Staging secret storage (never co
    ALLOW_LIVE_STAGING_SMOKE=true API_BASE=https://<staging-api>/api/v1 SMOKE_EMAIL=<staging-inbox@ds.study.iitm.ac.in> node scripts/smoke-staging-resend-r2.mjs --confirm-live-quota
    ```
 7. Verify Reviewer CLI works end-to-end against Staging (`REVIEWER_API_KEY=<key> API_BASE=https://<staging-api>/api/v1 node scripts/review-verification-queue.mjs list`).
-8. **Stop Gate:** Obtain explicit sign-off before updating Production database, DNS (`api.saymyname.in` / `saymyname.in`), or Production deployments.
+8. Verify Phase 3.5–4.2 runtime paths on Staging: WebSocket connection to `NEXT_PUBLIC_WS_URL`, authenticated `/api/bff/v1/messaging/media/:id/stream` `206` playback, 1:1 audio call accept + unmatch SFU eviction (`room.auto_create: false`), and Together Space invite/accept + Relationship Mode unilateral exit.
+9. **Stop Gate:** Obtain explicit sign-off (plus governance sign-off on `D-P35-01`..`03` in `DECISION_REGISTER.md`) before updating Production database, DNS (`api.saymyname.in` / `saymyname.in`), or Production deployments.
