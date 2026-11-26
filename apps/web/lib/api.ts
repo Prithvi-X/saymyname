@@ -9,7 +9,16 @@
  * - Zero unconfigured cloud fallback URLs (never fails over silently to another environment)
  */
 
-import { AccountLifecycleState, ProgrammeFamily } from '@saymyname/contracts';
+import {
+  AccountLifecycleState,
+  GameCatalogItemDto,
+  GameSessionDto,
+  ProgrammeFamily,
+  RelationshipJournalDto,
+  RelationshipMilestoneDto,
+  RelationshipStatusDto,
+  VirtualDateDto,
+} from '@saymyname/contracts';
 
 export function isPrivateIdentifier(value?: string | null): boolean {
   if (!value) return true;
@@ -1227,6 +1236,170 @@ class ApiClient {
       method: 'POST',
       body: JSON.stringify({}),
     });
+  }
+
+  // --- Together Space: Mini-Games, Virtual Dates & Relationship Mode (Phase 4.2) ---
+
+  async getGameCatalog(): Promise<GameCatalogItemDto[]> {
+    return this.request('/api/bff/v1/together/games');
+  }
+
+  async listGameSessions(conversationId: string): Promise<GameSessionDto[]> {
+    return this.request(
+      `/api/bff/v1/together/games/sessions?conversationId=${encodeURIComponent(conversationId)}`,
+    );
+  }
+
+  async inviteGame(payload: {
+    conversationId: string;
+    gameKey: 'word_scramble' | 'iitm_trivia' | 'twenty_questions';
+  }): Promise<GameSessionDto> {
+    return this.request('/api/bff/v1/together/games/invite', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+  }
+
+  async respondGame(sessionId: string, action: 'accept' | 'decline'): Promise<GameSessionDto> {
+    return this.request(
+      `/api/bff/v1/together/games/${encodeURIComponent(sessionId)}/respond`,
+      {
+        method: 'POST',
+        body: JSON.stringify({ action }),
+      },
+    );
+  }
+
+  async submitGameMove(
+    sessionId: string,
+    payload: { moveType: string; moveData: Record<string, any> },
+  ): Promise<GameSessionDto> {
+    return this.request(
+      `/api/bff/v1/together/games/${encodeURIComponent(sessionId)}/move`,
+      {
+        method: 'POST',
+        body: JSON.stringify(payload),
+      },
+    );
+  }
+
+  async endGameSession(sessionId: string): Promise<GameSessionDto> {
+    return this.request(
+      `/api/bff/v1/together/games/${encodeURIComponent(sessionId)}/end`,
+      {
+        method: 'POST',
+        body: JSON.stringify({}),
+      },
+    );
+  }
+
+  async listVirtualDates(conversationId: string): Promise<VirtualDateDto[]> {
+    return this.request(
+      `/api/bff/v1/together/virtual-dates?conversationId=${encodeURIComponent(conversationId)}`,
+    );
+  }
+
+  async proposeVirtualDate(payload: {
+    conversationId: string;
+    scheduledFor: string;
+    timezone: string;
+    activityType: 'coffee_chat' | 'study_session' | 'game_night' | 'music_share' | 'campus_walk';
+    proposalNotes?: string;
+  }): Promise<VirtualDateDto> {
+    return this.request('/api/bff/v1/together/virtual-dates/propose', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+  }
+
+  async respondVirtualDate(dateId: string, action: 'accept' | 'cancel'): Promise<VirtualDateDto> {
+    return this.request(
+      `/api/bff/v1/together/virtual-dates/${encodeURIComponent(dateId)}/respond`,
+      {
+        method: 'POST',
+        body: JSON.stringify({ action }),
+      },
+    );
+  }
+
+  async getRelationshipStatus(matchId: string): Promise<RelationshipStatusDto> {
+    return this.request(`/api/bff/v1/together/relationship/${encodeURIComponent(matchId)}/status`);
+  }
+
+  async proposeRelationship(matchId: string): Promise<{
+    proposed: boolean;
+    bilateralActivated: boolean;
+    message?: string;
+    space?: RelationshipStatusDto['space'];
+  }> {
+    return this.request('/api/bff/v1/together/relationship/propose', {
+      method: 'POST',
+      body: JSON.stringify({ matchId }),
+    });
+  }
+
+  async respondRelationship(
+    matchId: string,
+    action: 'accept' | 'decline',
+  ): Promise<{
+    accepted: boolean;
+    bilateralActivated: boolean;
+    message?: string;
+    space?: RelationshipStatusDto['space'];
+  }> {
+    return this.request('/api/bff/v1/together/relationship/respond', {
+      method: 'POST',
+      body: JSON.stringify({ matchId, action }),
+    });
+  }
+
+  async leaveRelationship(matchId: string): Promise<{
+    success: boolean;
+    message: string;
+    disbandedAt: string;
+  }> {
+    return this.request('/api/bff/v1/together/relationship/leave', {
+      method: 'POST',
+      body: JSON.stringify({ matchId }),
+    });
+  }
+
+  async listRelationshipMilestones(matchId: string): Promise<RelationshipMilestoneDto[]> {
+    return this.request(
+      `/api/bff/v1/together/relationship/${encodeURIComponent(matchId)}/milestones`,
+    );
+  }
+
+  async createRelationshipMilestone(
+    matchId: string,
+    payload: { title: string; milestoneDate: string; description?: string },
+  ): Promise<RelationshipMilestoneDto> {
+    return this.request(
+      `/api/bff/v1/together/relationship/${encodeURIComponent(matchId)}/milestones`,
+      {
+        method: 'POST',
+        body: JSON.stringify(payload),
+      },
+    );
+  }
+
+  async listRelationshipJournal(matchId: string): Promise<RelationshipJournalDto[]> {
+    return this.request(
+      `/api/bff/v1/together/relationship/${encodeURIComponent(matchId)}/journal`,
+    );
+  }
+
+  async createRelationshipJournal(
+    matchId: string,
+    payload: { entryText: string; entryDate: string },
+  ): Promise<RelationshipJournalDto> {
+    return this.request(
+      `/api/bff/v1/together/relationship/${encodeURIComponent(matchId)}/journal`,
+      {
+        method: 'POST',
+        body: JSON.stringify(payload),
+      },
+    );
   }
 
   // --- Safety & Moderation ---

@@ -421,6 +421,12 @@ export interface GameMoveRequestDto {
   moveData: Record<string, unknown>;
 }
 
+export interface GameSessionMemberDto {
+  accountId: string;
+  role: string;
+  score: number;
+}
+
 export interface GameSessionDto {
   id: string;
   conversationId: string;
@@ -429,6 +435,8 @@ export interface GameSessionDto {
   sessionStatus: GameSessionStatus;
   currentState: Record<string, unknown>;
   winnerAccountId?: string | null;
+  invitedByAccountId?: string | null;
+  members?: GameSessionMemberDto[];
   startedAt?: string | null;
   completedAt?: string | null;
 }
@@ -481,6 +489,14 @@ export interface RelationshipSpaceDto {
   activatedAt: string;
   activeDays: number;
   disbandedAt?: string | null;
+}
+
+export interface RelationshipStatusDto {
+  matchId: string;
+  proposalStatus: 'none' | 'proposed' | 'active' | 'declined' | 'disbanded';
+  proposedById: string | null;
+  isActive: boolean;
+  space: RelationshipSpaceDto | null;
 }
 
 export interface RelationshipMilestoneDto {

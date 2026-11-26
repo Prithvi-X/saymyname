@@ -16,6 +16,9 @@ export interface WebSocketEventEnvelope<T = unknown> {
     | 'call.accepted'
     | 'call.state_changed'
     | 'call.ended'
+    | 'together.game_updated'
+    | 'together.date_updated'
+    | 'together.relationship_updated'
     | 'access.revoked'
     | 'authorization.failed'
     | 'pong';
@@ -66,6 +69,28 @@ export interface CallRealtimeEventData {
   callType: 'audio';
   endedReason?: string | null;
   expiresAt?: string | null;
+  occurredAt: string;
+}
+
+export interface TogetherGameEventData {
+  conversationId: string;
+  sessionId: string;
+  sessionStatus: string;
+  occurredAt: string;
+}
+
+export interface TogetherDateEventData {
+  conversationId: string;
+  dateId: string;
+  status: string;
+  occurredAt: string;
+}
+
+export interface TogetherRelationshipEventData {
+  conversationId?: string;
+  matchId: string;
+  proposalStatus: 'none' | 'proposed' | 'active' | 'declined' | 'disbanded';
+  isActive: boolean;
   occurredAt: string;
 }
 

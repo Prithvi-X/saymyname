@@ -672,9 +672,10 @@ export class MatchAuthorizationService {
     if (typeof tx.relationshipSpace?.updateMany === 'function') {
       await tx.relationshipSpace
         .updateMany({
-          where: { matchId: match.id, isActive: true },
+          where: { matchId: match.id, OR: [{ isActive: true }, { proposalStatus: 'proposed' }] },
           data: {
             isActive: false,
+            proposalStatus: 'disbanded',
             disbandedAt: now,
             disbandedById: params.endedByAccountId,
           },

@@ -128,4 +128,87 @@ describe('TogetherService (Mini-Games, Virtual Dates & Relationship Mode)', () =
       },
     );
   });
+
+  it('blocks inviter/proposer from self-accepting games, virtual dates, or relationship mode', async () => {
+    const game = await togetherService.inviteGame(userA, {
+      conversationId,
+      gameKey: 'iitm_trivia',
+    });
+    assert.equal((game.currentState as any).correctIndex, undefined);
+    await assert.rejects(
+      () => togetherService.respondGame(userA, game.id, { action: 'accept' }),
+      { name: 'ForbiddenException' },
+    );
+
+    const vDate = await togetherService.proposeVirtualDate(userA, {
+      conversationId,
+      scheduledFor: '2026-12-20T18:30:00.000Z',
+      timezone: 'Asia/Kolkata',
+      activityType: 'coffee_chat',
+    });
+    await assert.rejects(
+      () => togetherService.respondVirtualDate(userA, vDate.id, { action: 'accept' }),
+      { name: 'ForbiddenException' },
+    );
+    await assert.rejects(
+      () =>
+        togetherService.proposeVirtualDate(userA, {
+          conversationId,
+          scheduledFor: '2020-01-01T10:00:00.000Z',
+          timezone: 'Asia/Kolkata',
+          activityType: 'coffee_chat',
+        }),
+      { name: 'BadRequestException' },
+    );
+
+    const relMatchId = 'm2222222-2222-2222-2222-222222222222';
+    await togetherService.proposeRelationship(userA, { matchId: relMatchId });
+    const stPending = await togetherService.getRelationshipStatus(userA, relMatchId);
+    assert.equal(stPending.proposalStatus, 'proposed');
+    assert.equal(stPending.proposedById, userA);
+    assert.equal(stPending.isActive, false);
+
+    await assert.rejects(
+      () => togetherService.respondRelationship(userA, { matchId: relMatchId, action: 'accept' }),
+      { name: 'ForbiddenException' },
+    );
+
+    const relAccepted = await togetherService.respondRelationship(userB, {
+      matchId: relMatchId,
+      action: 'accept',
+    });
+    assert.equal(relAccepted.bilateralActivated, true);
+
+    const stActive = await togetherService.getRelationshipStatus(userB, relMatchId);
+    assert.equal(stActive.proposalStatus, 'active');
+    assert.equal(stActive.isActive, true);
+  });
+
+  it('plays 20 Questions icebreaker cooperatively and supports ending game sessions', async () => {
+    const qSession = await togetherService.inviteGame(userA, {
+      conversationId,
+      gameKey: 'twenty_questions',
+    });
+    await togetherService.respondGame(userB, qSession.id, { action: 'accept' });
+
+    const r1A = await togetherService.submitMove(userA, qSession.id, {
+      moveType: 'answer_prompt',
+      moveData: { answer: 'Reading by Marina beach with filter coffee.' },
+    });
+    assert.equal(r1A.currentState.promptIndex, 0);
+    assert.equal((r1A.currentState.responses as any[]).length, 1);
+
+    const r1B = await togetherService.submitMove(userB, qSession.id, {
+      moveType: 'answer_prompt',
+      moveData: { answer: 'Long walks and indie playlists.' },
+    });
+    assert.equal(r1B.currentState.promptIndex, 1);
+    assert.equal(r1B.members?.[0].score, 10);
+
+    const ended = await togetherService.endGameSession(userA, qSession.id);
+    assert.equal(ended.sessionStatus, GameSessionStatus.ABANDONED);
+
+    const list = await togetherService.listGameSessions(userB, conversationId);
+    assert.ok(list.some((s) => s.id === qSession.id));
+  });
 });

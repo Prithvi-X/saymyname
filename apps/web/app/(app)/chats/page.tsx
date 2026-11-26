@@ -64,6 +64,18 @@ import {
 import { VoiceNotePlayer } from '../../../components/VoiceNotePlayer';
 import { AudioCallOverlay } from '../../../components/AudioCallOverlay';
 import {
+  TogetherGamesModal,
+  TogetherRelationshipModal,
+  TogetherVirtualDateModal,
+} from '../../../components/TogetherModals';
+import {
+  GameSessionDto,
+  GameSessionStatus,
+  RelationshipStatusDto,
+  VirtualDateDto,
+  VirtualDateStatus,
+} from '@saymyname/contracts';
+import {
   ActiveCallSessionModel,
   CallUiPhase,
   deriveCallPhaseFromSession,
@@ -239,12 +251,11 @@ function ChatsContent() {
   const [callMuted, setCallMuted] = useState(false);
   const [callActionBusy, setCallActionBusy] = useState(false);
   const [callEndedReason, setCallEndedReason] = useState<string | null>(null);
-  const [gameSelection, setGameSelection] = useState<
-    'word_scramble' | 'iitm_trivia'
-  >('word_scramble');
-  const [gameActive, setGameActive] = useState(false);
-  const [gameScore, setGameScore] = useState(0);
-  const [dateProposed, setDateProposed] = useState(false);
+  const [togetherGameSessions, setTogetherGameSessions] = useState<GameSessionDto[]>([]);
+  const [togetherVirtualDates, setTogetherVirtualDates] = useState<VirtualDateDto[]>([]);
+  const [togetherRelationshipStatus, setTogetherRelationshipStatus] =
+    useState<RelationshipStatusDto | null>(null);
+  const [togetherRefreshTick, setTogetherRefreshTick] = useState(0);
 
   // Refs for race-safe async cancellation, scroll anchoring & voice/LiveKit cleanup
   const selfAccountIdRef = useRef<string | null>(null);
@@ -256,6 +267,8 @@ function ChatsContent() {
   const callTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const callConnectingRef = useRef<boolean>(false);
   const activeConvRef = useRef<string | null>(null);
+  const conversationsRef = useRef<ConversationListItem[]>(conversations);
+  conversationsRef.current = conversations;
   const threadRequestTokenRef = useRef(0);
   const threadContainerRef = useRef<HTMLDivElement | null>(null);
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
@@ -857,14 +870,35 @@ function ChatsContent() {
     setCallUiPhase('idle');
   }, [cleanupCallMediaAndRoom]);
 
-  // Load thread + any active/ringing audio call whenever active conversation changes
+  // Load thread, active audio call, and Together Space summary whenever active conversation changes
   useEffect(() => {
-    if (!activeConvId) return;
+    if (!activeConvId) {
+      setTogetherGameSessions([]);
+      setTogetherVirtualDates([]);
+      setTogetherRelationshipStatus(null);
+      return;
+    }
     setMessages([]);
     setHasOlderHistory(false);
     setNextCursorSeq(null);
     discardVoiceDraft();
     void loadConversationInitial(activeConvId);
+
+    const activeMatchIdForConv = conversationsRef.current.find(
+      (c) => c.conversationId === activeConvId,
+    )?.matchId;
+    void Promise.all([
+      api.listGameSessions(activeConvId).catch(() => []),
+      api.listVirtualDates(activeConvId).catch(() => []),
+      activeMatchIdForConv
+        ? api.getRelationshipStatus(activeMatchIdForConv).catch(() => null)
+        : Promise.resolve(null),
+    ]).then(([gList, dList, rStatus]) => {
+      if (activeConvRef.current !== activeConvId) return;
+      setTogetherGameSessions(gList);
+      setTogetherVirtualDates(dList);
+      setTogetherRelationshipStatus(rStatus);
+    });
 
     void api
       .getActiveAudioCall(activeConvId)
@@ -1137,6 +1171,43 @@ function ChatsContent() {
             setCallEndedReason(endedReason);
             if (callPhaseRef.current !== 'mic_permission_denied') {
               setCallUiPhase(mapCallTerminalPhase(endedReason, status));
+            }
+          }
+          return;
+        }
+
+        if (
+          eventType === 'together.game_updated' ||
+          eventType === 'together.date_updated' ||
+          eventType === 'together.relationship_updated'
+        ) {
+          const eventConvId = envelope?.data?.conversationId;
+          if (!eventConvId || eventConvId === activeConvRef.current) {
+            setTogetherRefreshTick((n) => n + 1);
+            if (eventType === 'together.game_updated' && activeConvRef.current) {
+              void api
+                .listGameSessions(activeConvRef.current)
+                .then((rows) => {
+                  if (!unmountedRef.current) setTogetherGameSessions(rows);
+                })
+                .catch(() => null);
+            } else if (eventType === 'together.date_updated' && activeConvRef.current) {
+              void api
+                .listVirtualDates(activeConvRef.current)
+                .then((rows) => {
+                  if (!unmountedRef.current) setTogetherVirtualDates(rows);
+                })
+                .catch(() => null);
+            } else if (eventType === 'together.relationship_updated') {
+              const targetMatchId = envelope?.data?.matchId;
+              if (targetMatchId) {
+                void api
+                  .getRelationshipStatus(targetMatchId)
+                  .then((st) => {
+                    if (!unmountedRef.current) setTogetherRelationshipStatus(st);
+                  })
+                  .catch(() => null);
+              }
             }
           }
           return;
@@ -2023,9 +2094,27 @@ function ChatsContent() {
                       <Badge variant="verified" size="sm">
                         Verified
                       </Badge>
-                      {dateProposed && (
+                      {togetherRelationshipStatus?.isActive && (
+                        <Badge variant="verified" size="sm">
+                          Partner Space
+                        </Badge>
+                      )}
+                      {togetherGameSessions.some(
+                        (g) =>
+                          g.sessionStatus === GameSessionStatus.INVITED ||
+                          g.sessionStatus === GameSessionStatus.ACTIVE,
+                      ) && (
                         <Badge variant="programme" size="sm">
-                          Date Invited
+                          Game Ready
+                        </Badge>
+                      )}
+                      {togetherVirtualDates.some(
+                        (d) =>
+                          d.status === VirtualDateStatus.PROPOSED ||
+                          d.status === VirtualDateStatus.ACCEPTED,
+                      ) && (
+                        <Badge variant="programme" size="sm">
+                          Date Planned
                         </Badge>
                       )}
                     </div>
@@ -2059,7 +2148,7 @@ function ChatsContent() {
                     <span className="hidden sm:inline">Call</span>
                   </Button>
 
-                  <div className="relative hidden sm:block">
+                  <div className="relative">
                     <Button
                       variant="ghost"
                       size="sm"
@@ -2067,8 +2156,9 @@ function ChatsContent() {
                       leftIcon={<GameIcon size={14} />}
                       className="border border-edge bg-iron/80 text-chalk"
                       title="Together Space"
+                      data-testid="open-together-hub-btn"
                     >
-                      Together
+                      <span className="hidden sm:inline">Together</span>
                     </Button>
 
                     {togetherHubOpen && (
@@ -2781,140 +2871,56 @@ function ChatsContent() {
         </div>
       </Dialog>
 
-      {/* MINI-GAMES MODAL (Preserved secondary entry-point) */}
-      <Dialog
-        isOpen={Boolean(activeModal === 'game' && activePartner)}
-        onClose={() => setActiveModal(null)}
-        title="Cooperative Mini-Games"
-        description="Low-pressure turn-based games designed for BS students across distance."
-        maxWidth="md"
-        footer={
-          !gameActive ? (
-            <>
-              <Button variant="secondary" onClick={() => setActiveModal(null)}>
-                Cancel
-              </Button>
-              <Button variant="primary" onClick={() => setGameActive(true)}>
-                Preview{' '}
-                {gameSelection === 'word_scramble' ? 'Word Scramble' : 'Trivia'}
-              </Button>
-            </>
-          ) : (
-            <Button
-              variant="primary"
-              className="w-full"
-              onClick={() => {
-                setGameScore((prev) => prev + 10);
-                setGameActive(false);
-                setActiveModal(null);
-              }}
-            >
-              Close Preview
-            </Button>
-          )
-        }
-      >
-        {!gameActive ? (
-          <div className="flex flex-col gap-3">
-            <button
-              type="button"
-              onClick={() => setGameSelection('word_scramble')}
-              className={`text-left p-4 rounded-[8px] border transition-colors ${
-                gameSelection === 'word_scramble'
-                  ? 'border-iris bg-iris/[0.12]'
-                  : 'border-edge bg-iron hover:border-[#465261]'
-              }`}
-            >
-              <div className="text-sm font-semibold text-chalk">Word Scramble</div>
-              <div className="text-xs text-silver mt-0.5">
-                Unscramble campus and computer science terms cooperatively.
-              </div>
-            </button>
-            <button
-              type="button"
-              onClick={() => setGameSelection('iitm_trivia')}
-              className={`text-left p-4 rounded-[8px] border transition-colors ${
-                gameSelection === 'iitm_trivia'
-                  ? 'border-iris bg-iris/[0.12]'
-                  : 'border-edge bg-iron hover:border-[#465261]'
-              }`}
-            >
-              <div className="text-sm font-semibold text-chalk">IITM BS Trivia</div>
-              <div className="text-xs text-silver mt-0.5">
-                Curriculum, Chennai landmarks, and term project history.
-              </div>
-            </button>
-          </div>
-        ) : (
-          <div className="text-center py-4">
-            <span className="text-[11px] font-semibold uppercase tracking-[0.12em] text-terracotta block mb-2">
-              Team Score: {gameScore} pts
-            </span>
-            <p className="text-xs text-silver">
-              Multiplayer turn-based synchronization continues in Phase 4 Together Space.
-            </p>
-          </div>
-        )}
-      </Dialog>
+      {/* COOPERATIVE MINI-GAMES MODAL (Phase 4.2) */}
+      {activeConversation && activePartner && (
+        <TogetherGamesModal
+          isOpen={activeModal === 'game'}
+          onClose={() => setActiveModal(null)}
+          conversationId={activeConversation.conversationId}
+          partnerName={activePartner.displayName}
+          selfAccountId={selfAccountId}
+          refreshTick={togetherRefreshTick}
+          onSummaryChange={setTogetherGameSessions}
+          onMatchEnded={() => {
+            setActiveModal(null);
+            markEndedStateForConversation(activeConversation.conversationId);
+          }}
+        />
+      )}
 
-      {/* VIRTUAL DATE MODAL (Preserved secondary entry-point) */}
-      <Dialog
-        isOpen={Boolean(activeModal === 'date' && activePartner)}
-        onClose={() => setActiveModal(null)}
-        title="Virtual Coffee Date"
-        description={
-          activePartner
-            ? `Schedule a mutual virtual hangout with ${activePartner.displayName}.`
-            : undefined
-        }
-        maxWidth="sm"
-        footer={
-          <>
-            <Button variant="secondary" onClick={() => setActiveModal(null)}>
-              Close
-            </Button>
-            <Button
-              variant="primary"
-              onClick={() => {
-                setDateProposed(true);
-                setActiveModal(null);
-                setSafetyFeedback(
-                  'Virtual coffee scheduling preview saved for Phase 4.',
-                );
-              }}
-            >
-              Acknowledge
-            </Button>
-          </>
-        }
-      >
-        <div className="rounded-[8px] bg-iron border border-edge p-4 text-xs text-silver">
-          Both partners must explicitly consent before any virtual date session confirms.
-        </div>
-      </Dialog>
+      {/* VIRTUAL DATES MODAL (Phase 4.2) */}
+      {activeConversation && activePartner && (
+        <TogetherVirtualDateModal
+          isOpen={activeModal === 'date'}
+          onClose={() => setActiveModal(null)}
+          conversationId={activeConversation.conversationId}
+          partnerName={activePartner.displayName}
+          selfAccountId={selfAccountId}
+          refreshTick={togetherRefreshTick}
+          onSummaryChange={setTogetherVirtualDates}
+          onMatchEnded={() => {
+            setActiveModal(null);
+            markEndedStateForConversation(activeConversation.conversationId);
+          }}
+        />
+      )}
 
-      {/* RELATIONSHIP MODE MODAL (Preserved secondary entry-point) */}
-      <Dialog
-        isOpen={Boolean(activeModal === 'relationship' && activePartner)}
-        onClose={() => setActiveModal(null)}
-        title="Relationship Mode"
-        description="Opt-in mutual space requiring two independent affirmative actions and allowing unilateral exit anytime."
-        maxWidth="md"
-        footer={
-          <Button variant="primary" onClick={() => setActiveModal(null)}>
-            Close
-          </Button>
-        }
-      >
-        <div className="flex flex-col gap-3 text-xs text-silver">
-          <div className="p-3.5 rounded-[8px] bg-iron border border-edge">
-            <div className="font-semibold text-chalk">Dual Consent &amp; Independent Exit</div>
-            <p className="mt-1">
-              Zero surveillance, zero GPS tracking, and either partner can exit independently without permission.
-            </p>
-          </div>
-        </div>
-      </Dialog>
+      {/* RELATIONSHIP MODE MODAL (Phase 4.2 Bilateral Opt-In & Independent Exit) */}
+      {activeConversation && activePartner && (
+        <TogetherRelationshipModal
+          isOpen={activeModal === 'relationship'}
+          onClose={() => setActiveModal(null)}
+          matchId={activeConversation.matchId}
+          partnerName={activePartner.displayName}
+          selfAccountId={selfAccountId}
+          refreshTick={togetherRefreshTick}
+          onStatusChange={setTogetherRelationshipStatus}
+          onMatchEnded={() => {
+            setActiveModal(null);
+            markEndedStateForConversation(activeConversation.conversationId);
+          }}
+        />
+      )}
 
       {/* REPORT CONVERSATION OR MESSAGE/VOICE NOTE MODAL */}
       <Dialog

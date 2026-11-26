@@ -1,4 +1,4 @@
-import { IsString, IsNotEmpty, IsIn, IsOptional, IsObject, IsISO8601 } from 'class-validator';
+import { IsString, IsNotEmpty, IsIn, IsOptional, IsObject, IsISO8601, MaxLength } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 export class GameInviteDto {
@@ -54,6 +54,7 @@ export class VirtualDateProposeDto {
   @ApiPropertyOptional({ example: 'Let us prepare for the Deep Learning midterms together over audio call!', description: 'Notes or agenda' })
   @IsString()
   @IsOptional()
+  @MaxLength(400)
   proposalNotes?: string;
 }
 
@@ -87,6 +88,7 @@ export class RelationshipMilestoneDto {
   @ApiProperty({ example: 'First Virtual Date', description: 'Title of the milestone' })
   @IsString()
   @IsNotEmpty()
+  @MaxLength(120)
   title!: string;
 
   @ApiProperty({ example: '2026-11-24', description: 'Date of milestone (YYYY-MM-DD)' })
@@ -97,6 +99,7 @@ export class RelationshipMilestoneDto {
   @ApiPropertyOptional({ example: 'We talked for three hours about computer vision and childhood memories.', description: 'Description' })
   @IsString()
   @IsOptional()
+  @MaxLength(500)
   description?: string;
 }
 
@@ -104,6 +107,7 @@ export class RelationshipJournalDto {
   @ApiProperty({ example: 'We cracked the Kaggle competition top 50 today together!', description: 'Private journal reflection' })
   @IsString()
   @IsNotEmpty()
+  @MaxLength(1500)
   entryText!: string;
 
   @ApiProperty({ example: '2026-11-24', description: 'Date of memory (YYYY-MM-DD)' })

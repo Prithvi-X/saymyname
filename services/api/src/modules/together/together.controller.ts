@@ -42,6 +42,12 @@ export class TogetherController {
     return this.togetherService.getGameCatalog();
   }
 
+  @Get('games/sessions')
+  @ApiOperation({ summary: 'List active, invited, and recent game sessions for a conversation' })
+  async listGameSessions(@Request() req: any, @Query('conversationId') conversationId: string) {
+    return this.togetherService.listGameSessions(req.user?.sub ?? req.user?.id, conversationId);
+  }
+
   @Post('games/invite')
   @ApiOperation({ summary: 'Invite match partner to play a mini-game' })
   async inviteGame(@Request() req: any, @Body() dto: GameInviteDto) {
@@ -66,6 +72,12 @@ export class TogetherController {
     @Body() dto: GameMoveDto,
   ) {
     return this.togetherService.submitMove(req.user?.sub ?? req.user?.id, sessionId, dto);
+  }
+
+  @Post('games/:sessionId/end')
+  @ApiOperation({ summary: 'End or withdraw from an active/invited game session' })
+  async endGameSession(@Request() req: any, @Param('sessionId') sessionId: string) {
+    return this.togetherService.endGameSession(req.user?.sub ?? req.user?.id, sessionId);
   }
 
   @Get('games/:sessionId')
@@ -114,6 +126,12 @@ export class TogetherController {
   @ApiOperation({ summary: 'Accept or decline relationship mode proposal' })
   async respondRelationship(@Request() req: any, @Body() dto: RelationshipRespondDto) {
     return this.togetherService.respondRelationship(req.user?.sub ?? req.user?.id, dto);
+  }
+
+  @Get('relationship/:matchId/status')
+  @ApiOperation({ summary: 'Get relationship mode status (none/proposed/active/declined/disbanded)' })
+  async getRelationshipStatus(@Request() req: any, @Param('matchId') matchId: string) {
+    return this.togetherService.getRelationshipStatus(req.user?.sub ?? req.user?.id, matchId);
   }
 
   @Get('relationship/:matchId')
