@@ -19,10 +19,10 @@ export default function PrivacyPage() {
     <div className="bg-void text-chalk font-ui">
       <div className="container-standard py-12 sm:py-16">
         <div className="mb-8 pb-6 border-b border-edge">
-          <p className="text-[11px] uppercase tracking-[0.14em] text-iris font-semibold mb-2">
-            Privacy Notice
+          <p className="text-[13px] text-iris font-medium mb-2">
+            Privacy notice
           </p>
-          <h1 className="text-3xl font-semibold text-chalk mb-2">
+          <h1 className="text-3xl font-semibold text-chalk tracking-[-0.02em] mb-2">
             How SayMyName handles your data
           </h1>
           <p className="text-sm text-silver">

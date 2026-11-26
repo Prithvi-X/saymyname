@@ -38,7 +38,7 @@ export default function BottomNav() {
 
   return (
     <nav
-      className="nav-mobile-bar smn-glass-nav fixed bottom-0 left-0 right-0 h-[62px] border-t border-edge/80 items-center justify-around z-40 font-ui pb-[env(safe-area-inset-bottom,0px)]"
+      className="nav-mobile-bar smn-solid-nav fixed bottom-0 left-0 right-0 h-[64px] border-t border-edge items-center justify-around z-40 font-ui pb-[env(safe-area-inset-bottom,0px)]"
       aria-label="Mobile Navigation Bar"
     >
       {tabs.map((tab) => {
@@ -48,21 +48,22 @@ export default function BottomNav() {
           <Link
             key={tab.href}
             href={tab.href}
-            className={`flex flex-col items-center justify-center gap-0.5 text-[11px] min-w-[56px] min-h-[48px] relative transition-colors duration-120 select-none ${
+            aria-current={isActive ? 'page' : undefined}
+            className={`flex flex-col items-center justify-center gap-0.5 text-xs min-w-[56px] min-h-[48px] relative transition-colors duration-120 select-none focus-visible:outline-2 focus-visible:outline-iris ${
               isActive
                 ? 'text-chalk font-semibold'
-                : 'text-ash hover:text-silver'
+                : 'text-silver/75 hover:text-chalk'
             }`}
           >
+            {isActive && (
+              <span aria-hidden="true" className="absolute top-0 left-2.5 right-2.5 h-[2px] bg-iris" />
+            )}
             <Icon
               size={19}
               color={isActive ? 'var(--smn-accent-iris, #8580C4)' : 'currentColor'}
               strokeWidth={isActive ? 2.2 : 1.75}
             />
             <span>{tab.label}</span>
-            {isActive && (
-              <span className="absolute bottom-1 w-4 h-0.5 rounded-full bg-iris" />
-            )}
           </Link>
         );
       })}

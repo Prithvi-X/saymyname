@@ -41,7 +41,7 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
         {label && (
           <label
             htmlFor={inputId}
-            className="text-xs font-medium text-silver select-none tracking-wide"
+            className="text-[13px] font-medium text-silver select-none"
           >
             {label}
           </label>
@@ -60,7 +60,7 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
             disabled={disabled}
             aria-invalid={Boolean(error)}
             aria-describedby={error ? errorId : helperText ? helperId : undefined}
-            className={`w-full h-12 bg-coal text-chalk placeholder-ash/70 rounded-[4px] border transition-colors duration-120 font-ui text-sm focus-visible:outline-none ${
+            className={`w-full h-12 bg-coal text-chalk placeholder-ash/80 rounded-[6px] border transition-colors duration-120 font-ui text-sm focus-visible:outline-none ${
               leftIcon ? 'pl-10' : 'pl-3.5'
             } ${rightIcon ? 'pr-10' : 'pr-3.5'} ${
               error

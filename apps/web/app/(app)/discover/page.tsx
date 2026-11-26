@@ -21,7 +21,14 @@ import {
   removeCandidateById,
   REPORT_CATEGORY_OPTIONS,
 } from '../../../lib/discover-state';
-import { Badge, Button, Dialog, EmptyState, IntervalEmptyComposition } from '../../../components/ui';
+import {
+  Badge,
+  Button,
+  Dialog,
+  EmptyState,
+  IntervalEmptyComposition,
+  MutualMatchDialog,
+} from '../../../components/ui';
 import {
   CompassIcon,
   FlagIcon,
@@ -383,28 +390,22 @@ export default function DiscoverPage() {
     (appliedPrefs.allowedProgrammes.length < 4 || appliedPrefs.maxAge - appliedPrefs.minAge < 6);
 
   return (
-    <main className="min-h-[calc(100vh-64px)] bg-stage text-chalk smn-ambient-discover smn-stage-wrap">
-      <div className="max-w-[1280px] mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8 pb-28 md:pb-12">
-        {/* Top Architectural Header */}
-        <header className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 pb-5 mb-6 border-b border-edge">
+    <main className="min-h-[calc(100vh-68px)] bg-stage text-chalk">
+      <div className="container-app pt-5 sm:pt-7 pb-28 md:pb-12">
+        {/* Calm Compact Workspace Bar */}
+        <header className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 mb-6 border-b border-edge">
           <div className="min-w-0">
-            <div className="flex items-center gap-2.5 mb-2">
-              <span className="inline-block w-2 h-2 bg-iris" aria-hidden="true" />
-              <span className="text-[11px] font-semibold uppercase tracking-[0.14em] text-ash">
-                Discover · Verified BS Cohort
-              </span>
-            </div>
-            <h1 className="text-2xl sm:text-3xl font-semibold text-chalk tracking-tight">
-              Verified Peers
+            <h1 className="text-2xl sm:text-[1.75rem] font-semibold text-chalk tracking-[-0.02em]">
+              Discover
             </h1>
-            <p className="text-sm text-silver mt-1 max-w-2xl">
-              Reciprocal matches within the four approved IIT Madras non-campus BS programmes.
+            <p className="text-[13px] sm:text-sm text-silver mt-0.5">
+              Verified adult learners across the four approved IIT Madras BS tracks.
             </p>
           </div>
 
-          <div className="flex flex-wrap items-center gap-3 self-start sm:self-auto">
+          <div className="flex flex-wrap items-center gap-2.5 self-start sm:self-auto shrink-0">
             {appliedPrefs && (
-              <span className="inline-flex items-center px-3 h-9 rounded-[6px] bg-coal border border-edge/80 text-xs text-silver">
+              <span className="inline-flex items-center px-3 min-h-[40px] rounded-[8px] bg-coal border border-edge text-[13px] text-silver tabular-nums">
                 Age {appliedPrefs.minAge}&ndash;{appliedPrefs.maxAge} &middot;{' '}
                 {appliedPrefs.allowedProgrammes.length}{' '}
                 {appliedPrefs.allowedProgrammes.length === 1 ? 'track' : 'tracks'}
@@ -412,7 +413,7 @@ export default function DiscoverPage() {
             )}
             <Link
               href="/profile"
-              className="inline-flex items-center gap-2 h-9 px-3.5 rounded-[6px] bg-iron border border-edge text-xs font-medium text-chalk hover:bg-slate transition-colors"
+              className="inline-flex items-center gap-2 min-h-[40px] px-4 rounded-[8px] bg-iron border border-edge text-[13px] font-medium text-chalk hover:bg-slate transition-colors focus-visible:outline-2 focus-visible:outline-iris"
             >
               <span>Preferences &amp; Profile</span>
             </Link>
@@ -430,7 +431,7 @@ export default function DiscoverPage() {
             <button
               type="button"
               onClick={() => setStatusNotice(null)}
-              className="text-xs text-ash hover:text-chalk px-2 py-1 rounded-[4px]"
+              className="text-xs font-medium text-silver hover:text-chalk px-2.5 py-1.5 rounded-[4px]"
               aria-label="Dismiss notice"
             >
               Dismiss
@@ -444,17 +445,20 @@ export default function DiscoverPage() {
             data-testid="discover-loading"
             className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start"
           >
-            <div className="lg:col-span-7 bg-coal border border-edge rounded-[12px] overflow-hidden animate-pulse">
-              <div className="aspect-[4/4.3] max-h-[540px] w-full bg-iron" />
-              <div className="p-5 flex flex-col gap-3">
-                <div className="h-6 w-48 bg-slate rounded-[4px]" />
-                <div className="h-4 w-64 bg-slate rounded-[4px]" />
-                <div className="h-12 w-full bg-iron border border-edge rounded-[8px] mt-2" />
+            <div className="lg:col-span-8 bg-coal border border-edge rounded-[12px] overflow-hidden animate-pulse">
+              <div className="grid grid-cols-1 md:grid-cols-12">
+                <div className="md:col-span-6 min-h-[380px] bg-iron" />
+                <div className="md:col-span-6 p-6 flex flex-col gap-4">
+                  <div className="h-7 w-44 bg-slate rounded-[4px]" />
+                  <div className="h-4 w-56 bg-slate rounded-[4px]" />
+                  <div className="h-24 w-full bg-iron rounded-[6px]" />
+                  <div className="h-12 w-full bg-iron border border-edge rounded-[8px] mt-auto" />
+                </div>
               </div>
             </div>
-            <div className="lg:col-span-5 flex flex-col gap-4 animate-pulse">
-              <div className="h-36 bg-coal border border-edge rounded-[12px]" />
-              <div className="h-48 bg-coal border border-edge rounded-[12px]" />
+            <div className="lg:col-span-4 flex flex-col gap-4 animate-pulse">
+              <div className="h-40 bg-coal border border-edge rounded-[12px]" />
+              <div className="h-32 bg-coal border border-edge rounded-[12px]" />
             </div>
           </div>
         ) : loadError ? (
@@ -469,9 +473,9 @@ export default function DiscoverPage() {
           <IntervalEmptyComposition
             variant="paused"
             testId="discover-paused-state"
-            eyebrow="Discovery Paused"
+            eyebrow="Visibility paused"
             title="Your profile visibility is currently paused"
-            description="You are hidden from other members' Discover feeds and cannot send new Likes while paused. Your existing mutual matches and conversations remain safe."
+            description="You are hidden from other members' Discover feeds and cannot send new Likes while paused. Your existing mutual matches and conversations remain active."
             primaryAction={{
               label: 'Resume Discovery',
               onClick: handleResumeDiscovery,
@@ -501,7 +505,7 @@ export default function DiscoverPage() {
           <IntervalEmptyComposition
             variant="discover"
             testId="discover-empty-state"
-            eyebrow="Batch Complete"
+            eyebrow="Batch complete"
             title="No more verified peers match right now"
             description={
               isNarrowFilters
@@ -541,398 +545,413 @@ export default function DiscoverPage() {
             }
           />
         ) : (
-          /* Main Active Candidate Experience */
+          /* Main Active Candidate Experience: Candidate-First Asymmetric Layout */
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-            {/* Primary Media & Interaction Card (Left 7 Cols on Desktop) */}
+            {/* Primary Candidate Surface (Left 8 Cols Desktop): Portrait + Story + Explicit Actions */}
             <section
               aria-label="Current discovery candidate"
               data-testid="discover-candidate-card"
-              className="lg:col-span-7 bg-coal border border-edge rounded-[12px] overflow-hidden flex flex-col smn-surface-elevated"
+              className="lg:col-span-8 bg-coal border border-edge rounded-[12px] overflow-hidden flex flex-col"
             >
               {/* Action Error Preserve & Retry Banner */}
               {actionError && actionError.profileId === currentCandidate.profileId && (
                 <div
                   role="alert"
-                  className="px-4 py-3 bg-[#301618] border-b border-danger/40 flex flex-wrap items-center justify-between gap-3 text-sm text-danger"
+                  className="px-5 py-3 bg-[#301618] border-b border-danger/40 flex flex-wrap items-center justify-between gap-3 text-sm text-danger"
                 >
                   <span>{actionError.message}</span>
-                  <div className="flex items-center gap-2">
-                    <Button
-                      variant="secondary"
-                      size="sm"
-                      onClick={() => {
-                        if (actionError.kind === 'like') handleLike();
-                        else if (actionError.kind === 'pass') handlePass();
-                        else setBlockModalOpen(true);
-                      }}
-                    >
-                      Retry
-                    </Button>
-                  </div>
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    onClick={() => {
+                      if (actionError.kind === 'like') handleLike();
+                      else if (actionError.kind === 'pass') handlePass();
+                      else setBlockModalOpen(true);
+                    }}
+                  >
+                    Retry
+                  </Button>
                 </div>
               )}
 
-              {/* Architectural Portrait Frame (0px internal frame radius per Document 10) */}
-              <div
-                className="relative w-full aspect-[4/4.2] max-h-[520px] sm:max-h-[540px] bg-stage overflow-hidden select-none"
-                tabIndex={0}
-                onKeyDown={(e) => {
-                  if (e.key === 'ArrowLeft') handlePrevPhoto();
-                  if (e.key === 'ArrowRight') handleNextPhoto();
-                }}
-              >
-                {/* Segmented Photo Indicator Bars */}
-                {candidatePhotos.length > 1 && (
-                  <div
-                    className="absolute top-3 left-3 right-3 z-20 flex gap-1.5"
-                    role="tablist"
-                    aria-label="Candidate photos"
-                  >
-                    {candidatePhotos.map((p, idx) => (
-                      <button
-                        key={p.id}
-                        type="button"
-                        role="tab"
-                        aria-selected={idx === photoIndex}
-                        aria-label={`View photo ${idx + 1} of ${candidatePhotos.length}`}
-                        onClick={() => setPhotoIndex(idx)}
-                        className={`h-[3px] flex-1 transition-colors ${
-                          idx === photoIndex ? 'bg-chalk' : 'bg-edge/80 hover:bg-silver/60'
-                        }`}
-                      />
-                    ))}
-                  </div>
-                )}
-
-                {currentPhoto?.photoUrl && !brokenPhotoIds[currentPhoto.id] ? (
-                  <img
-                    src={currentPhoto.photoUrl}
-                    alt={`${currentCandidate.displayName} portrait ${photoIndex + 1}`}
-                    onError={() =>
-                      setBrokenPhotoIds((prev) => ({ ...prev, [currentPhoto.id]: true }))
-                    }
-                    className="w-full h-full object-cover block"
-                  />
-                ) : (
-                  <div className="w-full h-full flex flex-col items-center justify-center bg-iron text-silver gap-3 p-6">
-                    <div className="w-20 h-20 rounded-[8px] bg-slate border border-edge flex items-center justify-center text-2xl font-semibold text-chalk tracking-wider">
-                      {getInitials(currentCandidate.displayName)}
-                    </div>
-                    <p className="text-xs text-ash uppercase tracking-widest">
-                      Portrait unavailable
-                    </p>
-                  </div>
-                )}
-
-                {/* Subtle Bottom Readability Gradient */}
+              {/* Split Primary Hero Band: Uncluttered Portrait Left + Human Story & Actions Right */}
+              <div className="grid grid-cols-1 md:grid-cols-12">
+                {/* Portrait Frame (6 Cols md+, Pure Media Without Overcrowded Badges) */}
                 <div
-                  className="pointer-events-none absolute inset-x-0 bottom-0 h-32 bg-gradient-to-t from-[#0B0D10]/90 via-[#0B0D10]/45 to-transparent"
-                  aria-hidden="true"
-                />
-
-                {/* Previous / Next Photo Overlay Controls */}
-                {candidatePhotos.length > 1 && (
-                  <>
-                    <button
-                      type="button"
-                      onClick={handlePrevPhoto}
-                      aria-label="Previous photo"
-                      data-testid="photo-prev-btn"
-                      className="absolute left-3 top-1/2 -translate-y-1/2 z-20 w-9 h-9 rounded-[6px] smn-glass-control text-chalk flex items-center justify-center hover:bg-iron/85 hover:border-white/20 transition-all duration-150"
+                  className="md:col-span-6 relative aspect-[4/4.5] md:aspect-auto md:min-h-[450px] lg:min-h-[490px] bg-stage overflow-hidden select-none border-b md:border-b-0 md:border-r border-edge"
+                  tabIndex={0}
+                  onKeyDown={(e) => {
+                    if (e.key === 'ArrowLeft') handlePrevPhoto();
+                    if (e.key === 'ArrowRight') handleNextPhoto();
+                  }}
+                >
+                  {/* Segmented Photo Indicator Bars */}
+                  {candidatePhotos.length > 1 && (
+                    <div
+                      className="absolute top-3 left-3 right-3 z-20 flex gap-1.5"
+                      role="tablist"
+                      aria-label="Candidate photos"
                     >
-                      <span aria-hidden="true" className="text-sm font-semibold">
-                        &lsaquo;
-                      </span>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={handleNextPhoto}
-                      aria-label="Next photo"
-                      data-testid="photo-next-btn"
-                      className="absolute right-3 top-1/2 -translate-y-1/2 z-20 w-9 h-9 rounded-[6px] smn-glass-control text-chalk flex items-center justify-center hover:bg-iron/85 hover:border-white/20 transition-all duration-150"
-                    >
-                      <span aria-hidden="true" className="text-sm font-semibold">
-                        &rsaquo;
-                      </span>
-                    </button>
-                  </>
-                )}
+                      {candidatePhotos.map((p, idx) => (
+                        <button
+                          key={p.id}
+                          type="button"
+                          role="tab"
+                          aria-selected={idx === photoIndex}
+                          aria-label={`View photo ${idx + 1} of ${candidatePhotos.length}`}
+                          onClick={() => setPhotoIndex(idx)}
+                          className={`h-[3px] flex-1 transition-colors ${
+                            idx === photoIndex ? 'bg-chalk' : 'bg-edge hover:bg-silver/60'
+                          }`}
+                        />
+                      ))}
+                    </div>
+                  )}
 
-                {/* Bottom Overlay Badges: Verified + Photo Count */}
-                <div className="absolute bottom-3 left-4 right-4 z-20 flex items-center justify-between gap-2">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <Badge variant="verified" size="sm">
-                      Verified
-                    </Badge>
-                    <Badge variant="programme" size="sm">
-                      {formatProgrammeLabel(currentCandidate.programmeFamily)}
-                    </Badge>
-                  </div>
+                  {currentPhoto?.photoUrl && !brokenPhotoIds[currentPhoto.id] ? (
+                    <img
+                      src={currentPhoto.photoUrl}
+                      alt={`${currentCandidate.displayName} portrait ${photoIndex + 1}`}
+                      onError={() =>
+                        setBrokenPhotoIds((prev) => ({ ...prev, [currentPhoto.id]: true }))
+                      }
+                      className="w-full h-full object-cover block"
+                    />
+                  ) : (
+                    <div className="w-full h-full flex flex-col items-center justify-center bg-iron text-silver gap-3 p-6">
+                      <div className="w-20 h-20 rounded-[8px] bg-slate border border-edge flex items-center justify-center text-2xl font-semibold text-chalk tracking-wider">
+                        {getInitials(currentCandidate.displayName)}
+                      </div>
+                      <p className="text-[13px] text-silver/80">
+                        Portrait unavailable
+                      </p>
+                    </div>
+                  )}
 
-                  {candidatePhotos.length > 0 && (
-                    <span className="shrink-0 whitespace-nowrap px-2 py-0.5 rounded-[4px] smn-glass-control text-[11px] font-mono text-silver">
+                  {/* Solid Edge Controls for Photo Gallery (44x44 accessible target) */}
+                  {candidatePhotos.length > 1 && (
+                    <>
+                      <button
+                        type="button"
+                        onClick={handlePrevPhoto}
+                        aria-label="Previous photo"
+                        data-testid="photo-prev-btn"
+                        className="absolute left-3 top-1/2 -translate-y-1/2 z-20 w-11 h-11 rounded-[8px] bg-coal/90 border border-edge text-chalk flex items-center justify-center hover:bg-iron transition-colors focus-visible:outline-2 focus-visible:outline-iris"
+                      >
+                        <span aria-hidden="true" className="text-lg leading-none">
+                          &lsaquo;
+                        </span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleNextPhoto}
+                        aria-label="Next photo"
+                        data-testid="photo-next-btn"
+                        className="absolute right-3 top-1/2 -translate-y-1/2 z-20 w-11 h-11 rounded-[8px] bg-coal/90 border border-edge text-chalk flex items-center justify-center hover:bg-iron transition-colors focus-visible:outline-2 focus-visible:outline-iris"
+                      >
+                        <span aria-hidden="true" className="text-lg leading-none">
+                          &rsaquo;
+                        </span>
+                      </button>
+                    </>
+                  )}
+
+                  {candidatePhotos.length > 1 && (
+                    <span className="absolute bottom-3 right-3 z-20 px-2.5 py-1 rounded-[4px] bg-coal/95 border border-edge text-xs font-medium text-silver tabular-nums">
                       {photoIndex + 1} / {candidatePhotos.length}
                     </span>
                   )}
                 </div>
-              </div>
 
-              {/* Interactive Thumbnail Strip (Shown only when multiple portraits exist) */}
-              {candidatePhotos.length > 1 && (
-                <div className="px-4 sm:px-5 pt-3 flex items-center gap-2 border-b border-edge/60 pb-3 bg-stage/60">
-                  {candidatePhotos.map((p, idx) => (
-                    <button
-                      key={`thumb-${p.id}`}
-                      type="button"
-                      onClick={() => setPhotoIndex(idx)}
-                      aria-label={`Select portrait ${idx + 1}`}
-                      className={`relative w-12 h-12 rounded-[6px] overflow-hidden border transition-all ${
-                        idx === photoIndex
-                          ? 'border-iris ring-1 ring-iris/50'
-                          : 'border-edge opacity-65 hover:opacity-100'
-                      }`}
-                    >
-                      {p.photoUrl && !brokenPhotoIds[p.id] ? (
-                        <img
-                          src={p.photoUrl}
-                          alt=""
-                          className="w-full h-full object-cover block"
-                        />
-                      ) : (
-                        <span className="w-full h-full flex items-center justify-center bg-iron text-[10px] text-ash">
-                          {idx + 1}
-                        </span>
-                      )}
-                    </button>
-                  ))}
-                  <span className="ml-auto text-[11px] text-ash hidden sm:inline">
-                    Arrow keys navigate photos
-                  </span>
-                </div>
-              )}
+                {/* Right Story & Action Column Inside Candidate Focus (6 Cols md+) */}
+                <div className="md:col-span-6 p-5 sm:p-6 lg:p-7 flex flex-col justify-between gap-5">
+                  <div className="flex flex-col gap-4">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <Badge variant="verified" size="sm">
+                        Verified
+                      </Badge>
+                      <Badge variant="programme" size="sm">
+                        {formatProgrammeLabel(currentCandidate.programmeFamily)}
+                      </Badge>
+                    </div>
 
-              {/* Candidate Identity & Action Dock */}
-              <div className="p-5 sm:p-6 flex flex-col gap-5">
-                <div className="flex flex-col gap-2.5">
-                  <div className="flex flex-wrap items-baseline justify-between gap-2">
-                    <h2
-                      data-testid="candidate-heading"
-                      className="text-[1.75rem] sm:text-[2rem] leading-[1.12] font-semibold text-chalk tracking-tight"
-                    >
-                      {formatCandidateHeading(
-                        currentCandidate.displayName,
-                        currentCandidate.age,
-                      )}
-                    </h2>
+                    <div>
+                      <div className="flex items-baseline justify-between gap-2">
+                        <h2
+                          data-testid="candidate-heading"
+                          className="text-[1.75rem] sm:text-[2rem] leading-[1.1] font-semibold text-chalk tracking-[-0.02em]"
+                        >
+                          {formatCandidateHeading(
+                            currentCandidate.displayName,
+                            currentCandidate.age,
+                          )}
+                        </h2>
+                        <button
+                          type="button"
+                          onClick={handleOpenFullProfile}
+                          data-testid="open-full-profile-btn"
+                          className="text-[13px] font-medium text-iris hover:text-iris-hover underline underline-offset-4 py-1.5 shrink-0 focus-visible:outline-2 focus-visible:outline-iris"
+                        >
+                          Full profile &rarr;
+                        </button>
+                      </div>
 
-                    <button
-                      type="button"
-                      onClick={handleOpenFullProfile}
-                      data-testid="open-full-profile-btn"
-                      className="text-xs font-medium text-iris hover:text-[#9894D1] underline underline-offset-4 py-1"
-                    >
-                      Full Profile &rarr;
-                    </button>
-                  </div>
-
-                  <div className="flex flex-wrap items-center gap-2 pt-0.5 text-xs">
-                    {currentCandidate.currentTerm && (
-                      <span className="px-2.5 py-1 rounded-[4px] bg-iron border border-edge/80 text-chalk font-medium">
-                        {currentCandidate.currentTerm}
-                      </span>
-                    )}
-                    {formatCoarseLocation(
-                      currentCandidate.locationCity,
-                      currentCandidate.locationState,
-                    ) && (
-                      <span className="px-2.5 py-1 rounded-[4px] bg-iron/60 border border-edge/60 text-silver">
+                      <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-2 text-[13px] text-silver">
+                        {currentCandidate.currentTerm && (
+                          <span className="text-chalk font-medium">
+                            {currentCandidate.currentTerm}
+                          </span>
+                        )}
                         {formatCoarseLocation(
                           currentCandidate.locationCity,
                           currentCandidate.locationState,
+                        ) && (
+                          <span>
+                            {formatCoarseLocation(
+                              currentCandidate.locationCity,
+                              currentCandidate.locationState,
+                            )}
+                          </span>
                         )}
-                      </span>
-                    )}
-                    {formatIntentionLabel(currentCandidate.intention) && (
-                      <span className="px-2.5 py-1 rounded-[4px] bg-iron/60 border border-edge/60 text-silver">
-                        Looking for: {formatIntentionLabel(currentCandidate.intention)}
-                      </span>
-                    )}
-                    {!currentCandidate.ageVisible && (
-                      <span className="text-ash px-1">Age set to private</span>
-                    )}
+                        {!currentCandidate.ageVisible && (
+                          <span className="text-silver/75">Age private</span>
+                        )}
+                      </div>
+
+                      {formatIntentionLabel(currentCandidate.intention) && (
+                        <p className="text-[13px] text-silver mt-2">
+                          Looking for:{' '}
+                          <span className="text-chalk font-medium">
+                            {formatIntentionLabel(currentCandidate.intention)}
+                          </span>
+                        </p>
+                      )}
+                    </div>
+
+                    {/* Primary Bio Right Beside Portrait */}
+                    <div className="pt-3 border-t border-edge">
+                      <h3 className="text-xs font-medium text-silver/80 mb-1.5">
+                        About {currentCandidate.displayName}
+                      </h3>
+                      <p className="text-sm sm:text-[15px] text-chalk/95 leading-[1.6] whitespace-pre-line">
+                        {currentCandidate.bio?.trim()
+                          ? currentCandidate.bio
+                          : 'No written biography added yet.'}
+                      </p>
+                    </div>
                   </div>
-                </div>
 
-                {/* Primary Explicit Actions (Pass / Full Profile / Like) */}
-                <div className="grid grid-cols-1 sm:grid-cols-12 gap-3 pt-1">
-                  <Button
-                    variant="secondary"
-                    size="lg"
-                    onClick={handlePass}
-                    disabled={Boolean(activeAction)}
-                    isLoading={activeAction === 'pass'}
-                    data-testid="pass-btn"
-                    leftIcon={<XIcon size={18} />}
-                    className="sm:col-span-4"
-                  >
-                    Pass
-                  </Button>
+                  {/* Primary Action Dock & Safety Row (Visible Above the Fold) */}
+                  <div className="flex flex-col gap-3 pt-2">
+                    <div className="grid grid-cols-2 gap-3">
+                      <Button
+                        variant="secondary"
+                        size="lg"
+                        onClick={handlePass}
+                        disabled={Boolean(activeAction)}
+                        isLoading={activeAction === 'pass'}
+                        data-testid="pass-btn"
+                        leftIcon={<XIcon size={18} />}
+                        className="w-full"
+                      >
+                        Pass
+                      </Button>
 
-                  <Button
-                    variant="ghost"
-                    size="lg"
-                    onClick={handleOpenFullProfile}
-                    disabled={Boolean(activeAction)}
-                    data-testid="view-profile-btn"
-                    leftIcon={<UserIcon size={17} />}
-                    className="sm:col-span-4 border border-edge bg-iron/50"
-                  >
-                    Profile
-                  </Button>
+                      <Button
+                        variant="warm"
+                        size="lg"
+                        onClick={handleLike}
+                        disabled={Boolean(activeAction)}
+                        isLoading={activeAction === 'like'}
+                        data-testid="like-btn"
+                        leftIcon={<HeartIcon size={18} />}
+                        className="w-full"
+                      >
+                        Like
+                      </Button>
+                    </div>
 
-                  <Button
-                    variant="warm"
-                    size="lg"
-                    onClick={handleLike}
-                    disabled={Boolean(activeAction)}
-                    isLoading={activeAction === 'like'}
-                    data-testid="like-btn"
-                    leftIcon={<HeartIcon size={18} />}
-                    className="sm:col-span-4"
-                  >
-                    Like
-                  </Button>
-                </div>
-
-                {/* Explicit Safety Strip */}
-                <div className="flex items-center justify-between pt-3 border-t border-edge text-xs text-ash">
-                  <span>Private choice — passes remain invisible</span>
-                  <div className="flex items-center gap-3">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setReportError(null);
-                        setReportModalOpen(true);
-                      }}
-                      data-testid="report-open-btn"
-                      className="inline-flex items-center gap-1.5 text-ash hover:text-warning transition-colors py-1"
-                    >
-                      <FlagIcon size={14} />
-                      <span>Report</span>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setBlockModalOpen(true)}
-                      data-testid="block-open-btn"
-                      className="inline-flex items-center gap-1.5 text-ash hover:text-danger transition-colors py-1"
-                    >
-                      <ShieldIcon size={14} />
-                      <span>Block</span>
-                    </button>
+                    <div className="flex items-center justify-between pt-3 border-t border-edge text-xs text-silver/80">
+                      <span>Passes stay strictly private</span>
+                      <div className="flex items-center gap-3">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setReportError(null);
+                            setReportModalOpen(true);
+                          }}
+                          data-testid="report-open-btn"
+                          className="inline-flex items-center gap-1.5 min-h-[36px] px-2 text-silver/85 hover:text-warning transition-colors focus-visible:outline-2 focus-visible:outline-iris"
+                        >
+                          <FlagIcon size={14} />
+                          <span>Report</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setBlockModalOpen(true)}
+                          data-testid="block-open-btn"
+                          className="inline-flex items-center gap-1.5 min-h-[36px] px-2 text-silver/85 hover:text-danger transition-colors focus-visible:outline-2 focus-visible:outline-iris"
+                        >
+                          <ShieldIcon size={14} />
+                          <span>Block</span>
+                        </button>
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>
+
+              {/* Integrated Prompts & Interests Band Below Portrait/Story */}
+              {(currentCandidate.promptAnswers.length > 0 || currentCandidate.interests.length > 0) && (
+                <div className="border-t border-edge bg-stage/40 p-5 sm:p-6 lg:p-7 grid grid-cols-1 md:grid-cols-12 gap-6">
+                  {currentCandidate.promptAnswers.length > 0 && (
+                    <div className="md:col-span-7 flex flex-col gap-3">
+                      <h3 className="text-[13px] font-medium text-silver">
+                        Conversation prompts
+                      </h3>
+                      <div className="flex flex-col gap-3">
+                        {currentCandidate.promptAnswers.map((pa, idx) => (
+                          <div
+                            key={pa.id || `${currentCandidate.profileId}-p-${idx}`}
+                            className="p-4 rounded-[8px] bg-iron border border-edge flex flex-col gap-1"
+                          >
+                            <p className="text-[13px] font-medium text-iris">
+                              {pa.promptText}
+                            </p>
+                            <p className="text-[15px] text-chalk leading-relaxed">
+                              &ldquo;{pa.answerText}&rdquo;
+                            </p>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {currentCandidate.interests.length > 0 && (
+                    <div
+                      className={`${
+                        currentCandidate.promptAnswers.length > 0 ? 'md:col-span-5' : 'md:col-span-12'
+                      } flex flex-col gap-3`}
+                    >
+                      <div className="flex items-center justify-between gap-2">
+                        <h3 className="text-[13px] font-medium text-silver">
+                          Interests
+                        </h3>
+                        {currentCandidate.sharedInterests &&
+                          currentCandidate.sharedInterests.length > 0 && (
+                            <span className="text-xs text-iris font-medium">
+                              {currentCandidate.sharedInterests.length} shared with you
+                            </span>
+                          )}
+                      </div>
+
+                      <div className="flex flex-wrap gap-2">
+                        {currentCandidate.interests.map((interest) => {
+                          const isShared = currentCandidate.sharedInterests?.includes(interest);
+                          return (
+                            <span
+                              key={interest}
+                              className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-[4px] text-[13px] font-medium border ${
+                                isShared
+                                  ? 'bg-[#1C1C2E] border-iris/60 text-chalk'
+                                  : 'bg-iron border-edge text-silver'
+                              }`}
+                            >
+                              {isShared && (
+                                <span className="w-1.5 h-1.5 bg-iris shrink-0" aria-hidden="true" />
+                              )}
+                              {interest}
+                            </span>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
             </section>
 
-            {/* Right Editorial Context Column (5 Cols Desktop, Sticky Alignment) */}
-            <aside className="lg:col-span-5 lg:sticky lg:top-[84px] flex flex-col gap-6">
-              {/* Primary Biography Surface */}
-              <div className="bg-coal border border-edge rounded-[12px] p-6 smn-surface-elevated flex flex-col gap-3">
-                <span className="text-[11px] font-semibold uppercase tracking-[0.12em] text-ash">
-                  About {currentCandidate.displayName}
-                </span>
-                <p className="text-[15px] text-silver leading-[1.65] whitespace-pre-line">
-                  {currentCandidate.bio?.trim()
-                    ? currentCandidate.bio
-                    : 'No written biography added yet.'}
-                </p>
-              </div>
-
-              {/* Conversation Prompts — Open Architectural Flow (not nested box cards) */}
-              {currentCandidate.promptAnswers.length > 0 && (
-                <div className="flex flex-col gap-4 px-1">
-                  <span className="text-[11px] font-semibold uppercase tracking-[0.12em] text-ash">
-                    Conversation Prompts
-                  </span>
-                  <div className="flex flex-col gap-5">
-                    {currentCandidate.promptAnswers.map((pa, idx) => (
-                      <div
-                        key={pa.id || `${currentCandidate.profileId}-p-${idx}`}
-                        className="border-l-2 border-iris/75 pl-4 py-0.5 flex flex-col gap-1.5"
+            {/* Right Quiet Context Column (4 Cols Desktop) */}
+            <aside className="lg:col-span-4 lg:sticky lg:top-[84px] flex flex-col gap-5">
+              {candidatePhotos.length > 1 && (
+                <div className="bg-coal border border-edge rounded-[12px] p-5 flex flex-col gap-3">
+                  <div className="flex items-center justify-between text-[13px] text-silver">
+                    <span className="font-medium text-chalk">Photos ({candidatePhotos.length})</span>
+                    <span className="text-xs text-silver/75">Arrow keys switch</span>
+                  </div>
+                  <div className="grid grid-cols-4 gap-2">
+                    {candidatePhotos.map((p, idx) => (
+                      <button
+                        key={`thumb-${p.id}`}
+                        type="button"
+                        onClick={() => setPhotoIndex(idx)}
+                        aria-label={`Select portrait ${idx + 1}`}
+                        className={`relative aspect-[3/4] rounded-[6px] overflow-hidden border transition-colors focus-visible:outline-2 focus-visible:outline-iris ${
+                          idx === photoIndex
+                            ? 'border-iris ring-1 ring-iris'
+                            : 'border-edge opacity-70 hover:opacity-100'
+                        }`}
                       >
-                        <p className="text-xs font-medium text-iris">
-                          {pa.promptText}
-                        </p>
-                        <p className="text-[15px] text-chalk leading-relaxed">
-                          &ldquo;{pa.answerText}&rdquo;
-                        </p>
-                      </div>
+                        {p.photoUrl && !brokenPhotoIds[p.id] ? (
+                          <img src={p.photoUrl} alt="" className="w-full h-full object-cover block" />
+                        ) : (
+                          <span className="w-full h-full flex items-center justify-center bg-iron text-xs text-silver">
+                            {idx + 1}
+                          </span>
+                        )}
+                      </button>
                     ))}
                   </div>
                 </div>
               )}
 
-              {/* Interests & Shared Context */}
-              {currentCandidate.interests.length > 0 && (
-                <div className="pt-5 border-t border-edge/80 flex flex-col gap-3 px-1">
-                  <div className="flex items-center justify-between gap-2">
-                    <span className="text-[11px] font-semibold uppercase tracking-[0.12em] text-ash">
-                      Interests
-                    </span>
-                    {currentCandidate.sharedInterests &&
-                      currentCandidate.sharedInterests.length > 0 && (
-                        <span className="text-xs text-iris font-medium">
-                          {currentCandidate.sharedInterests.length} shared with you
-                        </span>
-                      )}
-                  </div>
-
-                  <div className="flex flex-wrap gap-2">
-                    {currentCandidate.interests.map((interest) => {
-                      const isShared = currentCandidate.sharedInterests?.includes(interest);
-                      return (
-                        <span
-                          key={interest}
-                          className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-[4px] text-xs font-medium border ${
-                            isShared
-                              ? 'bg-iris/[0.12] border-iris/60 text-chalk'
-                              : 'bg-iron border-edge text-silver'
-                          }`}
-                        >
-                          {isShared && (
-                            <span className="w-1.5 h-1.5 bg-iris shrink-0" aria-hidden="true" />
-                          )}
-                          {interest}
-                        </span>
-                      );
-                    })}
-                  </div>
-                </div>
-              )}
-
-              {/* Discovery Session Batch & Filter Bar */}
-              <div className="rounded-[8px] bg-iron/55 border border-edge/80 px-4 py-3.5 flex flex-col gap-3">
-                <div className="flex items-center justify-between gap-2 text-xs text-silver">
-                  <span>In active batch: {queue.length}</span>
-                  {appliedPrefs && (
-                    <span className="text-ash">
-                      Reciprocal age {appliedPrefs.minAge}&ndash;{appliedPrefs.maxAge}
-                    </span>
-                  )}
+              <div className="bg-coal border border-edge rounded-[12px] p-5 flex flex-col gap-3.5">
+                <div className="flex items-center justify-between gap-2 pb-3 border-b border-edge">
+                  <span className="text-sm font-semibold text-chalk">
+                    Discovery session
+                  </span>
+                  <span className="text-xs text-silver tabular-nums">
+                    {queue.length} queued
+                  </span>
                 </div>
 
-                {hasMore && nextCursor && (
+                {appliedPrefs && (
+                  <p className="text-[13px] text-silver leading-relaxed">
+                    Showing peers aged {appliedPrefs.minAge}&ndash;{appliedPrefs.maxAge} across{' '}
+                    {appliedPrefs.allowedProgrammes.length} approved BS{' '}
+                    {appliedPrefs.allowedProgrammes.length === 1 ? 'programme' : 'programmes'} with reciprocal filters.
+                  </p>
+                )}
+
+                <p className="text-[13px] text-silver/85 leading-relaxed">
+                  Messaging unlocks only if both of you choose Like independently. Unilateral choices stay private.
+                </p>
+
+                <div className="flex flex-col gap-2 pt-1">
                   <Button
                     variant="secondary"
                     size="sm"
-                    onClick={loadNextBatch}
-                    isLoading={isLoadingMore}
-                    data-testid="load-more-btn"
+                    onClick={handleOpenFullProfile}
+                    data-testid="view-profile-btn"
+                    leftIcon={<UserIcon size={15} />}
                     className="w-full"
                   >
-                    Load Next Batch
+                    Inspect full profile
                   </Button>
-                )}
+
+                  {hasMore && nextCursor && (
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      onClick={loadNextBatch}
+                      isLoading={isLoadingMore}
+                      data-testid="load-more-btn"
+                      className="w-full"
+                    >
+                      Load next batch
+                    </Button>
+                  )}
+                </div>
               </div>
             </aside>
           </div>
@@ -1119,74 +1138,20 @@ export default function DiscoverPage() {
         </Dialog>
       )}
 
-      {/* Mutual Match Interval Celebration Modal (Document 10 Interval Signature) */}
-      <Dialog
-        isOpen={Boolean(matchResult)}
+      {/* Mutual Match Interval Celebration Modal (Document 10 Threshold Signature Moment) */}
+      <MutualMatchDialog
+        matchResult={matchResult}
         onClose={() => setMatchResult(null)}
-        title="It is a mutual match"
-        description="You both expressed interest independently. Private conversation is now open."
-        maxWidth="sm"
-        footer={
-          <>
-            <Button
-              variant="secondary"
-              size="sm"
-              onClick={() => setMatchResult(null)}
-              className="!bg-coal !border !border-edge hover:!bg-slate"
-            >
-              Keep Discovering
-            </Button>
-            <Button
-              variant="primary"
-              size="sm"
-              onClick={() => {
-                setMatchResult(null);
-                router.push('/chats');
-              }}
-              data-testid="match-open-chat-btn"
-            >
-              Open Conversation
-            </Button>
-          </>
-        }
-      >
-        <div data-testid="mutual-match-modal" className="flex flex-col items-center text-center gap-4 py-2">
-          {/* Document 10 Interval Architectural Alignment Mark (Zero Confetti) */}
-          <div className="flex items-center justify-center gap-3 py-2" aria-hidden="true">
-            <div className="w-10 h-14 border-l-2 border-t-2 border-b-2 border-iris rounded-l-[4px] bg-stage/60" />
-            <div className="w-2.5 h-2.5 bg-ember" />
-            <div className="w-10 h-14 border-r-2 border-t-2 border-b-2 border-ember rounded-r-[4px] bg-stage/60" />
-          </div>
-
-          {matchResult?.matchedProfile && (
-            <div className="w-full p-4 rounded-[8px] bg-coal border border-edge flex items-center gap-3.5 text-left">
-              <div className="w-12 h-12 rounded-[6px] bg-slate border border-edge overflow-hidden shrink-0 flex items-center justify-center text-sm font-semibold text-chalk">
-                {matchResult.matchedProfile.primaryPhotoUrl ? (
-                  <img
-                    src={matchResult.matchedProfile.primaryPhotoUrl}
-                    alt={matchResult.matchedProfile.displayName}
-                    className="w-full h-full object-cover"
-                  />
-                ) : (
-                  getInitials(matchResult.matchedProfile.displayName)
-                )}
-              </div>
-              <div className="min-w-0">
-                <p className="text-sm font-semibold text-chalk truncate">
-                  {matchResult.matchedProfile.displayName}
-                </p>
-                <p className="text-xs text-silver truncate">
-                  {formatProgrammeLabel(matchResult.matchedProfile.programmeFamily)}
-                </p>
-              </div>
-            </div>
-          )}
-
-          <p className="text-xs text-ash leading-relaxed">
-            No unread pressure or automated prompts. Say hello whenever both of you are ready.
-          </p>
-        </div>
-      </Dialog>
+        onOpenConversation={(res) => {
+          setMatchResult(null);
+          if (res.matchId) {
+            const conv = res.conversationId ? `&conversationId=${encodeURIComponent(res.conversationId)}` : '';
+            router.push(`/chats?matchId=${encodeURIComponent(res.matchId)}${conv}`);
+          } else {
+            router.push('/chats');
+          }
+        }}
+      />
 
       {/* Block Confirmation Modal */}
       {currentCandidate && (

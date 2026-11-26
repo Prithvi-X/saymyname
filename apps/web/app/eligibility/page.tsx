@@ -58,10 +58,10 @@ export default function EligibilityPage() {
     <div className="bg-void text-chalk font-ui">
       <div className="container-standard py-12 sm:py-16">
         <div className="mb-10 pb-8 border-b border-edge">
-          <p className="text-[11px] uppercase tracking-[0.14em] text-iris font-semibold mb-2">
-            Eligibility Specification · Document 01 §3
+          <p className="text-[13px] text-iris font-medium mb-2">
+            Phase 1 eligibility specification
           </p>
-          <h1 className="text-3xl sm:text-4xl font-semibold text-chalk mb-3">
+          <h1 className="text-3xl sm:text-4xl font-semibold text-chalk tracking-[-0.02em] mb-3">
             Who can join SayMyName Phase 1
           </h1>
           <p className="text-sm sm:text-base text-silver leading-relaxed max-w-2xl">

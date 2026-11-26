@@ -486,9 +486,9 @@ export default function ProfilePage() {
     .join(', ');
 
   return (
-    <div className="max-w-[1280px] mx-auto px-4 sm:px-6 lg:px-8 pt-7 pb-24 sm:pt-9 md:pb-12 flex flex-col gap-6 font-ui text-chalk">
+    <div className="container-app pt-5 pb-24 sm:pt-7 md:pb-12 flex flex-col gap-6 font-ui text-chalk">
       {/* Header */}
-      <header className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 border-b border-edge/60 pb-5">
+      <header className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 border-b border-edge pb-5">
         <div className="flex items-center gap-4 min-w-0">
           <div className="relative w-14 h-14 sm:w-16 sm:h-16 rounded-[8px] overflow-hidden bg-iron border border-edge flex items-center justify-center shrink-0">
             {primaryPhoto?.photoUrl ? (
@@ -499,21 +499,16 @@ export default function ProfilePage() {
               />
             ) : (
               <span className="text-xl font-semibold text-iris">
-                {displayName.charAt(0).toUpperCase()}
+                {displayName.charAt(0).toUpperCase() || 'M'}
               </span>
             )}
           </div>
 
           <div className="min-w-0">
             <div className="flex flex-wrap items-center gap-2 mb-1">
-              {user?.eligibility?.ageStatus === 'approved' && (
+              {user?.eligibility?.ageStatus === 'approved' && user?.eligibility?.studentStatus === 'approved' && (
                 <Badge variant="verified" size="sm">
-                  18+ Verified
-                </Badge>
-              )}
-              {user?.eligibility?.studentStatus === 'approved' && (
-                <Badge variant="programme" size="sm">
-                  IITM BS Enrolled
+                  Verified
                 </Badge>
               )}
               <Badge
@@ -527,11 +522,11 @@ export default function ProfilePage() {
                     : 'Private Draft'}
               </Badge>
             </div>
-            <h1 className="text-2xl sm:text-3xl font-semibold text-chalk tracking-tight truncate">
+            <h1 className="text-2xl sm:text-[1.85rem] font-semibold text-chalk tracking-[-0.02em] truncate">
               {displayName || 'Member'}
             </h1>
-            <p className="text-xs sm:text-sm text-silver mt-0.5 truncate">
-              {PROGRAMME_LABELS[programmeFamily] || 'IITM BS Degree'} • {currentTerm}
+            <p className="text-[13px] sm:text-sm text-silver mt-0.5 truncate">
+              {PROGRAMME_LABELS[programmeFamily] || 'IITM BS Degree'} · {currentTerm}
             </p>
           </div>
         </div>
@@ -608,34 +603,34 @@ export default function ProfilePage() {
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
         {/* Main Active Section (8 Cols Desktop) */}
         <div className="lg:col-span-8 flex flex-col gap-6 min-w-0">
-          {/* TAB 1: OVERVIEW & COMPLETION */}
+          {/* TAB 1: OVERVIEW & COMPLETION (Flat Hairline Surface) */}
           {activeTab === 'overview' && (
-            <div className="flex flex-col gap-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                {/* Profile Readiness Summary */}
-                <div className="p-6 rounded-[12px] bg-coal border border-edge smn-surface-elevated flex flex-col justify-between gap-5">
+            <div className="rounded-[12px] border border-edge bg-coal divide-y divide-edge overflow-hidden">
+              {/* Readiness & Verification Summary */}
+              <div className="grid grid-cols-1 md:grid-cols-2 divide-y md:divide-y-0 md:divide-x divide-edge">
+                <div className="p-6 flex flex-col justify-between gap-5">
                   <div>
                     <div className="flex items-center justify-between mb-3">
-                      <span className="text-[11px] uppercase tracking-[0.12em] text-iris font-semibold">
-                        Profile Readiness
+                      <span className="text-[13px] font-medium text-iris">
+                        Profile readiness
                       </span>
-                      <span className="text-sm font-semibold text-chalk">
+                      <span className="text-sm font-semibold text-chalk tabular-nums">
                         {completionReport.percentage}% Complete
                       </span>
                     </div>
                     <div className="w-full h-2 rounded-[4px] bg-stage overflow-hidden mb-4">
                       <div
-                        className="h-full bg-iris transition-all duration-500"
+                        className="h-full bg-iris transition-all duration-300"
                         style={{ width: `${completionReport.percentage}%` }}
                       />
                     </div>
                     <p className="text-sm text-silver leading-relaxed">
-                      SayMyName profiles are crafted for intentional 18+ connections within the approved IIT Madras BS community. Complete your public card and private preferences before publishing.
+                      Complete your public card and private filters before publishing to verified peers.
                     </p>
                   </div>
 
                   <div className="pt-4 border-t border-edge flex flex-wrap items-center justify-between gap-3">
-                    <span className="text-xs text-silver">
+                    <span className="text-[13px] text-silver">
                       Status:{' '}
                       <strong className="text-chalk">
                         {isPublished && !isPaused
@@ -651,77 +646,76 @@ export default function ProfilePage() {
                   </div>
                 </div>
 
-                {/* Verified Identity Tier */}
-                <div className="p-6 rounded-[12px] bg-coal border border-edge smn-surface-elevated flex flex-col justify-between gap-4">
+                <div className="p-6 flex flex-col justify-between gap-4">
                   <div>
                     <div className="flex items-center gap-2 mb-4 text-iris">
-                      <ShieldIcon size={18} />
-                      <span className="text-[11px] font-semibold uppercase tracking-[0.12em]">
-                        Verified Identity Tier
+                      <ShieldIcon size={17} />
+                      <span className="text-[13px] font-medium">
+                        Verified cohort status
                       </span>
                     </div>
-                    <ul className="space-y-3 text-xs text-silver">
+                    <ul className="space-y-3 text-[13px] text-silver">
                       <li className="flex items-start gap-2.5">
-                        <CheckIcon size={15} color="#5BB489" className="shrink-0 mt-0.5" />
+                        <CheckIcon size={15} color="#77C5A1" className="shrink-0 mt-0.5" />
                         <div>
                           <strong className="text-chalk block">18+ Adult Boundary</strong>
-                          <span className="text-[11px] text-ash">
+                          <span className="text-xs text-silver/80">
                             Verified via date of birth and manual review
                           </span>
                         </div>
                       </li>
                       <li className="flex items-start gap-2.5">
-                        <CheckIcon size={15} color="#5BB489" className="shrink-0 mt-0.5" />
+                        <CheckIcon size={15} color="#77C5A1" className="shrink-0 mt-0.5" />
                         <div>
                           <strong className="text-chalk block">IIT Madras BS Enrolment</strong>
-                          <span className="text-[11px] text-ash">
+                          <span className="text-xs text-silver/80">
                             {PROGRAMME_LABELS[programmeFamily]}
                           </span>
                         </div>
                       </li>
                       <li className="flex items-start gap-2.5">
-                        <CheckIcon size={15} color="#5BB489" className="shrink-0 mt-0.5" />
+                        <CheckIcon size={15} color="#77C5A1" className="shrink-0 mt-0.5" />
                         <div>
-                          <strong className="text-chalk block">Zero PII Exposure</strong>
-                          <span className="text-[11px] text-ash">
-                            Roll numbers and exact DOB stay strictly off public APIs
+                          <strong className="text-chalk block">Student privacy isolation</strong>
+                          <span className="text-xs text-silver/80">
+                            Roll numbers and exact DOB stay off public cards
                           </span>
                         </div>
                       </li>
                     </ul>
                   </div>
 
-                  <div className="pt-3 border-t border-edge text-[11px] text-ash">
+                  <div className="pt-3 border-t border-edge text-xs text-silver/75">
                     Independent platform. Not owned or endorsed by IIT Madras.
                   </div>
                 </div>
               </div>
 
               {/* Discovery Readiness Checklist */}
-              <div className="p-6 rounded-[12px] bg-coal border border-edge smn-surface-elevated">
+              <div className="p-6">
                 <div className="flex items-center justify-between gap-2 mb-4">
                   <h2 className="text-base font-semibold text-chalk">
                     Discovery Readiness Checklist
                   </h2>
-                  <span className="text-xs text-ash">
+                  <span className="text-[13px] text-silver/80 tabular-nums">
                     {completionReport.completedCount} of {completionReport.total} complete
                   </span>
                 </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                   {completionReport.checks.map((item) => (
                     <div
                       key={item.key}
-                      className={`p-3.5 rounded-[8px] border text-xs flex items-center justify-between gap-3 ${
+                      className={`px-3.5 py-3 rounded-[8px] border text-[13px] flex items-center justify-between gap-3 ${
                         item.done
-                          ? 'bg-iron/80 border-edge text-chalk'
-                          : 'bg-stage border-edge/70 text-silver'
+                          ? 'bg-iron border-edge text-chalk'
+                          : 'bg-stage border-edge text-silver'
                       }`}
                     >
                       <span>{item.label}</span>
                       {item.done ? (
-                        <CheckIcon size={15} color="#5BB489" />
+                        <CheckIcon size={15} color="#77C5A1" />
                       ) : (
-                        <span className="text-[11px] text-warning font-medium shrink-0">
+                        <span className="text-xs text-warning font-medium shrink-0">
                           Required
                         </span>
                       )}
@@ -732,60 +726,64 @@ export default function ProfilePage() {
             </div>
           )}
 
-          {/* TAB 2: EDIT PROFILE (PUBLIC CARD) */}
+          {/* TAB 2: EDIT PROFILE (Unified Hairline Surface + 48px Controls) */}
           {activeTab === 'edit' && (
-            <form onSubmit={handleSaveProfile} className="flex flex-col gap-6">
-              <div className="p-6 rounded-[12px] bg-coal border border-edge smn-surface-elevated flex flex-col gap-5">
-                <div className="flex items-center justify-between gap-2 border-b border-edge pb-3">
+            <form
+              onSubmit={handleSaveProfile}
+              className="rounded-[12px] border border-edge bg-coal divide-y divide-edge overflow-hidden"
+            >
+              <div className="p-6 flex flex-col gap-5">
+                <div className="flex items-center justify-between gap-2 pb-3 border-b border-edge">
                   <h2 className="text-lg font-semibold text-chalk">
                     Public Identity &amp; Academics
                   </h2>
                   <Badge variant="neutral" size="sm">
-                    Visible on Discover Card
+                    Visible in Discover
                   </Badge>
                 </div>
 
                 <div>
-                  <label className="block text-[11px] uppercase tracking-[0.12em] text-iris mb-2 font-semibold">
+                  <label htmlFor="profile-display-name" className="block text-[13px] font-medium text-silver mb-1.5">
                     Preferred Display Name
                   </label>
                   <Input
+                    id="profile-display-name"
                     type="text"
                     value={displayName}
                     onChange={(e) => setDisplayName(e.target.value)}
                     placeholder="e.g. Ananya"
                     maxLength={50}
                     required
+                    helperText="How peers address you. Roll numbers, account IDs, or email addresses are prohibited."
                   />
-                  <p className="text-[11px] text-ash mt-1.5">
-                    How peers address you. Roll numbers, account IDs, or email addresses are prohibited.
-                  </p>
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-[11px] uppercase tracking-[0.12em] text-ash mb-2 font-semibold">
+                    <label htmlFor="profile-track-locked" className="block text-[13px] font-medium text-silver mb-1.5">
                       Verified Academic Programme
                     </label>
                     <input
+                      id="profile-track-locked"
                       type="text"
                       value={PROGRAMME_LABELS[programmeFamily] || programmeFamily}
                       disabled
-                      className="w-full px-3.5 h-10 rounded-[8px] bg-stage border border-edge/70 text-xs text-silver cursor-not-allowed"
+                      className="w-full px-3.5 h-12 rounded-[6px] bg-stage border border-edge text-sm text-silver cursor-not-allowed"
                     />
-                    <p className="text-[11px] text-ash mt-1">
+                    <p className="text-xs text-silver/75 mt-1.5">
                       Locked to verified institutional record.
                     </p>
                   </div>
 
                   <div>
-                    <label className="block text-[11px] uppercase tracking-[0.12em] text-iris mb-2 font-semibold">
+                    <label htmlFor="profile-term-select" className="block text-[13px] font-medium text-silver mb-1.5">
                       Current Study Level / Term
                     </label>
                     <select
+                      id="profile-term-select"
                       value={currentTerm}
                       onChange={(e) => setCurrentTerm(e.target.value)}
-                      className="w-full px-3.5 h-10 rounded-[8px] bg-stage border border-edge text-xs text-chalk focus:border-iris outline-none"
+                      className="w-full px-3.5 h-12 rounded-[6px] bg-stage border border-edge text-sm text-chalk focus-visible:outline-2 focus-visible:outline-iris"
                     >
                       <option value="Foundation Level">Foundation Level</option>
                       <option value="Diploma in Programming">Diploma in Programming</option>
@@ -799,10 +797,11 @@ export default function ProfilePage() {
 
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                   <div>
-                    <label className="block text-[11px] uppercase tracking-[0.12em] text-iris mb-2 font-semibold">
+                    <label htmlFor="profile-city" className="block text-[13px] font-medium text-silver mb-1.5">
                       City (Coarse)
                     </label>
                     <Input
+                      id="profile-city"
                       type="text"
                       value={locationCity}
                       onChange={(e) => setLocationCity(e.target.value)}
@@ -812,10 +811,11 @@ export default function ProfilePage() {
                     />
                   </div>
                   <div>
-                    <label className="block text-[11px] uppercase tracking-[0.12em] text-iris mb-2 font-semibold">
+                    <label htmlFor="profile-state" className="block text-[13px] font-medium text-silver mb-1.5">
                       State
                     </label>
                     <Input
+                      id="profile-state"
                       type="text"
                       value={locationState}
                       onChange={(e) => setLocationState(e.target.value)}
@@ -825,13 +825,14 @@ export default function ProfilePage() {
                     />
                   </div>
                   <div>
-                    <label className="block text-[11px] uppercase tracking-[0.12em] text-iris mb-2 font-semibold">
+                    <label htmlFor="profile-age-mode" className="block text-[13px] font-medium text-silver mb-1.5">
                       Age Display
                     </label>
                     <select
+                      id="profile-age-mode"
                       value={ageDisplayMode}
                       onChange={(e) => setAgeDisplayMode(e.target.value as any)}
-                      className="w-full px-3.5 h-10 rounded-[8px] bg-stage border border-edge text-xs text-chalk focus:border-iris outline-none"
+                      className="w-full px-3.5 h-12 rounded-[6px] bg-stage border border-edge text-sm text-chalk focus-visible:outline-2 focus-visible:outline-iris"
                     >
                       <option value="show_calculated_age">Display verified age</option>
                       <option value="hidden">Hide age on profile</option>
@@ -840,13 +841,14 @@ export default function ProfilePage() {
                 </div>
 
                 <div>
-                  <label className="block text-[11px] uppercase tracking-[0.12em] text-iris mb-2 font-semibold">
-                    Looking For / Relationship Intention
+                  <label htmlFor="profile-intention" className="block text-[13px] font-medium text-silver mb-1.5">
+                    Looking For / Intention
                   </label>
                   <select
+                    id="profile-intention"
                     value={intention}
                     onChange={(e) => setIntention(e.target.value)}
-                    className="w-full px-3.5 h-10 rounded-[8px] bg-stage border border-edge text-xs text-chalk focus:border-iris outline-none"
+                    className="w-full px-3.5 h-12 rounded-[6px] bg-stage border border-edge text-sm text-chalk focus-visible:outline-2 focus-visible:outline-iris"
                   >
                     <option value="Long-term intentional relationship">
                       Long-term intentional relationship
@@ -865,42 +867,45 @@ export default function ProfilePage() {
               </div>
 
               {/* Biography */}
-              <div className="p-6 rounded-[12px] bg-coal border border-edge smn-surface-elevated flex flex-col gap-3">
-                <div className="flex items-center justify-between border-b border-edge pb-3">
-                  <h2 className="text-lg font-semibold text-chalk">Biography</h2>
+              <div className="p-6 flex flex-col gap-3">
+                <div className="flex items-center justify-between">
+                  <label htmlFor="profile-bio-textarea" className="text-base font-semibold text-chalk">
+                    Biography
+                  </label>
                   <span
-                    className={`text-xs font-mono ${
-                      bio.length > 480 ? 'text-warning' : 'text-ash'
+                    className={`text-xs tabular-nums ${
+                      bio.length > 480 ? 'text-warning' : 'text-silver/75'
                     }`}
                   >
-                    {bio.length}/500 characters
+                    {bio.length}/500
                   </span>
                 </div>
                 <textarea
+                  id="profile-bio-textarea"
                   value={bio}
                   onChange={(e) => setBio(e.target.value)}
                   maxLength={500}
                   rows={5}
                   placeholder="Share your interests, ideas that excite you, and the kind of connection you are looking for..."
-                  className="w-full p-4 rounded-[8px] bg-stage border border-edge text-sm text-chalk leading-relaxed focus:border-iris outline-none resize-none transition-colors"
+                  className="w-full p-4 rounded-[8px] bg-stage border border-edge text-sm text-chalk leading-relaxed focus-visible:outline-2 focus-visible:outline-iris resize-none transition-colors"
                 />
-                <p className="text-[11px] text-ash">
-                  Minimum 20 characters recommended for Discovery publication. Never auto-rewritten.
+                <p className="text-xs text-silver/75">
+                  Minimum 20 characters recommended for Discovery publication.
                 </p>
               </div>
 
               {/* Curated Interests */}
-              <div className="p-6 rounded-[12px] bg-coal border border-edge smn-surface-elevated flex flex-col gap-4">
-                <div className="flex items-center justify-between border-b border-edge pb-3">
+              <div className="p-6 flex flex-col gap-4">
+                <div className="flex items-center justify-between gap-2">
                   <div>
-                    <h2 className="text-lg font-semibold text-chalk">
+                    <h2 className="text-base font-semibold text-chalk">
                       Personal Passions &amp; Interests
                     </h2>
-                    <p className="text-xs text-silver mt-0.5">
+                    <p className="text-[13px] text-silver mt-0.5">
                       Select 3 to 10 interests that reflect your pursuits.
                     </p>
                   </div>
-                  <span className="text-xs font-mono text-iris font-medium">
+                  <span className="text-xs text-iris font-medium tabular-nums">
                     {selectedInterests.length}/10 selected
                   </span>
                 </div>
@@ -913,9 +918,9 @@ export default function ProfilePage() {
                         key={interest.id}
                         type="button"
                         onClick={() => toggleInterest(interest.name)}
-                        className={`px-3 py-1.5 rounded-[6px] text-xs font-medium border transition-colors ${
+                        className={`min-h-[38px] px-3.5 py-1.5 rounded-[6px] text-[13px] font-medium border transition-colors focus-visible:outline-2 focus-visible:outline-iris ${
                           isSelected
-                            ? 'bg-iris/[0.14] border-iris text-chalk'
+                            ? 'bg-[#1C1C2E] border-iris text-chalk'
                             : 'bg-iron border-edge text-silver hover:border-[#465261] hover:text-chalk'
                         }`}
                       >
@@ -928,10 +933,10 @@ export default function ProfilePage() {
               </div>
 
               {/* Conversation Prompts */}
-              <div className="p-6 rounded-[12px] bg-coal border border-edge smn-surface-elevated flex flex-col gap-5">
-                <div className="border-b border-edge pb-3">
-                  <h2 className="text-lg font-semibold text-chalk">Conversation Prompts</h2>
-                  <p className="text-xs text-silver mt-0.5">
+              <div className="p-6 flex flex-col gap-4">
+                <div>
+                  <h2 className="text-base font-semibold text-chalk">Conversation Prompts</h2>
+                  <p className="text-[13px] text-silver mt-0.5">
                     Answer up to 3 prompts to spark genuine conversations.
                   </p>
                 </div>
@@ -940,10 +945,10 @@ export default function ProfilePage() {
                   {promptAnswers.map((item, idx) => (
                     <div
                       key={item.promptId || idx}
-                      className="p-4 rounded-[8px] bg-stage border border-edge flex flex-col gap-2.5"
+                      className="p-4 rounded-[8px] bg-iron border border-edge flex flex-col gap-2.5"
                     >
                       <div className="flex items-center justify-between gap-2">
-                        <span className="text-xs text-iris font-medium">
+                        <span className="text-[13px] text-iris font-medium">
                           {item.promptText || 'Conversation Prompt'}
                         </span>
                         <button
@@ -951,7 +956,7 @@ export default function ProfilePage() {
                           onClick={() => {
                             setPromptAnswers((prev) => prev.filter((_, i) => i !== idx));
                           }}
-                          className="text-xs text-danger hover:underline"
+                          className="text-xs font-medium text-danger hover:underline py-1 px-2"
                         >
                           Remove
                         </button>
@@ -967,20 +972,21 @@ export default function ProfilePage() {
                         maxLength={250}
                         rows={3}
                         placeholder="Your thoughtful response..."
-                        className="w-full p-3 rounded-[8px] bg-coal border border-edge text-xs text-chalk focus:border-iris outline-none resize-none"
+                        className="w-full p-3.5 rounded-[6px] bg-coal border border-edge text-sm text-chalk focus-visible:outline-2 focus-visible:outline-iris resize-none"
                       />
-                      <div className="text-right text-[10px] text-ash font-mono">
-                        {item.answerText.length}/250 characters
+                      <div className="text-right text-xs text-silver/75 tabular-nums">
+                        {item.answerText.length}/250
                       </div>
                     </div>
                   ))}
 
                   {promptAnswers.length < 3 && (
                     <div>
-                      <label className="block text-[11px] uppercase tracking-[0.12em] text-ash mb-2 font-semibold">
+                      <label htmlFor="add-prompt-select" className="block text-[13px] font-medium text-silver mb-1.5">
                         Add a prompt ({promptAnswers.length}/3)
                       </label>
                       <select
+                        id="add-prompt-select"
                         onChange={(e) => {
                           const targetId = e.target.value;
                           if (!targetId) return;
@@ -993,7 +999,7 @@ export default function ProfilePage() {
                           }
                           e.target.value = '';
                         }}
-                        className="w-full px-3.5 h-10 rounded-[8px] bg-stage border border-edge text-xs text-chalk focus:border-iris outline-none"
+                        className="w-full px-3.5 h-12 rounded-[6px] bg-stage border border-edge text-sm text-chalk focus-visible:outline-2 focus-visible:outline-iris"
                       >
                         <option value="">Select a prompt to answer...</option>
                         {catalogPrompts
@@ -1010,33 +1016,33 @@ export default function ProfilePage() {
               </div>
 
               {/* Save Action Bar */}
-              <div className="flex flex-wrap items-center justify-between gap-3 pt-1">
-                <Button type="submit" variant="primary" disabled={isSaving} isLoading={isSaving}>
+              <div className="px-6 py-4 bg-stage/50 flex flex-wrap items-center justify-between gap-3">
+                <Button type="submit" variant="primary" size="md" disabled={isSaving} isLoading={isSaving}>
                   {isSaving ? 'Saving Changes...' : 'Save Profile Changes'}
                 </Button>
-                <Button type="button" variant="secondary" onClick={handleOpenPreview}>
-                  Open Peer Preview Modal
+                <Button type="button" variant="secondary" size="md" onClick={handleOpenPreview}>
+                  Open Peer Preview
                 </Button>
               </div>
             </form>
           )}
 
-          {/* TAB 3: PHOTO MANAGEMENT (R2 VAULT) */}
+          {/* TAB 3: PHOTO MANAGEMENT (Asymmetric 6-Slot Vault Grid) */}
           {activeTab === 'photos' && (
-            <div className="flex flex-col gap-6">
-              <div className="p-6 rounded-[12px] bg-coal border border-edge smn-surface-elevated flex flex-col sm:flex-row items-start sm:items-center justify-between gap-5">
+            <div className="rounded-[12px] border border-edge bg-coal p-6 flex flex-col gap-6">
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pb-5 border-b border-edge">
                 <div className="space-y-1">
                   <h2 className="text-lg font-semibold text-chalk">
-                    Portrait Media Vault ({photos.length}/6)
+                    Portrait Media ({photos.length}/6)
                   </h2>
-                  <p className="text-xs text-silver leading-relaxed max-w-xl">
-                    Upload genuine portrait photographs. Media is stored privately with EXIF/GPS metadata stripped before delivery.
+                  <p className="text-[13px] text-silver leading-relaxed max-w-xl">
+                    Upload genuine portraits. Photos are stored privately with EXIF metadata removed before delivery.
                   </p>
                 </div>
 
                 {photos.length < 6 && (
                   <label className="cursor-pointer shrink-0">
-                    <span className="h-10 px-4 rounded-[8px] bg-iris text-[#0B0D10] text-xs font-semibold hover:bg-[#9894D1] transition-colors inline-flex items-center gap-2">
+                    <span className="min-h-[44px] px-5 rounded-[8px] bg-iris text-stage text-sm font-semibold hover:bg-[#9692D6] transition-colors inline-flex items-center gap-2">
                       {isUploadingPhoto ? 'Uploading...' : '+ Upload Portrait'}
                     </span>
                     <input
@@ -1052,9 +1058,9 @@ export default function ProfilePage() {
 
               {uploadProgress !== null && (
                 <div className="p-4 rounded-[8px] bg-iron border border-edge space-y-2">
-                  <div className="flex justify-between text-xs text-iris">
+                  <div className="flex justify-between text-[13px] text-iris">
                     <span>Uploading to private media storage...</span>
-                    <span>{uploadProgress}%</span>
+                    <span className="tabular-nums">{uploadProgress}%</span>
                   </div>
                   <div className="w-full h-1.5 rounded-[4px] bg-stage overflow-hidden">
                     <div
@@ -1065,89 +1071,99 @@ export default function ProfilePage() {
                 </div>
               )}
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-                {photos.map((photo, index) => (
-                  <div
-                    key={photo.id}
-                    className="rounded-[12px] overflow-hidden bg-coal border border-edge flex flex-col group"
-                  >
-                    <div className="relative aspect-[3/4] bg-stage overflow-hidden">
-                      {photo.photoUrl ? (
-                        <img
-                          src={photo.photoUrl}
-                          alt={`Portrait ${index + 1}`}
-                          className="w-full h-full object-cover"
-                        />
-                      ) : (
-                        <div className="w-full h-full flex flex-col items-center justify-center text-ash p-4 text-center">
-                          <UserIcon size={28} />
-                          <span className="text-xs mt-2">Private Media Slot</span>
-                        </div>
-                      )}
+              {/* Asymmetric Primary + Secondary 6-Slot Grid */}
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3.5 auto-rows-fr">
+                {photos.map((photo, index) => {
+                  const isHeroSlot = index === 0;
+                  return (
+                    <div
+                      key={photo.id}
+                      className={`rounded-[10px] overflow-hidden bg-iron border border-edge flex flex-col ${
+                        isHeroSlot ? 'col-span-2 row-span-2' : ''
+                      }`}
+                    >
+                      <div className={`relative flex-1 bg-stage overflow-hidden ${isHeroSlot ? 'min-h-[260px] sm:min-h-[340px]' : 'aspect-[3/4]'}`}>
+                        {photo.photoUrl ? (
+                          <img
+                            src={photo.photoUrl}
+                            alt={`Portrait ${index + 1}`}
+                            className="w-full h-full object-cover"
+                          />
+                        ) : (
+                          <div className="w-full h-full flex flex-col items-center justify-center text-silver/75 p-4 text-center">
+                            <UserIcon size={28} />
+                            <span className="text-xs mt-2">Private media slot</span>
+                          </div>
+                        )}
 
-                      {photo.isPrimary && (
-                        <div className="absolute top-3 left-3 px-2 py-0.5 rounded-[4px] bg-iris text-[#0B0D10] text-[10px] font-semibold uppercase tracking-wider">
-                          Primary
-                        </div>
-                      )}
-                    </div>
-
-                    <div className="p-3 bg-iron border-t border-edge flex items-center justify-between text-xs">
-                      <div className="flex items-center gap-1">
-                        <button
-                          type="button"
-                          onClick={() => handleMovePhoto(index, 'left')}
-                          disabled={index === 0}
-                          title="Move left"
-                          className="px-2 py-1 rounded-[4px] bg-stage text-silver hover:text-chalk disabled:opacity-30"
-                        >
-                          &larr;
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => handleMovePhoto(index, 'right')}
-                          disabled={index === photos.length - 1}
-                          title="Move right"
-                          className="px-2 py-1 rounded-[4px] bg-stage text-silver hover:text-chalk disabled:opacity-30"
-                        >
-                          &rarr;
-                        </button>
+                        {photo.isPrimary && (
+                          <div className="absolute top-3 left-3 px-2.5 py-1 rounded-[4px] bg-iris text-stage text-xs font-semibold">
+                            Primary
+                          </div>
+                        )}
                       </div>
 
-                      <div className="flex items-center gap-2.5">
-                        {!photo.isPrimary && (
+                      <div className="p-2.5 bg-iron border-t border-edge flex items-center justify-between gap-2 text-xs">
+                        <div className="flex items-center gap-1">
                           <button
                             type="button"
-                            onClick={() => handleSetPrimaryPhoto(photo.id)}
-                            className="text-iris hover:underline text-[11px] font-medium"
+                            onClick={() => handleMovePhoto(index, 'left')}
+                            disabled={index === 0}
+                            aria-label="Move photo earlier"
+                            title="Move left"
+                            className="w-8 h-8 rounded-[4px] bg-stage text-silver hover:text-chalk disabled:opacity-30"
                           >
-                            Make Primary
+                            &larr;
                           </button>
-                        )}
-                        <button
-                          type="button"
-                          onClick={() => handleRemovePhoto(photo.id)}
-                          className="text-danger hover:underline text-[11px]"
-                        >
-                          Delete
-                        </button>
+                          <button
+                            type="button"
+                            onClick={() => handleMovePhoto(index, 'right')}
+                            disabled={index === photos.length - 1}
+                            aria-label="Move photo later"
+                            title="Move right"
+                            className="w-8 h-8 rounded-[4px] bg-stage text-silver hover:text-chalk disabled:opacity-30"
+                          >
+                            &rarr;
+                          </button>
+                        </div>
+
+                        <div className="flex items-center gap-2.5">
+                          {!photo.isPrimary && (
+                            <button
+                              type="button"
+                              onClick={() => handleSetPrimaryPhoto(photo.id)}
+                              className="text-iris hover:underline font-medium py-1"
+                            >
+                              Make primary
+                            </button>
+                          )}
+                          <button
+                            type="button"
+                            onClick={() => handleRemovePhoto(photo.id)}
+                            className="text-danger hover:underline py-1"
+                          >
+                            Delete
+                          </button>
+                        </div>
                       </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
 
                 {Array.from({ length: Math.max(0, 6 - photos.length) }).map((_, i) => (
                   <label
                     key={`empty-${i}`}
-                    className="rounded-[12px] aspect-[3/4] border border-dashed border-edge hover:border-iris/60 flex flex-col items-center justify-center text-center p-5 cursor-pointer bg-stage/60 transition-colors group"
+                    className={`rounded-[10px] border border-dashed border-edge hover:border-iris flex flex-col items-center justify-center text-center p-4 cursor-pointer bg-stage/60 transition-colors group ${
+                      photos.length === 0 && i === 0 ? 'col-span-2 row-span-2 min-h-[260px]' : 'aspect-[3/4]'
+                    }`}
                   >
-                    <span className="w-10 h-10 rounded-[8px] bg-iron border border-edge flex items-center justify-center text-silver group-hover:text-iris mb-2.5 transition-colors">
+                    <span className="w-10 h-10 rounded-[8px] bg-iron border border-edge flex items-center justify-center text-silver group-hover:text-iris mb-2 transition-colors">
                       +
                     </span>
-                    <span className="text-xs text-silver group-hover:text-chalk font-medium">
+                    <span className="text-[13px] text-silver group-hover:text-chalk font-medium">
                       Add Portrait {photos.length + i + 1}
                     </span>
-                    <span className="text-[10px] text-ash mt-1">JPEG, PNG, WebP up to 10MB</span>
+                    <span className="text-xs text-silver/70 mt-1">JPEG, PNG, WebP · max 10MB</span>
                     <input
                       type="file"
                       accept={supportedImageMimes.join(',')}
@@ -1163,28 +1179,32 @@ export default function ProfilePage() {
 
           {/* TAB 4: DATING PREFERENCES (CONFIDENTIAL) */}
           {activeTab === 'preferences' && (
-            <form onSubmit={handleSavePreferences} className="flex flex-col gap-6">
-              <div className="p-4 rounded-[8px] bg-iron border border-edge flex items-start gap-3">
+            <form
+              onSubmit={handleSavePreferences}
+              className="rounded-[12px] border border-edge bg-coal divide-y divide-edge overflow-hidden"
+            >
+              <div className="p-5 bg-iron/70 flex items-start gap-3">
                 <LockIcon size={18} color="#8580C4" className="shrink-0 mt-0.5" />
-                <div className="text-xs text-silver leading-relaxed">
-                  <strong className="text-chalk">Confidential Discovery Criteria:</strong> These filters guide reciprocal matching in Discover. They are strictly private and never serialized onto your public profile card.
+                <div className="text-[13px] text-silver leading-relaxed">
+                  <strong className="text-chalk">Confidential discovery criteria:</strong> Filters guide reciprocal matching in Discover and never appear on your public profile card.
                 </div>
               </div>
 
-              <div className="p-6 rounded-[12px] bg-coal border border-edge smn-surface-elevated flex flex-col gap-4">
-                <h2 className="text-lg font-semibold text-chalk border-b border-edge pb-3">
+              <div className="p-6 flex flex-col gap-4">
+                <h2 className="text-lg font-semibold text-chalk">
                   Target Age Range
                 </h2>
-                <p className="text-xs text-silver">
+                <p className="text-[13px] text-silver">
                   Phase 1 is strictly restricted to verified adults aged 18 and above.
                 </p>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-[11px] uppercase tracking-[0.12em] text-iris mb-2 font-semibold">
+                    <label htmlFor="pref-min-age" className="block text-[13px] font-medium text-silver mb-1.5">
                       Minimum Age (18+)
                     </label>
                     <input
+                      id="pref-min-age"
                       type="number"
                       min={18}
                       max={preferences.maxAge}
@@ -1195,14 +1215,15 @@ export default function ProfilePage() {
                           minAge: parseInt(e.target.value) || 18,
                         }))
                       }
-                      className="w-full px-3.5 h-10 rounded-[8px] bg-stage border border-edge text-sm text-chalk focus:border-iris outline-none"
+                      className="w-full px-3.5 h-12 rounded-[6px] bg-stage border border-edge text-sm text-chalk focus-visible:outline-2 focus-visible:outline-iris"
                     />
                   </div>
                   <div>
-                    <label className="block text-[11px] uppercase tracking-[0.12em] text-iris mb-2 font-semibold">
+                    <label htmlFor="pref-max-age" className="block text-[13px] font-medium text-silver mb-1.5">
                       Maximum Age
                     </label>
                     <input
+                      id="pref-max-age"
                       type="number"
                       min={preferences.minAge}
                       max={65}
@@ -1213,18 +1234,18 @@ export default function ProfilePage() {
                           maxAge: parseInt(e.target.value) || 35,
                         }))
                       }
-                      className="w-full px-3.5 h-10 rounded-[8px] bg-stage border border-edge text-sm text-chalk focus:border-iris outline-none"
+                      className="w-full px-3.5 h-12 rounded-[6px] bg-stage border border-edge text-sm text-chalk focus-visible:outline-2 focus-visible:outline-iris"
                     />
                   </div>
                 </div>
               </div>
 
-              <div className="p-6 rounded-[12px] bg-coal border border-edge smn-surface-elevated flex flex-col gap-4">
-                <h2 className="text-lg font-semibold text-chalk border-b border-edge pb-3">
-                  Eligible IITM BS Degree Families
+              <div className="p-6 flex flex-col gap-4">
+                <h2 className="text-lg font-semibold text-chalk">
+                  Approved IITM BS Programme Tracks
                 </h2>
-                <p className="text-xs text-silver">
-                  Choose which approved programme families you are open to discovering:
+                <p className="text-[13px] text-silver">
+                  Choose which of the four approved non-campus BS tracks you are open to discovering:
                 </p>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -1233,10 +1254,10 @@ export default function ProfilePage() {
                     return (
                       <label
                         key={code}
-                        className={`flex items-center gap-3 p-3.5 rounded-[8px] border cursor-pointer transition-colors ${
+                        className={`flex items-center gap-3 p-4 min-h-[52px] rounded-[8px] border cursor-pointer transition-colors ${
                           isChecked
-                            ? 'bg-iris/[0.1] border-iris/60 text-chalk'
-                            : 'bg-stage border-edge text-silver hover:border-[#465261]'
+                            ? 'bg-slate border-iris text-chalk'
+                            : 'bg-stage border-edge text-silver hover:bg-iron'
                         }`}
                       >
                         <input
@@ -1250,19 +1271,19 @@ export default function ProfilePage() {
                               return { ...prev, allowedProgrammes: next };
                             });
                           }}
-                          className="accent-iris"
+                          className="w-4 h-4 accent-iris shrink-0"
                         />
-                        <span className="text-xs font-medium">{label}</span>
+                        <span className="text-[13px] font-medium">{label}</span>
                       </label>
                     );
                   })}
                 </div>
               </div>
 
-              <div className="p-5 rounded-[12px] bg-coal border border-edge flex items-center justify-between gap-4">
+              <label className="p-6 flex items-center justify-between gap-4 cursor-pointer hover:bg-iron/40 transition-colors">
                 <div>
                   <strong className="text-sm text-chalk block">Include in Discovery Queue</strong>
-                  <p className="text-xs text-silver mt-0.5">
+                  <p className="text-[13px] text-silver mt-0.5">
                     When active, your profile is surfaced to peers matching your mutual criteria.
                   </p>
                 </div>
@@ -1272,12 +1293,12 @@ export default function ProfilePage() {
                   onChange={(e) =>
                     setPreferences((prev) => ({ ...prev, showInDiscovery: e.target.checked }))
                   }
-                  className="w-5 h-5 accent-iris cursor-pointer"
+                  className="w-5 h-5 accent-iris cursor-pointer shrink-0"
                 />
-              </div>
+              </label>
 
-              <div>
-                <Button type="submit" variant="primary" disabled={isSaving} isLoading={isSaving}>
+              <div className="px-6 py-4 bg-stage/50">
+                <Button type="submit" variant="primary" size="md" disabled={isSaving} isLoading={isSaving}>
                   {isSaving ? 'Saving...' : 'Save Private Preferences'}
                 </Button>
               </div>
@@ -1286,9 +1307,9 @@ export default function ProfilePage() {
 
           {/* TAB 5: PRIVACY & VISIBILITY CONTROLS */}
           {activeTab === 'visibility' && (
-            <div className="flex flex-col gap-6">
-              <div className="p-6 rounded-[12px] bg-coal border border-edge smn-surface-elevated flex flex-col gap-5">
-                <h2 className="text-lg font-semibold text-chalk border-b border-edge pb-3">
+            <div className="rounded-[12px] border border-edge bg-coal divide-y divide-edge overflow-hidden">
+              <div className="p-6 flex flex-col gap-5">
+                <h2 className="text-lg font-semibold text-chalk">
                   Discoverability Controls
                 </h2>
 
@@ -1311,7 +1332,7 @@ export default function ProfilePage() {
                           : 'Draft (Not published)'}
                     </span>
                   </div>
-                  <p className="text-xs text-silver mt-1">
+                  <p className="text-[13px] text-silver mt-1">
                     {isPublished && !isPaused
                       ? 'Your profile card is actively visible to eligible peers in Discover.'
                       : isPaused
@@ -1324,6 +1345,7 @@ export default function ProfilePage() {
                   {isPublished && !isPaused ? (
                     <Button
                       variant="secondary"
+                      size="md"
                       onClick={() => handleTogglePublish(false)}
                       disabled={isTogglingDiscovery}
                       className="!border-warning/60 !text-warning"
@@ -1333,6 +1355,7 @@ export default function ProfilePage() {
                   ) : (
                     <Button
                       variant="primary"
+                      size="md"
                       onClick={() => handleTogglePublish(true)}
                       disabled={isTogglingDiscovery || photos.length === 0}
                     >
@@ -1340,20 +1363,20 @@ export default function ProfilePage() {
                     </Button>
                   )}
 
-                  <Button variant="secondary" onClick={handleOpenPreview}>
-                    View Peer Preview Modal
+                  <Button variant="secondary" size="md" onClick={handleOpenPreview}>
+                    View Peer Preview
                   </Button>
                 </div>
               </div>
 
-              <div className="p-6 rounded-[12px] bg-coal border border-edge smn-surface-elevated space-y-3">
+              <div className="p-6 space-y-3">
                 <h3 className="text-sm font-semibold text-chalk">SayMyName Privacy Commitments</h3>
-                <ul className="space-y-2 text-xs text-silver list-disc list-inside leading-relaxed">
-                  <li>No unsolicited stranger DMs: messaging requires a mutual match.</li>
+                <ul className="space-y-2 text-[13px] text-silver list-disc list-inside leading-relaxed">
+                  <li>No unsolicited stranger DMs: messaging requires an active mutual match.</li>
                   <li>Exact GPS or live location is never gathered or exposed.</li>
-                  <li>Dating preferences remain encrypted and strictly private.</li>
+                  <li>Discovery preferences stay confidential and are omitted from public cards.</li>
                   <li>Signed photo URLs expire automatically and omit device EXIF tags.</li>
-                  <li>Unilateral exit from Relationship Mode supported anytime.</li>
+                  <li>Passes remain private and unmatching closes channels cleanly.</li>
                 </ul>
               </div>
             </div>
@@ -1361,61 +1384,61 @@ export default function ProfilePage() {
 
           {/* TAB 6: ACCOUNT & VERIFICATION INFORMATION */}
           {activeTab === 'account' && (
-            <div className="flex flex-col gap-6">
-              <div className="p-6 rounded-[12px] bg-coal border border-edge smn-surface-elevated flex flex-col gap-5">
-                <h2 className="text-lg font-semibold text-chalk border-b border-edge pb-3">
+            <div className="rounded-[12px] border border-edge bg-coal divide-y divide-edge overflow-hidden">
+              <div className="p-6 flex flex-col gap-5">
+                <h2 className="text-lg font-semibold text-chalk">
                   Verified Student Enrolment
                 </h2>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="p-4 rounded-[8px] bg-stage border border-edge">
-                    <span className="text-[11px] uppercase tracking-[0.12em] text-ash font-semibold">
+                    <span className="text-xs font-medium text-silver/80">
                       Age Gate Status
                     </span>
                     <div className="text-sm font-semibold text-chalk mt-1.5 flex items-center gap-1.5">
-                      <CheckIcon size={15} color="#5BB489" />
+                      <CheckIcon size={15} color="#77C5A1" />
                       <span>18+ Adult Verified</span>
                     </div>
-                    <p className="text-[11px] text-ash mt-1">Exact birth date is confidential</p>
+                    <p className="text-xs text-silver/75 mt-1">Exact birth date stays private</p>
                   </div>
 
                   <div className="p-4 rounded-[8px] bg-stage border border-edge">
-                    <span className="text-[11px] uppercase tracking-[0.12em] text-ash font-semibold">
+                    <span className="text-xs font-medium text-silver/80">
                       Academic Enrolment Status
                     </span>
                     <div className="text-sm font-semibold text-chalk mt-1.5 flex items-center gap-1.5">
-                      <CheckIcon size={15} color="#5BB489" />
+                      <CheckIcon size={15} color="#77C5A1" />
                       <span>IITM Non-Campus BS Enrolled</span>
                     </div>
-                    <p className="text-[11px] text-ash mt-1">
+                    <p className="text-xs text-silver/75 mt-1">
                       {PROGRAMME_LABELS[programmeFamily]}
                     </p>
                   </div>
                 </div>
 
-                <div className="p-4 rounded-[8px] bg-iron border border-edge text-xs text-silver leading-relaxed">
-                  <strong className="text-chalk">Institutional Privacy Rule:</strong> Student roll numbers, verification evidence, and exact date of birth are never exposed on public APIs or rendered on peer profile cards.
+                <div className="p-4 rounded-[8px] bg-iron border border-edge text-[13px] text-silver leading-relaxed">
+                  <strong className="text-chalk">Institutional privacy rule:</strong> Student roll numbers, verification evidence, and exact date of birth are never exposed on public APIs or rendered on peer profile cards.
                 </div>
               </div>
 
-              <div className="p-6 rounded-[12px] bg-coal border border-edge smn-surface-elevated flex flex-col gap-4">
-                <h2 className="text-lg font-semibold text-chalk border-b border-edge pb-3">
+              <div className="p-6 flex flex-col gap-4">
+                <h2 className="text-lg font-semibold text-chalk">
                   Session &amp; Device Security
                 </h2>
-                <p className="text-xs text-silver leading-relaxed">
-                  Signed in on this browser. If you accessed your account from a shared computer, you can revoke all other active sessions immediately.
+                <p className="text-[13px] text-silver leading-relaxed">
+                  Signed in on this browser. If you accessed your account from a shared device, revoke all other active sessions immediately.
                 </p>
 
                 <div className="flex flex-wrap items-center gap-3 pt-1">
                   <Button
                     variant="secondary"
-                    size="sm"
+                    size="md"
                     onClick={handleRevokeOtherSessions}
                     disabled={isRevokingOthers}
                   >
                     {isRevokingOthers ? 'Revoking...' : 'Sign Out Other Active Devices'}
                   </Button>
-                  <Button variant="destructive" size="sm" onClick={() => logout()}>
+                  <Button variant="destructive" size="md" onClick={() => logout()}>
                     Sign Out
                   </Button>
                 </div>
@@ -1426,10 +1449,10 @@ export default function ProfilePage() {
 
         {/* Right Live Preview & Readiness Rail (4 Cols Desktop, Sticky) */}
         <aside className="lg:col-span-4 lg:sticky lg:top-[84px] flex flex-col gap-5">
-          <div className="rounded-[12px] border border-edge bg-coal smn-surface-elevated overflow-hidden">
-            <div className="px-4 py-3 border-b border-edge flex items-center justify-between bg-stage/70">
-              <span className="text-[11px] font-semibold uppercase tracking-[0.12em] text-iris">
-                Live Discover Card Preview
+          <div className="rounded-[12px] border border-edge bg-coal overflow-hidden">
+            <div className="px-4 py-3 border-b border-edge flex items-center justify-between bg-stage">
+              <span className="text-[13px] font-medium text-iris">
+                Live Discover Preview
               </span>
               <Badge variant="verified" size="sm">
                 Public View
@@ -1444,17 +1467,13 @@ export default function ProfilePage() {
                   className="w-full h-full object-cover"
                 />
               ) : (
-                <div className="w-full h-full flex flex-col items-center justify-center bg-iron text-ash gap-2 p-4 text-center">
+                <div className="w-full h-full flex flex-col items-center justify-center bg-iron text-silver/75 gap-2 p-4 text-center">
                   <UserIcon size={28} />
                   <span className="text-xs">Upload a primary portrait to preview</span>
                 </div>
               )}
-              <div
-                aria-hidden="true"
-                className="pointer-events-none absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-[#0B0D10]/90 to-transparent"
-              />
-              <div className="absolute bottom-3 left-3 right-3 flex items-center justify-between gap-2">
-                <span className="px-2 py-0.5 rounded-[4px] smn-glass-control text-[11px] text-chalk font-medium truncate">
+              <div className="px-3 py-1.5 bg-coal/95 border-t border-edge absolute bottom-0 inset-x-0">
+                <span className="text-xs text-chalk font-medium truncate block">
                   {PROGRAMME_LABELS[programmeFamily] || programmeFamily}
                 </span>
               </div>
@@ -1465,15 +1484,15 @@ export default function ProfilePage() {
                 <h3 className="text-lg font-semibold text-chalk truncate">
                   {displayName || 'Your Display Name'}
                 </h3>
-                <p className="text-xs text-silver mt-0.5">
+                <p className="text-[13px] text-silver mt-0.5">
                   {currentTerm}
-                  {coarseLocationPreview ? ` • ${coarseLocationPreview}` : ''}
-                  {ageDisplayMode === 'hidden' ? ' • Age hidden' : ''}
+                  {coarseLocationPreview ? ` · ${coarseLocationPreview}` : ''}
+                  {ageDisplayMode === 'hidden' ? ' · Age hidden' : ''}
                 </p>
               </div>
 
               {bio.trim() && (
-                <p className="text-xs text-silver line-clamp-3 leading-relaxed">
+                <p className="text-[13px] text-silver line-clamp-3 leading-relaxed">
                   {bio.trim()}
                 </p>
               )}
@@ -1483,7 +1502,7 @@ export default function ProfilePage() {
                   {selectedInterests.slice(0, 5).map((item) => (
                     <span
                       key={item}
-                      className="px-2 py-0.5 rounded-[4px] bg-iron border border-edge text-[11px] text-silver"
+                      className="px-2.5 py-1 rounded-[4px] bg-iron border border-edge text-xs text-silver"
                     >
                       {item}
                     </span>
@@ -1491,16 +1510,16 @@ export default function ProfilePage() {
                 </div>
               )}
 
-              <div className="pt-2 border-t border-edge text-[11px] text-ash">
-                Confidential filters, exact DOB, and student ID numbers never appear on this card.
+              <div className="pt-2.5 border-t border-edge text-xs text-silver/75">
+                Confidential filters, exact DOB, and student ID numbers never appear here.
               </div>
             </div>
           </div>
 
-          <div className="rounded-[12px] border border-edge bg-coal smn-surface-elevated p-4 flex flex-col gap-3">
-            <div className="flex items-center justify-between text-xs">
+          <div className="rounded-[12px] border border-edge bg-coal p-4 flex flex-col gap-3">
+            <div className="flex items-center justify-between text-[13px]">
               <span className="font-semibold text-chalk">Readiness</span>
-              <span className="font-mono text-iris">{completionReport.percentage}%</span>
+              <span className="text-iris font-medium tabular-nums">{completionReport.percentage}%</span>
             </div>
             <div className="w-full h-1.5 rounded-[4px] bg-stage overflow-hidden">
               <div
@@ -1523,7 +1542,7 @@ export default function ProfilePage() {
         description="Read-only preview of what eligible IITM BS members see in Discover."
         maxWidth="md"
         footer={
-          <Button variant="secondary" onClick={() => setIsPreviewOpen(false)}>
+          <Button variant="secondary" size="md" onClick={() => setIsPreviewOpen(false)}>
             Back to Editing
           </Button>
         }
@@ -1538,13 +1557,13 @@ export default function ProfilePage() {
                   className="w-full h-full object-cover"
                 />
               ) : (
-                <div className="w-full h-full flex flex-col items-center justify-center text-ash">
+                <div className="w-full h-full flex flex-col items-center justify-center text-silver/75">
                   <UserIcon size={40} />
-                  <span className="text-xs mt-2">No Portrait Uploaded</span>
+                  <span className="text-xs mt-2">No portrait uploaded</span>
                 </div>
               )}
               {(previewData.photos || []).length > 1 && (
-                <div className="absolute bottom-3 right-3 px-2 py-0.5 rounded-[4px] smn-glass-control text-[11px] font-mono text-chalk">
+                <div className="absolute bottom-3 right-3 px-2.5 py-1 rounded-[4px] bg-coal/95 border border-edge text-xs text-chalk tabular-nums">
                   1 / {previewData.photos.length}
                 </div>
               )}
@@ -1560,16 +1579,16 @@ export default function ProfilePage() {
                 </h3>
                 {previewData.isVerified && (
                   <Badge variant="verified" size="sm">
-                    IITM Verified
+                    Verified
                   </Badge>
                 )}
               </div>
-              <p className="text-xs text-iris mt-1">
+              <p className="text-[13px] text-iris mt-1">
                 {PROGRAMME_LABELS[previewData.programmeFamily] || previewData.programmeFamily}
-                {previewData.termOrYear && ` • ${previewData.termOrYear}`}
+                {previewData.termOrYear && ` · ${previewData.termOrYear}`}
               </p>
               {(previewData.locationCity || previewData.locationState) && (
-                <p className="text-xs text-ash flex items-center gap-1 mt-1">
+                <p className="text-[13px] text-silver flex items-center gap-1 mt-1">
                   <PinIcon size={13} />
                   <span>
                     {[previewData.locationCity, previewData.locationState]
@@ -1581,7 +1600,7 @@ export default function ProfilePage() {
             </div>
 
             {previewData.bio && (
-              <p className="text-sm text-silver leading-relaxed border-l-2 border-iris/75 pl-3.5">
+              <p className="text-sm text-silver leading-relaxed bg-stage border border-edge rounded-[8px] p-4">
                 {previewData.bio}
               </p>
             )}
@@ -1602,15 +1621,15 @@ export default function ProfilePage() {
             {Array.isArray(previewData.promptAnswers) && previewData.promptAnswers.length > 0 && (
               <div className="flex flex-col gap-3">
                 {previewData.promptAnswers.map((pa) => (
-                  <div key={pa.id} className="border-l-2 border-iris/60 pl-3 py-0.5">
+                  <div key={pa.id} className="p-3.5 rounded-[8px] bg-stage border border-edge">
                     <div className="text-xs text-iris font-medium">{pa.promptText}</div>
-                    <div className="text-sm text-chalk mt-0.5">{pa.answerText}</div>
+                    <div className="text-sm text-chalk mt-1">{pa.answerText}</div>
                   </div>
                 ))}
               </div>
             )}
 
-            <p className="pt-2 border-t border-edge text-[11px] text-ash text-center">
+            <p className="pt-2 border-t border-edge text-xs text-silver/75 text-center">
               Private preferences, roll numbers, and contact details are strictly omitted from this card.
             </p>
           </div>

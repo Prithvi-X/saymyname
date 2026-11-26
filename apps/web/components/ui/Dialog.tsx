@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect } from 'react';
+import React, { useEffect, useRef } from 'react';
 
 export interface DialogProps {
   isOpen: boolean;
@@ -13,11 +13,11 @@ export interface DialogProps {
 }
 
 /**
- * SayMyName Accessible Dialog / Modal (Document 10, Section 11 & 19)
- * - Backdrop: Void #0B0D10 at 75% opacity with subtle backdrop blur
- * - Surface: Iron #1A2027 with Edge #343D48 boundary
+ * SayMyName Accessible Dialog / Modal (Document 10 — Solid Surface Architecture)
+ * - Backdrop: Void #0B0D10 at 80% opacity (solid dim, no heavy backdrop blur)
+ * - Surface: Solid Iron #1A2027 with Edge #343D48 boundary
  * - Radii: 12px panel radius (--smn-radius-panel)
- * - Traps focus, handles Escape key, maintains WCAG AA contrast
+ * - Enforces Escape close, keyboard Tab focus containment, and focus return
  */
 export const Dialog: React.FC<DialogProps> = ({
   isOpen,
@@ -28,19 +28,58 @@ export const Dialog: React.FC<DialogProps> = ({
   footer,
   maxWidth = 'md',
 }) => {
+  const panelRef = useRef<HTMLDivElement | null>(null);
+  const previousFocusRef = useRef<HTMLElement | null>(null);
+
   useEffect(() => {
+    if (!isOpen) return;
+    previousFocusRef.current = document.activeElement as HTMLElement | null;
+    document.body.style.overflow = 'hidden';
+
+    const focusTimer = window.setTimeout(() => {
+      const panel = panelRef.current;
+      if (!panel) return;
+      const focusable = panel.querySelectorAll<HTMLElement>(
+        'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])',
+      );
+      if (focusable.length > 0) {
+        focusable[0].focus();
+      } else {
+        panel.focus();
+      }
+    }, 0);
+
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && isOpen) {
+      if (e.key === 'Escape') {
+        e.preventDefault();
         onClose();
+        return;
+      }
+      if (e.key === 'Tab' && panelRef.current) {
+        const focusable = Array.from(
+          panelRef.current.querySelectorAll<HTMLElement>(
+            'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])',
+          ),
+        );
+        if (focusable.length === 0) return;
+        const first = focusable[0];
+        const last = focusable[focusable.length - 1];
+        if (e.shiftKey && document.activeElement === first) {
+          e.preventDefault();
+          last.focus();
+        } else if (!e.shiftKey && document.activeElement === last) {
+          e.preventDefault();
+          first.focus();
+        }
       }
     };
-    if (isOpen) {
-      document.body.style.overflow = 'hidden';
-      window.addEventListener('keydown', handleKeyDown);
-    }
+
+    window.addEventListener('keydown', handleKeyDown);
     return () => {
+      window.clearTimeout(focusTimer);
       document.body.style.overflow = '';
       window.removeEventListener('keydown', handleKeyDown);
+      previousFocusRef.current?.focus?.();
     };
   }, [isOpen, onClose]);
 
@@ -61,14 +100,16 @@ export const Dialog: React.FC<DialogProps> = ({
     >
       {/* Backdrop */}
       <div
-        className="fixed inset-0 bg-stage/80 backdrop-blur-sm transition-opacity duration-180"
+        className="fixed inset-0 bg-stage/85 transition-opacity duration-180"
         onClick={onClose}
         aria-hidden="true"
       />
 
-      {/* Surface Panel */}
+      {/* Solid Architectural Surface Panel */}
       <div
-        className={`relative w-full ${widthMap[maxWidth]} smn-glass-overlay smn-dialog-enter rounded-[12px] p-6 sm:p-7 flex flex-col gap-5 z-10`}
+        ref={panelRef}
+        tabIndex={-1}
+        className={`relative w-full ${widthMap[maxWidth]} smn-dialog-surface smn-dialog-enter rounded-[12px] p-6 sm:p-7 flex flex-col gap-5 z-10 focus:outline-none`}
       >
         <div className="flex items-start justify-between gap-4">
           <div>
@@ -82,9 +123,10 @@ export const Dialog: React.FC<DialogProps> = ({
             )}
           </div>
           <button
+            type="button"
             onClick={onClose}
             aria-label="Close dialog"
-            className="text-ash hover:text-chalk p-1 rounded-[4px] hover:bg-slate transition-colors focus-visible:outline-2 focus-visible:outline-iris"
+            className="text-silver hover:text-chalk w-11 h-11 inline-flex items-center justify-center rounded-[6px] hover:bg-slate transition-colors shrink-0 focus-visible:outline-2 focus-visible:outline-iris"
           >
             <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
@@ -97,7 +139,7 @@ export const Dialog: React.FC<DialogProps> = ({
         </div>
 
         {footer && (
-          <div className="flex items-center justify-end gap-3 pt-4 border-t border-edge">
+          <div className="flex flex-wrap items-center justify-end gap-3 pt-4 border-t border-edge">
             {footer}
           </div>
         )}

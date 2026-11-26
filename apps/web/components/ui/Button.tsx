@@ -34,9 +34,9 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
       'inline-flex items-center justify-center font-medium font-ui transition-all duration-120 ease-out select-none focus-visible:outline-2 focus-visible:outline-iris focus-visible:outline-offset-3 disabled:opacity-40 disabled:cursor-not-allowed disabled:pointer-events-none active:scale-[0.98]';
 
     const sizeStyles = {
-      sm: 'h-9 px-3.5 text-xs gap-1.5 rounded-[6px]',
-      md: 'h-12 px-5 text-sm gap-2 rounded-[8px]',
-      lg: 'h-[48px] px-6 text-base gap-2.5 rounded-[8px]',
+      sm: 'min-h-[40px] px-3.5 text-[13px] gap-1.5 rounded-[6px]',
+      md: 'min-h-[44px] h-11 sm:h-12 px-5 text-sm gap-2 rounded-[8px]',
+      lg: 'min-h-[48px] h-12 px-6 text-base gap-2.5 rounded-[8px]',
     };
 
     const variantStyles = {
