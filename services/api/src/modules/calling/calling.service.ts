@@ -1,6 +1,5 @@
 import {
   Injectable,
-  BadRequestException,
   NotFoundException,
   ForbiddenException,
   ConflictException,
@@ -12,20 +11,15 @@ import { MatchAuthorizationService } from '../safety/match-authorization.service
 import { RealtimeEventBusService } from '../realtime/realtime-event-bus.service';
 import {
   CallStatus,
-  MessageType,
-  DeliveryState,
   CallSessionDto,
   CallInviteResponseDto,
   CallTokenResponseDto,
-  VoiceNotePresignResponseDto,
   CallRealtimeEventData,
 } from '@saymyname/contracts';
 import {
-  VoiceNotePresignDto,
   CallInviteDto,
   CallRespondDto,
   CallStateTransitionDto,
-  SendVoiceNoteDto,
 } from './dto/calling.dto';
 import {
   assertCallStatusTransition,
@@ -39,8 +33,6 @@ import {
   LiveKitProviderAdapter,
 } from './livekit-provider.adapter';
 import * as crypto from 'crypto';
-import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
-import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 
 interface MockCallSession {
   id: string;
@@ -58,17 +50,6 @@ interface MockCallSession {
   evictionStatus?: string | null;
   createdAt: Date;
 }
-
-const ALLOWED_AUDIO_MIMES = [
-  'audio/m4a',
-  'audio/mp4',
-  'audio/mp3',
-  'audio/mpeg',
-  'audio/webm',
-  'audio/ogg',
-  'audio/wav',
-  'audio/aac',
-];
 
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const PENDING_INVITE_STATUSES = ['inviting', 'initiated', 'ringing'];
@@ -93,6 +74,7 @@ export class CallingService {
     @Optional() livekitProvider?: LiveKitProviderAdapter,
     @Optional() private readonly realtimeEventBus?: RealtimeEventBusService,
   ) {
+    void this.cryptoService;
     this.matchAuth = matchAuthService ?? new MatchAuthorizationService(this.prisma);
     this.livekitProvider = livekitProvider ?? new LiveKitProviderAdapter();
   }
@@ -269,95 +251,6 @@ export class CallingService {
       return db.callSession.findUnique({ where: { id: callId } });
     }
     return this.mockCallSessions.get(callId) ?? null;
-  }
-
-  /**
-   * Pre-signs voice note audio upload (max 60s per Doc 02 §4.3)
-   * Note: Legacy calling endpoint scheduled for retirement in Phase 4.1 Checkpoint 5.
-   */
-  async presignVoiceNote(userId: string, dto: VoiceNotePresignDto): Promise<VoiceNotePresignResponseDto> {
-    if (!ALLOWED_AUDIO_MIMES.includes(dto.mimeType.toLowerCase())) {
-      throw new BadRequestException(
-        `Unsupported audio MIME type: ${dto.mimeType}. Allowed formats: m4a, mp3, webm, ogg, wav, aac`,
-      );
-    }
-
-    if (dto.durationSeconds > 60) {
-      throw new BadRequestException('Voice notes are strictly limited to a maximum of 60 seconds (Doc 02 §4.3)');
-    }
-
-    const mediaRefId = crypto.randomUUID();
-    const ext = dto.filename.split('.').pop() || 'm4a';
-    const s3Key = `voice_notes/${userId}/${mediaRefId}.${ext}`;
-
-    let uploadUrl: string;
-
-    if (
-      process.env.R2_ACCOUNT_ID &&
-      process.env.R2_BUCKET_NAME &&
-      process.env.R2_ACCESS_KEY_ID &&
-      process.env.R2_SECRET_ACCESS_KEY
-    ) {
-      try {
-        const s3 = new S3Client({
-          region: 'auto',
-          endpoint: `https://${process.env.R2_ACCOUNT_ID}.r2.cloudflarestorage.com`,
-          credentials: {
-            accessKeyId: process.env.R2_ACCESS_KEY_ID,
-            secretAccessKey: process.env.R2_SECRET_ACCESS_KEY,
-          },
-        });
-        uploadUrl = await getSignedUrl(
-          s3,
-          new PutObjectCommand({
-            Bucket: process.env.R2_BUCKET_NAME,
-            Key: s3Key,
-            ContentType: dto.mimeType,
-          }),
-          { expiresIn: 300 },
-        );
-      } catch (err) {
-        console.warn('[R2] Failed to generate presigned voice note URL, using fallback:', err);
-        uploadUrl = `https://storage.saymyname.in/mock-s3-upload/${s3Key}?signed=${this.cryptoService.sha256(mediaRefId)}`;
-      }
-    } else {
-      uploadUrl = `https://storage.saymyname.in/mock-s3-upload/${s3Key}?signed=${this.cryptoService.sha256(mediaRefId)}`;
-    }
-
-    return {
-      uploadUrl,
-      mediaRefId,
-      s3Key,
-      expiresInSeconds: 300,
-    };
-  }
-
-  /**
-   * Sends voice note message to conversation
-   * Note: Legacy calling endpoint scheduled for retirement in Phase 4.1 Checkpoint 5.
-   */
-  async sendVoiceNote(userId: string, dto: SendVoiceNoteDto) {
-    if (dto.durationSeconds > 60) {
-      throw new BadRequestException('Voice note duration exceeds 60 seconds limit');
-    }
-
-    await this.matchAuth.assertAuthorizedForConversation(userId, dto.conversationId);
-
-    const messageId = crypto.randomUUID();
-    const now = new Date();
-
-    return {
-      id: messageId,
-      conversationId: dto.conversationId,
-      sequenceNo: Date.now(),
-      senderAccountId: userId,
-      messageType: MessageType.VOICE_NOTE,
-      bodyText: dto.bodyText || 'Voice note',
-      mediaUrl: `https://storage.saymyname.in/media/${dto.mediaRefId}.m4a`,
-      durationSeconds: dto.durationSeconds,
-      deliveryState: DeliveryState.SENT,
-      createdAt: now.toISOString(),
-    };
   }
 
   /**

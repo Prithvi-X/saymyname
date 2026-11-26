@@ -1387,6 +1387,7 @@ describe('Phase 3.5: Chats, Realtime WebSockets, Voice Notes & Privacy', () => {
       if (req.method === 'HEAD') {
         res.setHeader('Content-Length', String(obj.body.length));
         res.setHeader('Content-Type', obj.contentType);
+        res.setHeader('ETag', '"smn-voice-etag-1"');
         res.statusCode = 200;
         res.end();
         return;
@@ -1540,6 +1541,18 @@ describe('Phase 3.5: Chats, Realtime WebSockets, Voice Notes & Privacy', () => {
       await h.messaging.streamVoiceNoteMedia(uB.accountId, vnMsg.mediaId!, badRangeCall.req, badRangeCall.res);
       assert.strictEqual(badRangeCall.getResult().statusCode, 416);
       assert.strictEqual(badRangeCall.getResult().headers['content-range'], `bytes */${wavBytes.length}`);
+
+      const etag = rangeOut.headers['etag'];
+      assert.ok(etag, 'Streaming proxy must include ETag for If-Range verification');
+      const validIfRange = makeMockReqRes('GET', { range: 'bytes=10-19', 'if-range': etag });
+      await h.messaging.streamVoiceNoteMedia(uB.accountId, vnMsg.mediaId!, validIfRange.req, validIfRange.res);
+      assert.strictEqual(validIfRange.getResult().statusCode, 206);
+      assert.deepStrictEqual(validIfRange.getResult().body, wavBytes.subarray(10, 20));
+
+      const staleIfRange = makeMockReqRes('GET', { range: 'bytes=10-19', 'if-range': '"stale-etag"' });
+      await h.messaging.streamVoiceNoteMedia(uB.accountId, vnMsg.mediaId!, staleIfRange.req, staleIfRange.res);
+      assert.strictEqual(staleIfRange.getResult().statusCode, 200);
+      assert.deepStrictEqual(staleIfRange.getResult().body, wavBytes);
 
       // 4. Outsider & nonexistent mediaId -> uniform 403 anti-oracle denial
       const outsiderCall = makeMockReqRes('GET');

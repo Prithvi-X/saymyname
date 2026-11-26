@@ -278,30 +278,29 @@ async function runTests() {
     recordTest('AUTHZ-003', 'AUTHZ', 'Message access denied', false, err.message);
   }
 
-  // AUTHZ-004: Voice note exceeds 60s limit
+  // AUTHZ-004 & AUTHZ-005: Legacy /calling/voice-notes/presign endpoint retired (canonical upload lives under /messaging/conversations/:id/voice-notes/presign)
   try {
     const res = await fetch(`${API_BASE}/calling/voice-notes/presign`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${verifiedToken}` },
       body: JSON.stringify({ filename: 'long_note.m4a', mimeType: 'audio/m4a', durationSeconds: 65 }),
     });
-    const passed = res.status === 400;
-    recordTest('AUTHZ-004', 'AUTHZ', 'Voice note exceeding 60-second limit rejected', passed, `status: ${res.status}`);
+    const passed = res.status === 404 || res.status === 410;
+    recordTest('AUTHZ-004', 'AUTHZ', 'Retired legacy /calling/voice-notes/presign returns 404', passed, `status: ${res.status}`);
   } catch (err) {
-    recordTest('AUTHZ-004', 'AUTHZ', 'Voice note limit enforcement', false, err.message);
+    recordTest('AUTHZ-004', 'AUTHZ', 'Legacy voice note endpoint retirement', false, err.message);
   }
 
-  // AUTHZ-005: Voice note with dangerous mime type rejected
   try {
-    const res = await fetch(`${API_BASE}/calling/voice-notes/presign`, {
+    const res = await fetch(`${API_BASE}/calling/voice-notes/send`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${verifiedToken}` },
-      body: JSON.stringify({ filename: 'payload.sh', mimeType: 'application/x-sh', durationSeconds: 15 }),
+      body: JSON.stringify({ conversationId: '00000000-0000-4000-8000-000000000001', mediaRefId: 'm1', durationSeconds: 15 }),
     });
-    const passed = res.status === 400;
-    recordTest('AUTHZ-005', 'AUTHZ', 'Voice note with unapproved mime type rejected', passed, `status: ${res.status}`);
+    const passed = res.status === 404 || res.status === 410;
+    recordTest('AUTHZ-005', 'AUTHZ', 'Retired legacy /calling/voice-notes/send returns 404', passed, `status: ${res.status}`);
   } catch (err) {
-    recordTest('AUTHZ-005', 'AUTHZ', 'Voice note mime check', false, err.message);
+    recordTest('AUTHZ-005', 'AUTHZ', 'Legacy voice note send retirement', false, err.message);
   }
 
   // AUTHZ-006: Self-interaction like prevention
@@ -489,17 +488,17 @@ async function runTests() {
     recordTest('CHAT-004', 'CHAT', 'Matches list query', false, err.message);
   }
 
-  // CHAT-005: Voice notes catalog validation
+  // CHAT-005: Retired calling voice-note endpoint does not leak prototype URLs
   try {
     const res = await fetch(`${API_BASE}/calling/voice-notes/presign`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${verifiedToken}` },
       body: JSON.stringify({ filename: 'voice.m4a', mimeType: 'audio/m4a', durationSeconds: 30 }),
     });
-    const passed = res.status === 200 || res.status === 201;
-    recordTest('CHAT-005', 'CHAT', 'Valid voice note within 60s generates presigned reference', passed, `status: ${res.status}`);
+    const passed = res.status === 404 || res.status === 410;
+    recordTest('CHAT-005', 'CHAT', 'Legacy /calling/voice-notes/presign retired safely', passed, `status: ${res.status}`);
   } catch (err) {
-    recordTest('CHAT-005', 'CHAT', 'Voice note presign', false, err.message);
+    recordTest('CHAT-005', 'CHAT', 'Legacy voice note presign retirement', false, err.message);
   }
 
   // CHAT-006: 1:1 LiveKit call initiation requires authentication

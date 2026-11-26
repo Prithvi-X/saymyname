@@ -60,33 +60,14 @@ describe('CallingService (Phase 4.1 Audio Calling Lifecycle & Legacy Voice Note 
   const partnerId = 'a2222222-2222-2222-2222-222222222222';
   const outsiderId = 'a3333333-3333-3333-3333-333333333333';
 
-  it('presigns voice note within 60s limit with supported audio mime type', async () => {
+  it('does not expose retired legacy calling voice-note endpoints or methods', async () => {
     const lk = createTestLiveKitAdapter();
-    const callingService = new CallingService(mockPrisma, cryptoService, undefined, lk.adapter);
-    const res = await callingService.presignVoiceNote(testUserId, {
-      filename: 'voice_message.m4a',
-      mimeType: 'audio/m4a',
-      durationSeconds: 42,
-    });
-
-    assert.ok(res.uploadUrl);
-    assert.ok(res.mediaRefId);
-    assert.ok(res.s3Key.includes('voice_notes/'));
-    assert.equal(res.expiresInSeconds, 300);
-  });
-
-  it('rejects voice note exceeding 60-second limit (Doc 02 §4.3)', async () => {
-    const lk = createTestLiveKitAdapter();
-    const callingService = new CallingService(mockPrisma, cryptoService, undefined, lk.adapter);
-    await assert.rejects(
-      () =>
-        callingService.presignVoiceNote(testUserId, {
-          filename: 'long_ramble.mp3',
-          mimeType: 'audio/mp3',
-          durationSeconds: 61,
-        }),
-      { name: 'BadRequestException' },
-    );
+    const callingService = new CallingService(mockPrisma, cryptoService, undefined, lk.adapter) as any;
+    assert.equal(typeof callingService.presignVoiceNote, 'undefined');
+    assert.equal(typeof callingService.sendVoiceNote, 'undefined');
+    const { CallingController } = await import('../src/modules/calling/calling.controller');
+    assert.equal(typeof (CallingController.prototype as any).presignVoiceNote, 'undefined');
+    assert.equal(typeof (CallingController.prototype as any).sendVoiceNote, 'undefined');
   });
 
   it('initiates 1:1 audio call invitation WITHOUT pre-accept join token and enforces single active call', async () => {

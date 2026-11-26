@@ -111,8 +111,8 @@ async function run() {
   tokenA = loginResA.data.accessToken;
   console.log(`[PASS] Reviewer verification complete, active session acquired with discoveryEligible=true`);
 
-  // Step 2: Test Voice Note Presign
-  console.log('\n[TEST] 1. Voice Note Presign URL');
+  // Step 2: Verify legacy calling voice-note presign route is retired (canonical endpoint lives under /messaging/conversations/:id/voice-notes/presign)
+  console.log('\n[TEST] 1. Legacy Voice Note Presign Endpoint Retired');
   const presignRes = await request('/calling/voice-notes/presign', {
     method: 'POST',
     headers: { Authorization: `Bearer ${tokenA}` },
@@ -123,14 +123,14 @@ async function run() {
     }),
   });
 
-  if (presignRes.ok && presignRes.data.uploadUrl && presignRes.data.mediaRefId) {
-    console.log(`[PASS] Voice note presigned: mediaRefId = ${presignRes.data.mediaRefId}`);
+  if (presignRes.status === 404 || presignRes.status === 410) {
+    console.log(`[PASS] Legacy /calling/voice-notes/presign cleanly retired (${presignRes.status})`);
   } else {
-    console.error('[FAIL] Presign voice note failed:', presignRes.data);
+    console.error('[FAIL] Expected retired legacy voice-note endpoint to return 404/410:', presignRes);
     process.exit(1);
   }
 
-  // Step 3: Test 1:1 LiveKit Calling Invite & Response
+  // Step 3: Test 1:1 LiveKit Calling Invite & Response (zero pre-accept token)
   console.log('\n[TEST] 2. 1:1 LiveKit Calling Lifecycle');
   const convId = 'c1111111-1111-1111-1111-111111111111';
   const callInviteRes = await request('/calling/invite', {
@@ -139,8 +139,8 @@ async function run() {
     body: JSON.stringify({ conversationId: convId }),
   });
 
-  if (!callInviteRes.ok || !callInviteRes.data.token) {
-    console.error('[FAIL] Call invite failed:', callInviteRes.data);
+  if (!callInviteRes.ok || !callInviteRes.data.callSession?.id || 'token' in callInviteRes.data) {
+    console.error('[FAIL] Call invite failed or exposed pre-accept token:', callInviteRes.data);
     process.exit(1);
   }
   const callId = callInviteRes.data.callSession.id;

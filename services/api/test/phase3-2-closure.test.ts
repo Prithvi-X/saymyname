@@ -774,9 +774,9 @@ describe('Phase 3.2 Final Must-Requirement Closure (MATCH-11, MATCH-22, HEIC/FFm
     );
     await assert.rejects(
       () =>
-        h.calling.sendVoiceNote(uB.accountId, {
-          conversationId,
-          mediaRefId: uuid(900),
+        h.messaging.presignVoiceNoteForConversation(uB.accountId, conversationId, {
+          filename: 'after.webm',
+          mimeType: 'audio/webm',
           durationSeconds: 12,
         }),
       (e: any) => e.status === 403,
@@ -1004,7 +1004,11 @@ describe('Phase 3.2 Final Must-Requirement Closure (MATCH-11, MATCH-22, HEIC/FFm
         () => h.calling.getCallSession(uOwner.accountId, activeCall.callSession.id),
         () => h.calling.issueJoinToken(uOwner.accountId, activeCall.callSession.id),
         () => h.calling.inviteCall(uOwner.accountId, { conversationId }),
-        () => h.calling.sendVoiceNote(uOwner.accountId, { conversationId, mediaRefId: uuid(950), durationSeconds: 5 }),
+        () => h.messaging.presignVoiceNoteForConversation(uOwner.accountId, conversationId, {
+          filename: 'after.webm',
+          mimeType: 'audio/webm',
+          durationSeconds: 5,
+        }),
         () => h.together.submitMove(uOwner.accountId, game.id, { moveType: 'guess_word', moveData: { guess: 'ALGORITHM' } }),
         () => h.together.getGameSession(uOwner.accountId, game.id),
         () => h.together.createMilestone(uOwner.accountId, matchId, { title: 'M', milestoneDate: '2026-11-25' }),

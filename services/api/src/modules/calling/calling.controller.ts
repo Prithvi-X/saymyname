@@ -12,11 +12,9 @@ import { JwtAuthGuard } from '../identity/guards/jwt-auth.guard';
 import { EligibilityGuard } from '../identity/guards/eligibility.guard';
 import { CallingService } from './calling.service';
 import {
-  VoiceNotePresignDto,
   CallInviteDto,
   CallRespondDto,
   CallStateTransitionDto,
-  SendVoiceNoteDto,
 } from './dto/calling.dto';
 
 @ApiTags('Calling (Phase 4.1 Audio-Only)')
@@ -25,18 +23,6 @@ import {
 @Controller('calling')
 export class CallingController {
   constructor(private readonly callingService: CallingService) {}
-
-  @Post('voice-notes/presign')
-  @ApiOperation({ summary: 'Pre-sign a voice note upload URL (deprecated legacy endpoint)' })
-  async presignVoiceNote(@Request() req: any, @Body() dto: VoiceNotePresignDto) {
-    return this.callingService.presignVoiceNote(req.user?.sub ?? req.user?.id, dto);
-  }
-
-  @Post('voice-notes/send')
-  @ApiOperation({ summary: 'Send a voice note message (deprecated legacy endpoint)' })
-  async sendVoiceNote(@Request() req: any, @Body() dto: SendVoiceNoteDto) {
-    return this.callingService.sendVoiceNote(req.user?.sub ?? req.user?.id, dto);
-  }
 
   @Post('invite')
   @ApiOperation({ summary: 'Initiate 1:1 LiveKit audio-only call invitation' })

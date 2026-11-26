@@ -136,21 +136,6 @@ export class MessagingService {
     };
   }
 
-  async signVoiceNoteUrl(s3Key?: string | null, ttlSeconds = 90): Promise<string | null> {
-    if (!s3Key) return null;
-    const r2 = this.createR2Client();
-    if (!r2) return null;
-    try {
-      return await getSignedUrl(
-        r2.client,
-        new GetObjectCommand({ Bucket: r2.bucket, Key: s3Key }),
-        { expiresIn: ttlSeconds },
-      );
-    } catch {
-      return null;
-    }
-  }
-
   private signUploadToken(payload: VerifiedUploadToken): string {
     const encoded = Buffer.from(JSON.stringify(payload), 'utf8').toString('base64url');
     const sig = crypto
@@ -1573,6 +1558,8 @@ export class MessagingService {
 
     let totalSize = Number(media.fileSizeBytes || 0);
     let detectedContentType = normalizeVoiceNoteMime(media.mediaType || 'audio/webm');
+    let objectEtag: string | null = null;
+    let objectLastModified: Date | null = null;
 
     try {
       const head = await r2.client.send(
@@ -1584,6 +1571,8 @@ export class MessagingService {
       if (head.ContentType && head.ContentType.startsWith('audio/')) {
         detectedContentType = normalizeVoiceNoteMime(media.mediaType || head.ContentType);
       }
+      if (head.ETag) objectEtag = head.ETag;
+      if (head.LastModified) objectLastModified = new Date(head.LastModified);
     } catch {
       throw new ForbiddenException('Voice-note media is unavailable.');
     }
@@ -1595,7 +1584,30 @@ export class MessagingService {
     const rawRangeHeader = Array.isArray(req.headers?.range)
       ? req.headers.range[0]
       : req.headers?.range;
-    const parsedRange = this.parseHttpByteRange(rawRangeHeader, totalSize);
+    const rawIfRangeHeader = Array.isArray(req.headers?.['if-range'])
+      ? req.headers['if-range'][0]
+      : req.headers?.['if-range'];
+    let parsedRange:
+      | { kind: 'full' }
+      | { kind: 'single'; start: number; end: number }
+      | { kind: 'invalid' } = this.parseHttpByteRange(rawRangeHeader, totalSize);
+
+    if (parsedRange.kind === 'single' && rawIfRangeHeader && String(rawIfRangeHeader).trim()) {
+      const ifRangeVal = String(rawIfRangeHeader).trim();
+      const matchesEtag = Boolean(
+        objectEtag &&
+          ifRangeVal.replace(/^W\//i, '') === String(objectEtag).replace(/^W\//i, ''),
+      );
+      const parsedDate = Date.parse(ifRangeVal);
+      const matchesDate = Boolean(
+        objectLastModified &&
+          Number.isFinite(parsedDate) &&
+          Math.floor(objectLastModified.getTime() / 1000) <= Math.floor(parsedDate / 1000),
+      );
+      if (!matchesEtag && !matchesDate) {
+        parsedRange = { kind: 'full' };
+      }
+    }
 
     res.setHeader('Cache-Control', 'private, no-store, no-cache, must-revalidate, max-age=0');
     res.setHeader('Pragma', 'no-cache');
@@ -1604,6 +1616,12 @@ export class MessagingService {
     res.setHeader('Cross-Origin-Resource-Policy', 'same-origin');
     res.setHeader('Vary', 'Authorization');
     res.setHeader('Accept-Ranges', 'bytes');
+    if (objectEtag) {
+      res.setHeader('ETag', objectEtag);
+    }
+    if (objectLastModified) {
+      res.setHeader('Last-Modified', objectLastModified.toUTCString());
+    }
 
     if (parsedRange.kind === 'invalid') {
       res.setHeader('Content-Range', `bytes */${totalSize}`);
@@ -1612,8 +1630,8 @@ export class MessagingService {
     }
 
     const isPartial = parsedRange.kind === 'single';
-    const start = isPartial ? parsedRange.start : 0;
-    const end = isPartial ? parsedRange.end : totalSize - 1;
+    const start = parsedRange.kind === 'single' ? parsedRange.start : 0;
+    const end = parsedRange.kind === 'single' ? parsedRange.end : totalSize - 1;
     const contentLength = end - start + 1;
     const statusCode = isPartial ? 206 : 200;
 

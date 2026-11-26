@@ -381,9 +381,9 @@ async function main() {
       req('GET', `/messaging/conversations/${pairAB.conversationId}/messages`, uA.token),
       req('POST', '/calling/invite', uB.token, { conversationId: pairAB.conversationId }),
       req('POST', `/calling/${callAB.body.callSession.id}/respond`, uB.token, { action: 'accept' }),
-      req('POST', '/calling/voice-notes/send', uB.token, {
-        conversationId: pairAB.conversationId,
+      req('POST', `/messaging/conversations/${pairAB.conversationId}/voice-notes`, uB.token, {
         mediaRefId: uid(999),
+        uploadToken: 'invalid',
         durationSeconds: 10,
       }),
       req('GET', `/calling/${callAB.body.callSession.id}`, uA.token),

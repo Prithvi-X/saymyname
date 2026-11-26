@@ -370,19 +370,6 @@ export interface CallSessionDto {
   evictionStatus?: string | null;
 }
 
-export interface VoiceNotePresignRequestDto {
-  filename: string;
-  mimeType: string;
-  durationSeconds: number;
-}
-
-export interface VoiceNotePresignResponseDto {
-  uploadUrl: string;
-  mediaRefId: string;
-  s3Key: string;
-  expiresInSeconds: number;
-}
-
 export interface CallInviteRequestDto {
   conversationId: string;
 }
