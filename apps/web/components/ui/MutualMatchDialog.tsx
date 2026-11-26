@@ -11,6 +11,9 @@ export interface MutualMatchDialogProps {
   matchResult: LikeResponse | null;
   onClose: () => void;
   onOpenConversation: (matchResult: LikeResponse) => void;
+  keepButtonLabel?: string;
+  modalTestId?: string;
+  openChatTestId?: string;
 }
 
 /**
@@ -23,6 +26,9 @@ export const MutualMatchDialog: React.FC<MutualMatchDialogProps> = ({
   matchResult,
   onClose,
   onOpenConversation,
+  keepButtonLabel = 'Keep Discovering',
+  modalTestId = 'mutual-match-modal',
+  openChatTestId = 'match-open-chat-btn',
 }) => {
   const peer = matchResult?.matchedProfile;
 
@@ -41,13 +47,13 @@ export const MutualMatchDialog: React.FC<MutualMatchDialogProps> = ({
             onClick={onClose}
             className="w-full"
           >
-            Keep Discovering
+            {keepButtonLabel}
           </Button>
           <Button
             variant="primary"
             size="md"
             onClick={() => matchResult && onOpenConversation(matchResult)}
-            data-testid="match-open-chat-btn"
+            data-testid={openChatTestId}
             className="w-full"
           >
             Open Conversation
@@ -56,7 +62,7 @@ export const MutualMatchDialog: React.FC<MutualMatchDialogProps> = ({
       }
     >
       <div
-        data-testid="mutual-match-modal"
+        data-testid={modalTestId}
         className="flex flex-col items-center text-center gap-5 py-2"
       >
         <div className="w-full rounded-[10px] border border-edge bg-stage py-6 px-4 flex flex-col items-center justify-center gap-2">

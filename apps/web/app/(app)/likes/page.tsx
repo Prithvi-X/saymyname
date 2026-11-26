@@ -32,7 +32,10 @@ import {
   Dialog,
   EmptyState,
   IntervalEmptyComposition,
+  MutualMatchDialog,
+  PageHeader,
   Skeleton,
+  StructuredListRow,
   Tabs,
 } from '../../../components/ui';
 import {
@@ -44,7 +47,6 @@ import {
   CompassIcon,
   InboxIcon,
   SendIcon,
-  LockIcon,
 } from '../../../components/icons';
 
 type LikesTab = 'received' | 'sent';
@@ -523,40 +525,32 @@ export default function LikesPage() {
   const activeInspectPhoto = inspectPhotos[inspectPhotoIndex] || inspectPhotos[0] || null;
 
   return (
-    <div className="max-w-[1280px] mx-auto px-4 sm:px-6 lg:px-8 pt-7 pb-24 sm:pt-9 md:pb-12 flex flex-col gap-6 font-ui">
-      {/* Header */}
-      <header className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 border-b border-edge/60 pb-5">
-        <div className="min-w-0">
-          <div className="flex items-center gap-2 text-xs uppercase tracking-[0.14em] text-ash font-semibold mb-1.5">
-            <LockIcon size={13} color="var(--smn-accent-iris, #8580C4)" />
-            <span>Private Interest • Two-Way Consent</span>
-          </div>
-          <h1 className="text-2xl sm:text-3xl font-semibold text-chalk tracking-tight">
-            Likes
-          </h1>
-          <p className="text-sm text-silver mt-1 max-w-2xl leading-relaxed">
-            Review verified members who expressed interest in you, or manage pending likes you have sent.
-          </p>
-        </div>
+    <div className="container-app pt-5 pb-24 sm:pt-7 md:pb-12 flex flex-col gap-6 font-ui">
+      <PageHeader
+        contextLabel="Private interest · Two-way consent"
+        accent="ember"
+        title="Likes"
+        description="Review verified members who expressed interest in you, or manage pending likes you have sent."
+        actions={
+          <>
+            <Link
+              href="/matches"
+              className="inline-flex items-center justify-center gap-2 min-h-[44px] px-4 rounded-[8px] border border-edge bg-coal text-silver text-sm font-medium hover:text-chalk hover:bg-iron transition-colors focus-visible:outline-2 focus-visible:outline-iris"
+            >
+              <span>Matches</span>
+            </Link>
+            <Link
+              href="/discover"
+              className="inline-flex items-center justify-center gap-2 min-h-[44px] px-4 rounded-[8px] border border-edge bg-iron text-chalk text-sm font-medium hover:bg-slate transition-colors focus-visible:outline-2 focus-visible:outline-iris"
+            >
+              <CompassIcon size={16} />
+              <span>Open Discover</span>
+            </Link>
+          </>
+        }
+      />
 
-        <div className="flex flex-wrap items-center gap-2.5 shrink-0">
-          <Link
-            href="/matches"
-            className="inline-flex items-center gap-2 h-10 px-4 rounded-[8px] border border-edge bg-coal text-silver text-sm font-medium hover:text-chalk hover:bg-iron transition-colors focus-visible:outline-2 focus-visible:outline-iris"
-          >
-            <span>Matches</span>
-          </Link>
-          <Link
-            href="/discover"
-            className="inline-flex items-center gap-2 h-10 px-4 rounded-[8px] border border-edge bg-iron text-chalk text-sm font-medium hover:bg-slate transition-colors focus-visible:outline-2 focus-visible:outline-iris"
-          >
-            <CompassIcon size={16} />
-            <span>Open Discover</span>
-          </Link>
-        </div>
-      </header>
-
-      {/* Architectural Tabs (No pill/capsule tracks — Document 10 Section 11) */}
+      {/* Architectural Tabs (No pill/capsule tracks) */}
       <Tabs
         activeTab={activeTab}
         onChange={handleTabChange}
@@ -587,7 +581,7 @@ export default function LikesPage() {
           <button
             type="button"
             onClick={() => setActionNotice(null)}
-            className="text-xs text-ash hover:text-chalk px-2 py-1 rounded-[4px]"
+            className="text-xs font-medium text-silver hover:text-chalk px-2.5 py-1.5 rounded-[4px]"
           >
             Dismiss
           </button>
@@ -604,7 +598,7 @@ export default function LikesPage() {
           <button
             type="button"
             onClick={() => setActionError(null)}
-            className="text-xs text-danger hover:underline px-2 py-1"
+            className="text-xs font-medium text-danger hover:underline px-2.5 py-1.5"
           >
             Dismiss
           </button>
@@ -616,26 +610,19 @@ export default function LikesPage() {
         <section aria-label="Received Likes" data-testid="received-likes-panel" className="flex flex-col gap-5">
           {receivedLoading ? (
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-              <div className="lg:col-span-8 grid grid-cols-1 md:grid-cols-2 gap-4">
-                {[1, 2, 3, 4].map((slot) => (
-                  <div
-                    key={slot}
-                    className="p-4 rounded-[12px] border border-edge bg-iron flex gap-4"
-                  >
-                    <Skeleton width="96px" height="128px" rounded="control" className="shrink-0" />
-                    <div className="flex-1 flex flex-col gap-2.5">
-                      <Skeleton width="60%" height="18px" />
-                      <Skeleton width="85%" height="14px" />
-                      <Skeleton width="45%" height="14px" />
-                      <div className="flex gap-2 mt-auto pt-2">
-                        <Skeleton width="88px" height="36px" rounded="control" />
-                        <Skeleton width="108px" height="36px" rounded="control" />
-                      </div>
+              <div className="lg:col-span-8 rounded-[12px] border border-edge bg-coal divide-y divide-edge">
+                {[1, 2, 3].map((slot) => (
+                  <div key={slot} className="p-5 flex items-center gap-4">
+                    <Skeleton width="76px" height="92px" rounded="control" className="shrink-0" />
+                    <div className="flex-1 flex flex-col gap-2">
+                      <Skeleton width="42%" height="20px" />
+                      <Skeleton width="72%" height="14px" />
+                      <Skeleton width="55%" height="14px" />
                     </div>
                   </div>
                 ))}
               </div>
-              <div className="lg:col-span-4 rounded-[12px] border border-edge bg-coal p-5 h-56 animate-pulse" />
+              <div className="lg:col-span-4 rounded-[12px] border border-edge bg-coal p-5 h-48 animate-pulse" />
             </div>
           ) : receivedError ? (
             <EmptyState
@@ -648,7 +635,7 @@ export default function LikesPage() {
           ) : receivedViewerState === 'paused' ? (
             <IntervalEmptyComposition
               variant="paused"
-              eyebrow="Visibility Paused"
+              eyebrow="Visibility paused"
               title="Your discovery visibility is paused"
               description="While paused, incoming likes and new matching wait quietly. You can still inspect or withdraw active outgoing likes in Sent Likes."
               primaryAction={{
@@ -670,7 +657,7 @@ export default function LikesPage() {
           ) : receivedItems.length === 0 ? (
             <IntervalEmptyComposition
               variant="likes"
-              eyebrow="Incoming Queue"
+              eyebrow="Incoming queue"
               title="No incoming likes yet"
               description="Verified members who express interest in your profile appear here clearly — never blurred or paywalled. Passes and decisions remain strictly private."
               primaryAction={{
@@ -690,17 +677,17 @@ export default function LikesPage() {
             />
           ) : (
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-              {/* Primary Received Likes Grid (8 Cols Desktop) */}
-              <div className="lg:col-span-8 flex flex-col gap-4">
-                <div className="flex items-center justify-between text-xs text-ash px-0.5">
+              {/* Primary Received Likes Structured List (8 Cols Desktop) */}
+              <div className="lg:col-span-8 flex flex-col gap-3">
+                <div className="flex items-center justify-between text-[13px] text-silver px-0.5">
                   <span>
-                    Showing {receivedItems.length} of {receivedTotalActive} active incoming{' '}
+                    Showing {receivedItems.length} of {receivedTotalActive} incoming{' '}
                     {receivedTotalActive === 1 ? 'like' : 'likes'}
                   </span>
-                  <span>Passes stay private</span>
+                  <span className="text-silver/75">Passes stay strictly private</span>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="rounded-[12px] border border-edge bg-coal overflow-hidden">
                   {receivedItems.map((item) => {
                     const p = item.profile;
                     const primaryPhoto = p.photos.find((ph) => ph.isPrimary) || p.photos[0] || null;
@@ -710,17 +697,15 @@ export default function LikesPage() {
                     const firstPrompt = p.promptAnswers[0] || null;
 
                     return (
-                      <article
+                      <StructuredListRow
                         key={item.likeId}
-                        data-testid={`received-like-card-${item.likeId}`}
-                        className="rounded-[12px] border border-edge bg-coal smn-surface-elevated p-4 sm:p-5 flex flex-col gap-4 transition-colors duration-150 hover:border-[#465261]"
-                      >
-                        <div className="flex gap-4 flex-1">
+                        testId={`received-like-card-${item.likeId}`}
+                        media={
                           <button
                             type="button"
                             onClick={() => handleOpenReceivedProfile(item)}
                             aria-label={`Inspect ${p.displayName}'s full profile`}
-                            className="w-24 h-32 sm:w-28 sm:h-36 rounded-[8px] border border-edge bg-stage overflow-hidden shrink-0 focus-visible:outline-2 focus-visible:outline-iris"
+                            className="w-20 h-24 rounded-[8px] border border-edge bg-stage overflow-hidden block focus-visible:outline-2 focus-visible:outline-iris"
                           >
                             {primaryPhoto?.photoUrl && !photoBroken ? (
                               <img
@@ -732,56 +717,14 @@ export default function LikesPage() {
                                 className="w-full h-full object-cover"
                               />
                             ) : (
-                              <div className="w-full h-full flex items-center justify-center bg-iron text-chalk font-semibold text-base">
+                              <span className="w-full h-full flex items-center justify-center bg-iron text-chalk font-semibold text-base">
                                 {getInitials(p.displayName)}
-                              </div>
+                              </span>
                             )}
                           </button>
-
-                          <div className="min-w-0 flex-1 flex flex-col gap-1.5">
-                            <div className="flex flex-wrap items-center gap-1.5">
-                              <Badge variant="verified" size="sm">
-                                Verified
-                              </Badge>
-                              <Badge variant="programme" size="sm">
-                                {formatProgrammeLabel(p.programmeFamily)}
-                              </Badge>
-                            </div>
-
-                            <div className="flex items-baseline justify-between gap-2 pt-0.5">
-                              <h2 className="text-lg font-semibold text-chalk truncate">
-                                {formatCandidateHeading(p.displayName, p.age)}
-                              </h2>
-                              <span className="text-[11px] text-ash shrink-0">
-                                {formatLikesDateLabel(item.likedAt)}
-                              </span>
-                            </div>
-
-                            <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-ash">
-                              {p.currentTerm && <span>{p.currentTerm}</span>}
-                              {coarseLocation && <span>{coarseLocation}</span>}
-                              {!p.ageVisible && <span>Age set to private</span>}
-                              {p.sharedInterests && p.sharedInterests.length > 0 && (
-                                <span className="text-iris font-medium">
-                                  {p.sharedInterests.length} shared{' '}
-                                  {p.sharedInterests.length === 1 ? 'interest' : 'interests'}
-                                </span>
-                              )}
-                            </div>
-
-                            <p className="text-sm text-silver line-clamp-2 leading-relaxed mt-0.5">
-                              {p.bio?.trim()
-                                ? p.bio
-                                : firstPrompt
-                                  ? `${firstPrompt.promptText}: ${firstPrompt.answerText}`
-                                  : 'No written bio added yet.'}
-                            </p>
-                          </div>
-                        </div>
-
-                        {/* Actions Strip */}
-                        <div className="flex flex-wrap items-center justify-between gap-2.5 pt-3 border-t border-edge">
-                          <div className="flex items-center gap-1.5">
+                        }
+                        actions={
+                          <div className="flex flex-wrap items-center gap-2">
                             <Button
                               variant="ghost"
                               size="sm"
@@ -789,7 +732,7 @@ export default function LikesPage() {
                               disabled={Boolean(busyAction)}
                               leftIcon={<UserIcon size={15} />}
                               data-testid={`inspect-received-btn-${item.likeId}`}
-                              className="border border-edge bg-iron/70 text-silver"
+                              className="border border-edge bg-iron text-chalk"
                             >
                               Inspect
                             </Button>
@@ -806,14 +749,12 @@ export default function LikesPage() {
                               }}
                               disabled={Boolean(busyAction)}
                               aria-label={`Block ${p.displayName}`}
-                              className="inline-flex items-center gap-1 px-2.5 h-9 rounded-[6px] text-xs text-ash hover:text-danger hover:bg-iron transition-colors focus-visible:outline-2 focus-visible:outline-iris"
+                              title="Block member"
+                              className="inline-flex items-center justify-center w-10 h-10 rounded-[6px] border border-edge bg-stage text-silver hover:text-danger hover:border-danger/50 transition-colors focus-visible:outline-2 focus-visible:outline-iris"
                             >
-                              <ShieldIcon size={14} />
-                              <span className="sr-only sm:not-sr-only">Block</span>
+                              <ShieldIcon size={15} />
                             </button>
-                          </div>
 
-                          <div className="flex items-center gap-2">
                             <Button
                               variant="secondary"
                               size="sm"
@@ -822,7 +763,6 @@ export default function LikesPage() {
                               isLoading={busyAction === 'pass'}
                               leftIcon={<XIcon size={15} />}
                               data-testid={`pass-received-btn-${item.likeId}`}
-                              className="!bg-iron !border-edge"
                             >
                               Pass
                             </Button>
@@ -839,8 +779,46 @@ export default function LikesPage() {
                               Like Back
                             </Button>
                           </div>
+                        }
+                      >
+                        <div className="flex flex-col gap-1">
+                          <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
+                            <div className="flex flex-wrap items-center gap-2 min-w-0">
+                              <h2 className="text-lg font-semibold text-chalk truncate">
+                                {formatCandidateHeading(p.displayName, p.age)}
+                              </h2>
+                              <Badge variant="verified" size="sm">
+                                Verified
+                              </Badge>
+                            </div>
+                            <span className="text-xs text-silver/75 shrink-0 tabular-nums">
+                              {formatLikesDateLabel(item.likedAt)}
+                            </span>
+                          </div>
+
+                          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[13px] text-silver">
+                            <span className="text-chalk/90 font-medium">
+                              {formatProgrammeLabel(p.programmeFamily)}
+                            </span>
+                            {p.currentTerm && <span>{p.currentTerm}</span>}
+                            {coarseLocation && <span>{coarseLocation}</span>}
+                            {p.sharedInterests && p.sharedInterests.length > 0 && (
+                              <span className="text-iris font-medium">
+                                {p.sharedInterests.length} shared{' '}
+                                {p.sharedInterests.length === 1 ? 'interest' : 'interests'}
+                              </span>
+                            )}
+                          </div>
+
+                          <p className="text-sm text-silver line-clamp-2 leading-relaxed mt-1">
+                            {p.bio?.trim()
+                              ? p.bio
+                              : firstPrompt
+                                ? `${firstPrompt.promptText}: ${firstPrompt.answerText}`
+                                : 'No written biography added yet.'}
+                          </p>
                         </div>
-                      </article>
+                      </StructuredListRow>
                     );
                   })}
                 </div>
@@ -860,42 +838,31 @@ export default function LikesPage() {
                 )}
               </div>
 
-              {/* Right Contextual Consent & Queue Summary Rail (4 Cols Desktop) */}
-              <aside className="lg:col-span-4 lg:sticky lg:top-[84px] flex flex-col gap-5">
-                <div className="rounded-[12px] border border-edge bg-coal smn-surface-elevated p-5 flex flex-col gap-4">
+              {/* Right Quiet Queue Context Rail (4 Cols Desktop) */}
+              <aside className="lg:col-span-4 lg:sticky lg:top-[84px]">
+                <div className="rounded-[12px] border border-edge bg-coal p-5 sm:p-6 flex flex-col gap-4">
                   <div className="flex items-center justify-between gap-2 pb-3 border-b border-edge">
-                    <span className="text-[11px] font-semibold uppercase tracking-[0.12em] text-ash">
-                      Inbox Overview
+                    <span className="text-sm font-semibold text-chalk">
+                      Two-way consent queue
                     </span>
-                    <Badge variant="verified" size="sm">
-                      Two-Way Only
-                    </Badge>
+                    <span className="text-xs text-silver tabular-nums">
+                      {receivedTotalActive} incoming · {sentTotalActive} sent
+                    </span>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-3">
-                    <div className="rounded-[8px] bg-iron border border-edge p-3 flex flex-col gap-1">
-                      <span className="text-[11px] text-ash uppercase tracking-wider">Incoming</span>
-                      <span className="text-xl font-semibold text-chalk">{receivedTotalActive}</span>
-                    </div>
-                    <div className="rounded-[8px] bg-iron border border-edge p-3 flex flex-col gap-1">
-                      <span className="text-[11px] text-ash uppercase tracking-wider">Sent Active</span>
-                      <span className="text-xl font-semibold text-chalk">{sentTotalActive}</span>
-                    </div>
-                  </div>
-
-                  <div className="flex flex-col gap-2.5 text-xs text-silver leading-relaxed pt-1">
+                  <div className="flex flex-col gap-2.5 text-[13px] text-silver leading-relaxed">
                     <p>
-                      <span className="text-chalk font-medium">Liking back</span> creates a mutual match immediately and unlocks private conversation in Chats.
+                      <span className="text-chalk font-medium">Liking back</span> creates a mutual match immediately and unlocks private chat in Chats.
                     </p>
                     <p>
-                      <span className="text-chalk font-medium">Passing</span> quietly closes incoming interest without notifying the other student.
+                      <span className="text-chalk font-medium">Passing</span> quietly closes incoming interest without notifying the other peer.
                     </p>
                   </div>
 
-                  <div className="flex flex-col gap-2 pt-2 border-t border-edge">
+                  <div className="pt-2 border-t border-edge">
                     <Button
                       variant="secondary"
-                      size="sm"
+                      size="md"
                       onClick={() => handleTabChange('sent')}
                       className="w-full"
                     >
@@ -929,18 +896,15 @@ export default function LikesPage() {
           )}
 
           {sentLoading ? (
-            <div className="flex flex-col gap-3">
+            <div className="rounded-[12px] border border-edge bg-coal divide-y divide-edge">
               {[1, 2, 3].map((slot) => (
-                <div
-                  key={slot}
-                  className="p-4 rounded-[12px] border border-edge bg-iron flex items-center gap-4"
-                >
+                <div key={slot} className="p-5 flex items-center gap-4">
                   <Skeleton width="72px" height="84px" rounded="control" className="shrink-0" />
                   <div className="flex-1 flex flex-col gap-2">
                     <Skeleton width="42%" height="18px" />
                     <Skeleton width="68%" height="14px" />
                   </div>
-                  <Skeleton width="104px" height="36px" rounded="control" />
+                  <Skeleton width="104px" height="40px" rounded="control" />
                 </div>
               ))}
             </div>
@@ -955,7 +919,7 @@ export default function LikesPage() {
           ) : sentItems.length === 0 ? (
             <IntervalEmptyComposition
               variant="likes"
-              eyebrow="Sent Interest"
+              eyebrow="Sent interest"
               title="No pending sent likes"
               description="Profiles you like in Discover appear here while awaiting a mutual decision. Withdrawing cancels pending interest cleanly without alerting anyone."
               primaryAction={{
@@ -975,16 +939,16 @@ export default function LikesPage() {
             />
           ) : (
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-              {/* Primary Sent Likes Stack (8 Cols Desktop) */}
-              <div className="lg:col-span-8 flex flex-col gap-4">
-                <div className="flex items-center justify-between text-xs text-ash px-0.5">
+              {/* Primary Sent Likes List (8 Cols Desktop) */}
+              <div className="lg:col-span-8 flex flex-col gap-3">
+                <div className="flex items-center justify-between text-[13px] text-silver px-0.5">
                   <span>
                     {sentTotalActive} active {sentTotalActive === 1 ? 'pending like' : 'pending likes'}
                   </span>
-                  <span>Mutual matches move to Matches automatically</span>
+                  <span className="text-silver/75">Mutual matches move to Matches automatically</span>
                 </div>
 
-                <div className="flex flex-col gap-3">
+                <div className="rounded-[12px] border border-edge bg-coal overflow-hidden">
                   {sentItems.map((item) => {
                     const meta = getSentLikeStatusMeta(item);
                     const busyAction = inFlightByLikeId[item.likeId];
@@ -995,19 +959,12 @@ export default function LikesPage() {
                     const photoBroken = primaryPhoto ? Boolean(brokenPhotoIds[primaryPhoto.id]) : true;
 
                     return (
-                      <article
+                      <StructuredListRow
                         key={item.likeId}
-                        data-testid={`sent-like-row-${item.likeId}`}
-                        className={`rounded-[12px] border border-edge p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 transition-colors duration-150 ${
-                          isWithdrawn
-                            ? 'bg-stage/80 border-edge/60 opacity-75'
-                            : isUnavailable
-                              ? 'bg-coal/75 border-edge/70'
-                              : 'bg-coal smn-surface-elevated hover:border-[#465261]'
-                        }`}
-                      >
-                        <div className="flex items-center gap-4 min-w-0">
-                          <div className="w-16 h-20 sm:w-20 sm:h-24 rounded-[8px] border border-edge bg-stage overflow-hidden shrink-0 flex items-center justify-center">
+                        muted={isWithdrawn}
+                        testId={`sent-like-row-${item.likeId}`}
+                        media={
+                          <div className="w-16 h-20 sm:w-20 sm:h-24 rounded-[8px] border border-edge bg-stage overflow-hidden flex items-center justify-center">
                             {!isUnavailable && primaryPhoto?.photoUrl && !photoBroken ? (
                               <img
                                 src={primaryPhoto.photoUrl}
@@ -1018,68 +975,69 @@ export default function LikesPage() {
                                 className="w-full h-full object-cover"
                               />
                             ) : (
-                              <span className="text-sm font-semibold text-ash">
+                              <span className="text-sm font-semibold text-silver">
                                 {isUnavailable ? '—' : getInitials(p.displayName)}
                               </span>
                             )}
                           </div>
+                        }
+                        actions={
+                          <div className="flex items-center gap-2.5">
+                            {!isUnavailable && p.profileId && (
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => handleOpenSentProfile(item)}
+                                leftIcon={<UserIcon size={15} />}
+                                className="border border-edge bg-iron text-chalk"
+                              >
+                                View Profile
+                              </Button>
+                            )}
 
-                          <div className="min-w-0 flex flex-col gap-1">
-                            <div className="flex flex-wrap items-center gap-1.5">
-                              <Badge variant={meta.badgeVariant} size="sm">
-                                {meta.label}
-                              </Badge>
-                              {!isUnavailable && p.programmeFamily && (
-                                <Badge variant="programme" size="sm">
-                                  {formatProgrammeLabel(p.programmeFamily)}
-                                </Badge>
-                              )}
-                            </div>
-
+                            {item.canWithdraw && (
+                              <Button
+                                variant="secondary"
+                                size="sm"
+                                onClick={() => setWithdrawTarget(item)}
+                                disabled={Boolean(busyAction)}
+                                isLoading={busyAction === 'withdraw'}
+                                data-testid={`withdraw-like-btn-${item.likeId}`}
+                                className="hover:!border-warning/60 hover:!text-warning"
+                              >
+                                Withdraw
+                              </Button>
+                            )}
+                          </div>
+                        }
+                      >
+                        <div className="flex flex-col gap-1">
+                          <div className="flex flex-wrap items-center gap-2">
                             <h2 className="text-base sm:text-lg font-semibold text-chalk truncate">
                               {isUnavailable
                                 ? 'Member unavailable'
                                 : formatCandidateHeading(p.displayName, p.age)}
                             </h2>
-
-                            <p className="text-xs text-silver leading-relaxed">
-                              {meta.helperCopy}
-                            </p>
-
-                            <span className="text-xs text-ash">
-                              Sent {formatLikesDateLabel(item.sentAt)}
-                            </span>
+                            <Badge variant={meta.badgeVariant} size="sm">
+                              {meta.label}
+                            </Badge>
                           </div>
-                        </div>
 
-                        <div className="flex items-center justify-end gap-2.5 shrink-0 pt-2 sm:pt-0 border-t sm:border-t-0 border-edge">
-                          {!isUnavailable && p.profileId && (
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => handleOpenSentProfile(item)}
-                              leftIcon={<UserIcon size={15} />}
-                              className="border border-edge bg-iron/70 text-silver"
-                            >
-                              View Profile
-                            </Button>
+                          {!isUnavailable && p.programmeFamily && (
+                            <p className="text-[13px] text-silver/90">
+                              {formatProgrammeLabel(p.programmeFamily)}
+                            </p>
                           )}
 
-                          {item.canWithdraw && (
-                            <Button
-                              variant="secondary"
-                              size="sm"
-                              onClick={() => setWithdrawTarget(item)}
-                              disabled={Boolean(busyAction)}
-                              isLoading={busyAction === 'withdraw'}
-                              data-testid={`withdraw-like-btn-${item.likeId}`}
-                              className="!bg-iron !border-edge hover:!border-warning/60 hover:!text-warning"
-                            >
-                              Withdraw
-                            </Button>
-                          )}
+                          <p className="text-[13px] text-silver leading-relaxed">
+                            {meta.helperCopy}
+                          </p>
+
+                          <span className="text-xs text-silver/75 tabular-nums">
+                            Sent {formatLikesDateLabel(item.sentAt)}
+                          </span>
                         </div>
-                      </article>
+                      </StructuredListRow>
                     );
                   })}
                 </div>
@@ -1099,35 +1057,24 @@ export default function LikesPage() {
                 )}
               </div>
 
-              {/* Right Contextual Sent-State Guide Rail (4 Cols Desktop) */}
-              <aside className="lg:col-span-4 lg:sticky lg:top-[84px] flex flex-col gap-5">
-                <div className="rounded-[12px] border border-edge bg-coal smn-surface-elevated p-5 flex flex-col gap-4">
+              {/* Right Quiet Sent Guide Rail (4 Cols Desktop) */}
+              <aside className="lg:col-span-4 lg:sticky lg:top-[84px]">
+                <div className="rounded-[12px] border border-edge bg-coal p-5 sm:p-6 flex flex-col gap-4">
                   <div className="flex items-center justify-between gap-2 pb-3 border-b border-edge">
-                    <span className="text-[11px] font-semibold uppercase tracking-[0.12em] text-ash">
-                      Outgoing Status Guide
+                    <span className="text-sm font-semibold text-chalk">
+                      Outgoing status guide
                     </span>
-                    <Badge variant="neutral" size="sm">
-                      Private
-                    </Badge>
+                    <span className="text-xs text-silver tabular-nums">
+                      {sentTotalActive} pending
+                    </span>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-3">
-                    <div className="rounded-[8px] bg-iron border border-edge p-3 flex flex-col gap-1">
-                      <span className="text-[11px] text-ash uppercase tracking-wider">Pending</span>
-                      <span className="text-xl font-semibold text-chalk">{sentTotalActive}</span>
-                    </div>
-                    <div className="rounded-[8px] bg-iron border border-edge p-3 flex flex-col gap-1">
-                      <span className="text-[11px] text-ash uppercase tracking-wider">Incoming</span>
-                      <span className="text-xl font-semibold text-chalk">{receivedTotalActive}</span>
-                    </div>
-                  </div>
-
-                  <ul className="flex flex-col gap-2.5 text-xs text-silver leading-relaxed">
+                  <ul className="flex flex-col gap-2.5 text-[13px] text-silver leading-relaxed">
                     <li>
-                      <span className="text-chalk font-medium">Awaiting decision:</span> Your interest is active and can be withdrawn anytime before mutual match.
+                      <span className="text-chalk font-medium">Awaiting decision:</span> Active and withdrawable anytime before mutual match.
                     </li>
                     <li>
-                      <span className="text-chalk font-medium">Withdrawn:</span> Cancelled quietly; the member can no longer act on the earlier like.
+                      <span className="text-chalk font-medium">Withdrawn:</span> Cancelled quietly without notifying the member.
                     </li>
                     <li>
                       <span className="text-chalk font-medium">Member unavailable:</span> Account paused, removed, or restricted.
@@ -1137,7 +1084,7 @@ export default function LikesPage() {
                   <div className="pt-2 border-t border-edge">
                     <Button
                       variant="secondary"
-                      size="sm"
+                      size="md"
                       onClick={() => handleTabChange('received')}
                       className="w-full"
                     >
@@ -1426,87 +1373,23 @@ export default function LikesPage() {
         </Dialog>
       )}
 
-      {/* Mutual Match Interval Celebration Modal */}
-      <Dialog
-        isOpen={Boolean(matchResult)}
+      {/* Mutual Match Signature Moment (ThresholdMark Convergence) */}
+      <MutualMatchDialog
+        matchResult={matchResult}
+        modalTestId="likes-mutual-match-modal"
+        openChatTestId="likes-match-open-chat-btn"
+        keepButtonLabel="Keep Reviewing"
         onClose={() => setMatchResult(null)}
-        title="It is a mutual match"
-        description="You both independently said yes. Your private conversation is now open."
-        maxWidth="sm"
-        footer={
-          <>
-            <Button
-              variant="secondary"
-              size="sm"
-              onClick={() => setMatchResult(null)}
-              className="!bg-coal !border !border-edge hover:!bg-slate"
-            >
-              Keep Reviewing
-            </Button>
-            <Button
-              variant="secondary"
-              size="sm"
-              onClick={() => {
-                setMatchResult(null);
-                router.push('/matches');
-              }}
-              className="!bg-coal !border !border-edge hover:!bg-slate"
-            >
-              Matches
-            </Button>
-            <Button
-              variant="primary"
-              size="sm"
-              onClick={() => {
-                setMatchResult(null);
-                router.push('/chats');
-              }}
-              data-testid="likes-match-open-chat-btn"
-            >
-              Open Conversation
-            </Button>
-          </>
-        }
-      >
-        <div
-          data-testid="likes-mutual-match-modal"
-          className="flex flex-col items-center text-center gap-4 py-2"
-        >
-          <div className="flex items-center justify-center gap-3 py-2" aria-hidden="true">
-            <div className="w-10 h-14 border-l-2 border-t-2 border-b-2 border-iris rounded-l-[4px] bg-stage/60" />
-            <div className="w-2.5 h-2.5 bg-ember" />
-            <div className="w-10 h-14 border-r-2 border-t-2 border-b-2 border-ember rounded-r-[4px] bg-stage/60" />
-          </div>
-
-          {matchResult?.matchedProfile && (
-            <div className="w-full p-4 rounded-[8px] bg-coal border border-edge flex items-center gap-3.5 text-left">
-              <div className="w-12 h-12 rounded-[6px] bg-slate border border-edge overflow-hidden shrink-0 flex items-center justify-center text-sm font-semibold text-chalk">
-                {matchResult.matchedProfile.primaryPhotoUrl ? (
-                  <img
-                    src={matchResult.matchedProfile.primaryPhotoUrl}
-                    alt={matchResult.matchedProfile.displayName}
-                    className="w-full h-full object-cover"
-                  />
-                ) : (
-                  getInitials(matchResult.matchedProfile.displayName)
-                )}
-              </div>
-              <div className="min-w-0">
-                <p className="text-sm font-semibold text-chalk truncate">
-                  {matchResult.matchedProfile.displayName}
-                </p>
-                <p className="text-xs text-silver truncate">
-                  {formatProgrammeLabel(matchResult.matchedProfile.programmeFamily)}
-                </p>
-              </div>
-            </div>
-          )}
-
-          <p className="text-xs text-ash leading-relaxed">
-            Calm, intentional pacing — send a note whenever both of you are ready.
-          </p>
-        </div>
-      </Dialog>
+        onOpenConversation={(res) => {
+          setMatchResult(null);
+          if (res.matchId) {
+            const conv = res.conversationId ? `&conversationId=${encodeURIComponent(res.conversationId)}` : '';
+            router.push(`/chats?matchId=${encodeURIComponent(res.matchId)}${conv}`);
+          } else {
+            router.push('/chats');
+          }
+        }}
+      />
 
       {/* Block Confirmation Modal */}
       {safetyTarget && (

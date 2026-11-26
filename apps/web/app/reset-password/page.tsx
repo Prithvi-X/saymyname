@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { api } from '../../lib/api';
 import { Button, Input } from '../../components/ui';
+import { ThresholdMark } from '../../components/brand';
 
 function ResetPasswordFormContent() {
   const searchParams = useSearchParams();
@@ -46,77 +47,91 @@ function ResetPasswordFormContent() {
   };
 
   return (
-    <div className="min-h-[calc(100vh-140px)] bg-void smn-ambient-calm smn-stage-wrap flex flex-col items-center justify-center px-4 py-12 font-ui">
-      <div className="w-full max-w-[440px] bg-coal border border-edge rounded-[12px] p-7 sm:p-9 smn-surface-elevated">
-        <p className="text-[11px] uppercase tracking-[0.14em] text-iris font-semibold mb-1.5">
-          Credential Update
-        </p>
-        <h1 className="text-2xl font-semibold text-chalk mb-2">Choose a New Password</h1>
-        <p className="text-xs sm:text-sm text-silver mb-6">
-          Minimum 8 characters. Completing this step automatically revokes all previous sessions.
-        </p>
-
-        {error && (
-          <div
-            role="alert"
-            className="mb-4 p-3 rounded-[6px] bg-danger-subtle border border-danger/40 text-xs text-danger"
-          >
-            {error}
+    <div className="min-h-[calc(100vh-140px)] bg-void flex items-center py-10 sm:py-14 font-ui">
+      <div className="container-app grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-14 items-center">
+        <section className="lg:col-span-5 flex flex-col gap-5 min-w-0">
+          <div className="inline-flex items-center p-3 rounded-[10px] border border-edge bg-coal self-start">
+            <ThresholdMark variant="aligned" size="sm" />
           </div>
-        )}
+          <p className="text-[13px] font-medium text-iris">Credential update</p>
+          <h1 className="text-[2rem] sm:text-[2.25rem] font-semibold text-chalk tracking-[-0.02em] leading-[1.1]">
+            Choose a new password
+          </h1>
+          <p className="text-sm sm:text-base text-silver leading-relaxed max-w-md">
+            Use at least 8 characters. Completing this update revokes all previous browser sessions cleanly.
+          </p>
+        </section>
 
-        {successMsg ? (
-          <div className="space-y-4">
-            <div className="p-4 rounded-[6px] bg-success-subtle border border-success/40 text-xs text-chalk leading-relaxed">
-              {successMsg}
-            </div>
-            <Link href="/login" className="block">
-              <Button variant="primary" size="md" className="w-full">
-                Proceed to Sign In →
-              </Button>
-            </Link>
-          </div>
-        ) : (
-          <form onSubmit={handleSubmit} className="flex flex-col gap-4" noValidate>
-            {!initialToken && (
-              <Input
-                label="Recovery Token"
-                id="reset-token"
-                type="text"
-                required
-                value={token}
-                onChange={(e) => setToken(e.target.value)}
-                placeholder="Paste your recovery token"
-              />
+        <section className="lg:col-span-7 w-full flex lg:justify-end">
+          <div className="w-full max-w-[540px] bg-coal border border-edge rounded-[12px] p-6 sm:p-9 lg:p-10">
+            <h2 className="text-2xl font-semibold text-chalk mb-2">New Passphrase</h2>
+            <p className="text-sm text-silver mb-6">
+              Set a unique passphrase for your verified account.
+            </p>
+
+            {error && (
+              <div
+                role="alert"
+                className="mb-4 p-3.5 rounded-[6px] bg-danger-subtle border border-danger/40 text-sm text-danger"
+              >
+                {error}
+              </div>
             )}
 
-            <Input
-              label="New Password"
-              id="reset-password"
-              type="password"
-              autoComplete="new-password"
-              required
-              minLength={8}
-              value={newPassword}
-              onChange={(e) => setNewPassword(e.target.value)}
-              helperText="Use a unique passphrase of at least 8 characters."
-            />
+            {successMsg ? (
+              <div className="space-y-4">
+                <div className="p-4 rounded-[6px] bg-success-subtle border border-success/40 text-sm text-chalk leading-relaxed">
+                  {successMsg}
+                </div>
+                <Link href="/login" className="block">
+                  <Button variant="primary" size="lg" className="w-full">
+                    Proceed to Sign In →
+                  </Button>
+                </Link>
+              </div>
+            ) : (
+              <form onSubmit={handleSubmit} className="flex flex-col gap-5" noValidate>
+                {!initialToken && (
+                  <Input
+                    label="Recovery Token"
+                    id="reset-token"
+                    type="text"
+                    required
+                    value={token}
+                    onChange={(e) => setToken(e.target.value)}
+                    placeholder="Paste your recovery token"
+                  />
+                )}
 
-            <Input
-              label="Confirm New Password"
-              id="reset-confirm"
-              type="password"
-              autoComplete="new-password"
-              required
-              value={confirmPassword}
-              onChange={(e) => setConfirmPassword(e.target.value)}
-            />
+                <Input
+                  label="New Password"
+                  id="reset-password"
+                  type="password"
+                  autoComplete="new-password"
+                  required
+                  minLength={8}
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  helperText="Use a unique passphrase of at least 8 characters."
+                />
 
-            <Button type="submit" variant="primary" size="md" isLoading={isLoading} className="w-full">
-              Update Password
-            </Button>
-          </form>
-        )}
+                <Input
+                  label="Confirm New Password"
+                  id="reset-confirm"
+                  type="password"
+                  autoComplete="new-password"
+                  required
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                />
+
+                <Button type="submit" variant="primary" size="lg" isLoading={isLoading} className="w-full">
+                  Update Password
+                </Button>
+              </form>
+            )}
+          </div>
+        </section>
       </div>
     </div>
   );

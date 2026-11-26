@@ -513,14 +513,14 @@ function OnboardingContent() {
   const activeStepIdx = stepOrder.indexOf(activeStepKey as any);
 
   return (
-    <div className="min-h-[calc(100vh-140px)] bg-void smn-ambient-calm smn-stage-wrap text-chalk font-ui py-8 sm:py-10 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-[1200px] mx-auto">
-        {/* Progress Indicator Header */}
-        <div className="mb-8 pb-6 border-b border-edge/60">
-          <p className="text-[11px] uppercase tracking-[0.14em] text-iris font-semibold mb-1.5">
-            Member Onboarding · Phase 1
+    <div className="min-h-[calc(100vh-140px)] bg-void text-chalk font-ui py-8 sm:py-10">
+      <div className="container-app">
+        {/* Progress Indicator Header with Architectural Numbered Steps */}
+        <div className="mb-8 pb-6 border-b border-edge">
+          <p className="text-[13px] text-iris font-medium mb-1.5">
+            Member onboarding · Phase 1
           </p>
-          <h1 className="text-2xl sm:text-3xl font-semibold text-chalk tracking-tight mb-2">
+          <h1 className="text-2xl sm:text-[2rem] font-semibold text-chalk tracking-[-0.02em] mb-4">
             {view === 'register' && 'Create your verified account'}
             {view === 'otp' && 'Confirm institutional email ownership'}
             {view === 'age' && 'Confirm 18+ adult eligibility'}
@@ -529,13 +529,13 @@ function OnboardingContent() {
             {view === 'profile' && 'Build your Discover profile'}
             {view === 'suspended' && 'Account access paused'}
           </h1>
-          <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 mt-4">
+          <div className="grid grid-cols-2 sm:grid-cols-5 gap-2.5">
             {[
-              { id: 'register', label: '1. Account' },
-              { id: 'otp', label: '2. Email' },
-              { id: 'age', label: '3. Age 18+' },
-              { id: 'student', label: '4. BS Track' },
-              { id: 'profile', label: '5. Profile' },
+              { id: 'register', num: '01', label: 'Account' },
+              { id: 'otp', num: '02', label: 'Email' },
+              { id: 'age', num: '03', label: 'Age 18+' },
+              { id: 'student', num: '04', label: 'BS Track' },
+              { id: 'profile', num: '05', label: 'Profile' },
             ].map((step, idx) => {
               const active =
                 view === step.id ||
@@ -544,17 +544,17 @@ function OnboardingContent() {
               return (
                 <div
                   key={step.id}
-                  className={`px-3 py-2 rounded-[6px] border text-xs font-medium flex items-center justify-center gap-1.5 whitespace-nowrap ${
+                  className={`px-3.5 py-2.5 rounded-[8px] border text-[13px] font-medium flex items-center gap-2 whitespace-nowrap ${
                     active
-                      ? 'bg-iron border-iris text-chalk font-semibold'
+                      ? 'bg-slate border-iris text-chalk font-semibold'
                       : completed
-                        ? 'bg-coal border-success/40 text-silver'
-                        : 'bg-coal/60 border-edge text-ash'
+                        ? 'bg-coal border-success/45 text-chalk'
+                        : 'bg-coal border-edge text-silver/75'
                   }`}
                 >
-                  {completed && (
-                    <span className="w-1.5 h-1.5 bg-success shrink-0" aria-hidden="true" />
-                  )}
+                  <span className={`text-xs font-mono ${active ? 'text-iris' : completed ? 'text-success' : 'text-silver/60'}`}>
+                    {completed ? '✓' : step.num}
+                  </span>
                   <span>{step.label}</span>
                 </div>
               );
@@ -708,7 +708,7 @@ function OnboardingContent() {
               {view === 'age' && (
                 <div className="bg-coal border border-edge rounded-[12px] p-6 sm:p-8 smn-surface-elevated">
                   <p className="text-xs sm:text-sm text-silver mb-5 leading-relaxed">
-                    SayMyName is strictly for adults aged 18 and older (Document 01 §3.5). Self-declared
+                    SayMyName is strictly for adults aged 18 and older. Self-declared
                     birth dates create an age eligibility case queued for verification—never displayed
                     directly on public profiles. Government ID uploads are not requested at this stage.
                   </p>
@@ -957,17 +957,17 @@ function OnboardingContent() {
 
             {/* Right Gate & Privacy Context Rail (5 Cols Desktop) */}
             <aside className="lg:col-span-5 lg:sticky lg:top-[84px] flex flex-col gap-5">
-              <div className="rounded-[12px] border border-edge bg-coal smn-surface-elevated p-6 flex flex-col gap-4">
+              <div className="rounded-[12px] border border-edge bg-coal p-6 flex flex-col gap-4">
                 <div className="flex items-center justify-between gap-2 pb-3 border-b border-edge">
-                  <span className="text-[11px] font-semibold uppercase tracking-[0.12em] text-iris">
-                    Verification Rules
+                  <span className="text-[13px] font-medium text-iris">
+                    Verification rules
                   </span>
                   <Badge variant="verified" size="sm">
                     18+ &amp; IITM BS Only
                   </Badge>
                 </div>
 
-                <div className="flex flex-col gap-3 text-xs text-silver leading-relaxed">
+                <div className="flex flex-col gap-3 text-[13px] text-silver leading-relaxed">
                   <div>
                     <strong className="text-chalk block">Mandatory vs Optional</strong>
                     <span>
@@ -1286,9 +1286,9 @@ function OnboardingContent() {
 
             {/* Live Preview Rail */}
             <aside className="lg:col-span-5 lg:sticky lg:top-[84px] flex flex-col gap-5">
-              <div className="bg-coal border border-edge rounded-[12px] overflow-hidden smn-surface-elevated">
-                <div className="px-4 py-2.5 border-b border-edge bg-stage/70 flex items-center justify-between">
-                  <span className="text-[11px] font-semibold uppercase tracking-[0.12em] text-iris">
+              <div className="bg-coal border border-edge rounded-[12px] overflow-hidden">
+                <div className="px-4 py-3 border-b border-edge bg-stage flex items-center justify-between">
+                  <span className="text-[13px] font-medium text-iris">
                     Live Discover Preview
                   </span>
                   <Badge variant="verified" size="sm">Verified</Badge>

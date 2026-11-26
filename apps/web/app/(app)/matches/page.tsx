@@ -26,15 +26,15 @@ import {
   Button,
   Dialog,
   IntervalEmptyComposition,
+  PageHeader,
   Skeleton,
+  StructuredListRow,
 } from '../../../components/ui';
 import {
   ChatIcon,
   CompassIcon,
   FlagIcon,
-  HandshakeIcon,
   HeartIcon,
-  LockIcon,
   ShieldIcon,
   UserIcon,
   XIcon,
@@ -329,7 +329,7 @@ export default function MatchesPage() {
       <div className="flex flex-col gap-5">
         {/* Photo Stage */}
         <div className="rounded-[10px] border border-edge bg-stage overflow-hidden">
-          <div className={`relative ${inModal ? 'aspect-[16/10]' : 'aspect-[16/10] sm:aspect-[16/9]'} bg-stage overflow-hidden`}>
+          <div className={`relative ${inModal ? 'aspect-[4/3.8] max-h-[360px]' : 'aspect-[4/3.4] max-h-[390px]'} bg-stage overflow-hidden`}>
             {activePhoto?.photoUrl && !photoBroken ? (
               <img
                 src={activePhoto.photoUrl}
@@ -337,7 +337,7 @@ export default function MatchesPage() {
                 onError={() =>
                   setBrokenPhotoIds((prev) => ({ ...prev, [activePhoto.id]: true }))
                 }
-                className="w-full h-full object-contain bg-stage"
+                className="w-full h-full object-cover bg-stage"
               />
             ) : (
               <div className="w-full h-full flex flex-col items-center justify-center bg-iron/70 text-ash gap-2">
@@ -477,10 +477,10 @@ export default function MatchesPage() {
 
         {/* Biography */}
         <div>
-          <h3 className="text-[11px] font-semibold uppercase tracking-[0.12em] text-ash mb-1.5">
+          <h3 className="text-[13px] font-medium text-silver/85 mb-1.5">
             About
           </h3>
-          <p className="text-sm text-chalk leading-relaxed whitespace-pre-line">
+          <p className="text-[15px] text-chalk leading-relaxed whitespace-pre-line">
             {c.bio?.trim() || 'No written biography shared yet.'}
           </p>
         </div>
@@ -488,16 +488,16 @@ export default function MatchesPage() {
         {/* Prompts */}
         {c.promptAnswers && c.promptAnswers.length > 0 && (
           <div className="flex flex-col gap-3">
-            <h3 className="text-[11px] font-semibold uppercase tracking-[0.12em] text-ash">
-              Prompts
+            <h3 className="text-[13px] font-medium text-silver/85">
+              Conversation prompts
             </h3>
             {c.promptAnswers.map((pa, idx) => (
               <div
                 key={pa.id || `${c.profileId}-prompt-${idx}`}
-                className="border-l-2 border-iris/75 pl-4 py-0.5 flex flex-col gap-1"
+                className="p-4 rounded-[8px] bg-iron border border-edge flex flex-col gap-1"
               >
-                <p className="text-xs font-medium text-iris">{pa.promptText}</p>
-                <p className="text-sm text-chalk leading-relaxed">&ldquo;{pa.answerText}&rdquo;</p>
+                <p className="text-[13px] font-medium text-iris">{pa.promptText}</p>
+                <p className="text-[15px] text-chalk leading-relaxed">&ldquo;{pa.answerText}&rdquo;</p>
               </div>
             ))}
           </div>
@@ -506,8 +506,8 @@ export default function MatchesPage() {
         {/* Interests */}
         {c.interests && c.interests.length > 0 && (
           <div>
-            <div className="flex items-center justify-between gap-2 mb-2">
-              <h3 className="text-[11px] font-semibold uppercase tracking-[0.12em] text-ash">
+            <div className="flex items-center justify-between gap-2 mb-2.5">
+              <h3 className="text-[13px] font-medium text-silver/85">
                 Interests
               </h3>
               {c.sharedInterests && c.sharedInterests.length > 0 && (
@@ -522,9 +522,9 @@ export default function MatchesPage() {
                 return (
                   <span
                     key={tag}
-                    className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-[4px] text-xs border ${
+                    className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-[4px] text-[13px] border ${
                       isShared
-                        ? 'bg-iris/[0.12] border-iris/60 text-chalk font-medium'
+                        ? 'bg-[#1C1C2E] border-iris/60 text-chalk font-medium'
                         : 'bg-iron border-edge text-silver'
                     }`}
                   >
@@ -543,38 +543,33 @@ export default function MatchesPage() {
   };
 
   return (
-    <main className="min-h-[calc(100vh-64px)] bg-stage text-chalk smn-ambient-discover smn-stage-wrap font-ui">
-      <div className="max-w-[1280px] mx-auto px-4 sm:px-6 lg:px-8 pt-6 sm:pt-8 pb-24 md:pb-12 flex flex-col gap-6">
-        {/* Page Header */}
-        <header className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 pb-5 border-b border-edge">
-          <div className="min-w-0">
-            <div className="flex items-center gap-2 text-[11px] uppercase tracking-[0.14em] text-ash font-semibold mb-1.5">
-              <HandshakeIcon size={14} color="var(--smn-accent-ember, #E18A62)" />
-              <span data-testid="matches-active-count">
-                Bilateral Connections &middot; {matches.length} Active
-              </span>
-            </div>
-            <h1 className="text-2xl sm:text-3xl font-semibold text-chalk tracking-tight">
-              Mutual Matches
-            </h1>
-            <p className="text-sm text-silver mt-1 max-w-2xl leading-relaxed">
-              Verified IIT Madras BS peers where both of you expressed interest independently. Private 1-on-1 conversations unlock here and end whenever either person unmatches.
-            </p>
-          </div>
+    <main className="min-h-[calc(100vh-68px)] bg-stage text-chalk font-ui">
+      <div className="container-app pt-5 sm:pt-7 pb-24 md:pb-12 flex flex-col gap-6">
+        <PageHeader
+          accent="ember"
+          contextLabel={`Bilateral connections · ${matches.length} active`}
+          title="Mutual Matches"
+          description="Verified IIT Madras BS peers where both of you expressed interest independently. Unmatching ends the connection cleanly."
+          actions={
+            <>
+              <Link href="/likes">
+                <Button variant="secondary" size="sm" leftIcon={<HeartIcon size={15} />}>
+                  Likes
+                </Button>
+              </Link>
+              <Link href="/discover">
+                <Button variant="primary" size="sm" leftIcon={<CompassIcon size={15} />}>
+                  Explore Discover
+                </Button>
+              </Link>
+            </>
+          }
+        />
 
-          <div className="flex flex-wrap items-center gap-2.5 shrink-0">
-            <Link href="/likes">
-              <Button variant="secondary" size="sm" leftIcon={<HeartIcon size={15} />}>
-                Likes
-              </Button>
-            </Link>
-            <Link href="/discover">
-              <Button variant="primary" size="sm" leftIcon={<CompassIcon size={15} />}>
-                Explore Discover
-              </Button>
-            </Link>
-          </div>
-        </header>
+        {/* Hidden compatibility testId preserved */}
+        <span data-testid="matches-active-count" className="sr-only">
+          {matches.length} Active
+        </span>
 
         {/* Feedback Banners */}
         {notice && (
@@ -587,7 +582,7 @@ export default function MatchesPage() {
             <button
               type="button"
               onClick={() => setNotice(null)}
-              className="text-xs text-ash hover:text-chalk px-2 py-1 rounded-[4px]"
+              className="text-xs font-medium text-silver hover:text-chalk px-2.5 py-1.5 rounded-[4px]"
             >
               Dismiss
             </button>
@@ -604,7 +599,7 @@ export default function MatchesPage() {
             <button
               type="button"
               onClick={() => setActionError(null)}
-              className="text-xs text-danger hover:underline px-2 py-1"
+              className="text-xs font-medium text-danger hover:underline px-2.5 py-1.5"
             >
               Dismiss
             </button>
@@ -614,13 +609,10 @@ export default function MatchesPage() {
         {/* Main Content Switch */}
         {loading ? (
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-            <div className="lg:col-span-5 flex flex-col gap-3">
+            <div className="lg:col-span-5 rounded-[12px] border border-edge bg-coal divide-y divide-edge">
               {[1, 2, 3].map((slot) => (
-                <div
-                  key={slot}
-                  className="p-4 rounded-[12px] border border-edge bg-coal flex items-center gap-4"
-                >
-                  <Skeleton width="76px" height="92px" rounded="control" className="shrink-0" />
+                <div key={slot} className="p-4 flex items-center gap-4">
+                  <Skeleton width="72px" height="84px" rounded="control" className="shrink-0" />
                   <div className="flex-1 flex flex-col gap-2">
                     <Skeleton width="55%" height="18px" />
                     <Skeleton width="75%" height="14px" />
@@ -630,7 +622,7 @@ export default function MatchesPage() {
               ))}
             </div>
             <div className="hidden lg:block lg:col-span-7 rounded-[12px] border border-edge bg-coal p-6">
-              <Skeleton width="100%" height="260px" rounded="control" className="mb-5" />
+              <Skeleton width="100%" height="280px" rounded="control" className="mb-5" />
               <Skeleton width="45%" height="24px" className="mb-3" />
               <Skeleton width="85%" height="16px" className="mb-2" />
               <Skeleton width="70%" height="16px" />
@@ -640,7 +632,7 @@ export default function MatchesPage() {
           <IntervalEmptyComposition
             testId="matches-error-state"
             variant="matches"
-            eyebrow="Service Interrupted"
+            eyebrow="Service interrupted"
             title="Unable to load your mutual matches"
             description={loadError}
             primaryAction={{ label: 'Retry', onClick: loadMatches, variant: 'primary' }}
@@ -655,9 +647,9 @@ export default function MatchesPage() {
             <IntervalEmptyComposition
               testId="matches-ended-empty-state"
               variant="matches"
-              eyebrow="Connection Closed"
+              eyebrow="Connection closed"
               title="That connection has ended"
-              description="Unmatching ends private messaging and invitations cleanly while keeping your history calm. No safety block was applied unless you separately chose Block."
+              description="Unmatching ends private messaging cleanly without applying a block unless you choose Block separately."
               primaryAction={{
                 label: 'Explore Discover',
                 onClick: () => router.push('/discover'),
@@ -669,15 +661,15 @@ export default function MatchesPage() {
                 variant: 'secondary',
               }}
               facts={[
-                { label: 'Private Channel', value: 'Closed cleanly for both people' },
-                { label: 'Separation Rule', value: 'Unmatch does not create a safety block' },
+                { label: 'Private channel', value: 'Closed cleanly for both people' },
+                { label: 'Separation rule', value: 'Unmatch does not create a safety block' },
               ]}
             />
           ) : emptyKind === 'unavailable' ? (
             <IntervalEmptyComposition
               testId="matches-unavailable-empty-state"
               variant="matches"
-              eyebrow="Connection Unavailable"
+              eyebrow="Connection unavailable"
               title="This connection is no longer active"
               description="No active mutual matches remain. When both verified learners express interest independently again, active conversations will appear here."
               primaryAction={{
@@ -695,7 +687,7 @@ export default function MatchesPage() {
             <IntervalEmptyComposition
               testId="matches-empty-state"
               variant="matches"
-              eyebrow="The Interval · Two-Way Recognition"
+              eyebrow="Two-way recognition"
               title="No active mutual matches yet"
               description="SayMyName unlocks private messaging only when two verified learners like each other independently. Incoming likes await your review in Likes without paywalls."
               primaryAction={{
@@ -709,17 +701,17 @@ export default function MatchesPage() {
                 variant: 'secondary',
               }}
               facts={[
-                { label: 'Messaging Rule', value: 'Requires active bilateral match' },
-                { label: 'Discovery Choices', value: 'Unilateral likes & passes stay private' },
+                { label: 'Messaging rule', value: 'Requires active bilateral match' },
+                { label: 'Discovery choices', value: 'Unilateral likes & passes stay private' },
               ]}
             />
           )
         ) : (
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-            {/* Left Connection Roster (5 Cols Desktop, Full Width Mobile/Tablet) */}
+            {/* Left Structured Match Roster (5 Cols Desktop) */}
             <section aria-label="Active matches list" className="lg:col-span-5 flex flex-col gap-3">
               {matches.length >= 4 && (
-                <div className="pb-1">
+                <div>
                   <label htmlFor="matches-filter-input" className="sr-only">
                     Filter active matches
                   </label>
@@ -729,25 +721,26 @@ export default function MatchesPage() {
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
                     placeholder="Filter by name, programme, or city..."
-                    className="w-full h-10 px-3.5 rounded-[8px] bg-coal border border-edge text-sm text-chalk placeholder:text-ash focus-visible:outline-2 focus-visible:outline-iris"
+                    className="w-full h-11 px-4 rounded-[8px] bg-coal border border-edge text-sm text-chalk placeholder:text-silver/60 focus-visible:outline-2 focus-visible:outline-iris"
                   />
                 </div>
               )}
 
               {filteredMatches.length === 0 ? (
-                <div className="p-6 rounded-[12px] border border-edge bg-coal text-center flex flex-col items-center gap-2">
-                  <p className="text-sm font-medium text-chalk">No matches filter to &ldquo;{searchQuery}&rdquo;</p>
+                <div className="p-6 rounded-[12px] border border-edge bg-coal text-center flex flex-col items-center gap-3">
+                  <p className="text-sm font-medium text-chalk">
+                    No matches filter to &ldquo;{searchQuery}&rdquo;
+                  </p>
                   <Button
                     variant="secondary"
                     size="sm"
                     onClick={() => setSearchQuery('')}
-                    className="!bg-iron !border-edge"
                   >
                     Clear Filter
                   </Button>
                 </div>
               ) : (
-                <div className="flex flex-col gap-3">
+                <div className="rounded-[12px] border border-edge bg-coal overflow-hidden">
                   {filteredMatches.map((m) => {
                     const isSelected = selectedMatch?.id === m.id;
                     const primaryPhoto =
@@ -759,21 +752,16 @@ export default function MatchesPage() {
                     );
 
                     return (
-                      <article
+                      <StructuredListRow
                         key={m.id}
-                        data-testid={`match-card-${m.id}`}
-                        className={`rounded-[12px] border transition-colors duration-120 overflow-hidden ${
-                          isSelected
-                            ? 'bg-iron border-iris/75 shadow-sm'
-                            : 'bg-coal border-edge hover:border-[#465261]'
-                        }`}
-                      >
-                        <div className="p-4 flex gap-3.5">
+                        selected={isSelected}
+                        testId={`match-card-${m.id}`}
+                        media={
                           <button
                             type="button"
                             onClick={() => verifyAndSelectMatch(m, false)}
                             aria-label={`Select ${m.candidate.displayName}`}
-                            className="w-20 h-24 sm:w-[88px] sm:h-[104px] rounded-[8px] border border-edge bg-stage overflow-hidden shrink-0 flex items-center justify-center focus-visible:outline-2 focus-visible:outline-iris"
+                            className="w-16 h-20 rounded-[8px] border border-edge bg-stage overflow-hidden block focus-visible:outline-2 focus-visible:outline-iris"
                           >
                             {primaryPhoto?.photoUrl && !photoBroken ? (
                               <img
@@ -788,61 +776,23 @@ export default function MatchesPage() {
                                 className="w-full h-full object-cover"
                               />
                             ) : (
-                              <span className="text-base font-semibold text-chalk">
+                              <span className="w-full h-full flex items-center justify-center bg-iron text-base font-semibold text-chalk">
                                 {getInitials(m.candidate.displayName)}
                               </span>
                             )}
                           </button>
-
-                          <div className="min-w-0 flex-1 flex flex-col gap-1">
-                            <div className="flex flex-wrap items-center gap-1.5">
-                              <Badge variant="verified" size="sm">
-                                Verified
-                              </Badge>
-                              <span className="text-[11px] text-ash truncate">
-                                {formatProgrammeLabel(m.candidate.programmeFamily)}
-                              </span>
-                            </div>
-
-                            <div className="flex items-baseline justify-between gap-2">
-                              <button
-                                type="button"
-                                onClick={() => verifyAndSelectMatch(m, false)}
-                                className="text-left text-base sm:text-lg font-semibold text-chalk truncate hover:text-iris transition-colors focus-visible:outline-2 focus-visible:outline-iris"
-                              >
-                                {formatCandidateHeading(m.candidate.displayName, m.candidate.age)}
-                              </button>
-                              <span className="text-[11px] text-ash shrink-0">
-                                {formatMatchDate(m.lastMessageAt || m.matchedAtIso)}
-                              </span>
-                            </div>
-
-                            {(m.candidate.currentTerm || location) && (
-                              <p className="text-xs text-ash truncate">
-                                {[m.candidate.currentTerm, location].filter(Boolean).join(' · ')}
-                              </p>
-                            )}
-
-                            <p className="text-xs text-silver line-clamp-1 mt-0.5">
-                              {m.lastMessage
-                                ? `${m.lastMessageIsOwn ? 'You: ' : ''}${m.lastMessage}`
-                                : 'Private 1-on-1 chat unlocked'}
-                            </p>
-                          </div>
-                        </div>
-
-                        {/* Action Bar — Compact on Desktop, Full Controls on Mobile/Tablet */}
-                        <div className="px-4 py-2.5 border-t border-edge/80 bg-stage/40 flex flex-wrap items-center justify-between gap-2">
-                          <div className="flex items-center gap-1.5">
+                        }
+                        actions={
+                          <div className="flex items-center gap-2">
                             <Button
                               variant="ghost"
                               size="sm"
                               onClick={() => verifyAndSelectMatch(m, true)}
                               leftIcon={<UserIcon size={14} />}
                               data-testid={`match-details-btn-${m.id}`}
-                              className="border border-edge bg-coal text-silver"
+                              className="lg:hidden border border-edge bg-coal text-silver"
                             >
-                              View Profile
+                              Profile
                             </Button>
 
                             <Button
@@ -853,46 +803,66 @@ export default function MatchesPage() {
                                 setUnmatchTarget(m);
                               }}
                               data-testid={`match-unmatch-btn-${m.id}`}
-                              className="lg:hidden text-ash hover:text-warning"
+                              className="lg:hidden text-silver hover:text-warning"
                             >
                               Unmatch
                             </Button>
+
+                            <Link href={buildChatHrefForMatch(m)}>
+                              <Button
+                                variant="primary"
+                                size="sm"
+                                leftIcon={<ChatIcon size={14} />}
+                                data-testid={`match-open-chat-btn-${m.id}`}
+                              >
+                                Chat
+                              </Button>
+                            </Link>
+                          </div>
+                        }
+                      >
+                        <div className="flex flex-col gap-0.5">
+                          <div className="flex items-baseline justify-between gap-2">
+                            <button
+                              type="button"
+                              onClick={() => verifyAndSelectMatch(m, false)}
+                              className="text-left text-base font-semibold text-chalk truncate hover:text-iris transition-colors focus-visible:outline-2 focus-visible:outline-iris"
+                            >
+                              {formatCandidateHeading(m.candidate.displayName, m.candidate.age)}
+                            </button>
+                            <span className="text-xs text-silver/75 shrink-0 tabular-nums">
+                              {formatMatchDate(m.lastMessageAt || m.matchedAtIso)}
+                            </span>
                           </div>
 
-                          <Link href={buildChatHrefForMatch(m)}>
-                            <Button
-                              variant="primary"
-                              size="sm"
-                              leftIcon={<ChatIcon size={14} />}
-                              data-testid={`match-open-chat-btn-${m.id}`}
-                            >
-                              Open Chat
-                            </Button>
-                          </Link>
+                          <p className="text-[13px] text-silver/90 truncate">
+                            {formatProgrammeLabel(m.candidate.programmeFamily)}
+                            {location ? ` · ${location}` : ''}
+                          </p>
+
+                          <p className="text-[13px] text-silver/80 line-clamp-1 mt-0.5">
+                            {m.lastMessage
+                              ? `${m.lastMessageIsOwn ? 'You: ' : ''}${m.lastMessage}`
+                              : 'Private 1-on-1 chat unlocked'}
+                          </p>
                         </div>
-                      </article>
+                      </StructuredListRow>
                     );
                   })}
                 </div>
               )}
-
-              {/* Subtle Consent Reminder */}
-              <div className="hidden lg:flex items-center gap-2 px-3 py-2.5 rounded-[8px] bg-coal/70 border border-edge/70 text-xs text-ash">
-                <LockIcon size={13} color="var(--smn-accent-iris, #8580C4)" />
-                <span>Unmatching ends the connection cleanly without creating a block.</span>
-              </div>
             </section>
 
             {/* Right Active Match Detail Workbench (7 Cols Desktop) */}
             <aside
               aria-label="Selected match details"
               data-testid="match-workbench-panel"
-              className="hidden lg:flex lg:col-span-7 flex-col rounded-[12px] border border-edge bg-coal smn-surface-elevated p-6 xl:p-7 lg:sticky lg:top-[84px]"
+              className="hidden lg:flex lg:col-span-7 flex-col rounded-[12px] border border-edge bg-coal p-6 xl:p-7 lg:sticky lg:top-[84px]"
             >
               {selectedMatch ? (
                 <>
                   {refreshingMatchId === selectedMatch.id && (
-                    <p className="text-[11px] text-ash mb-3">
+                    <p className="text-xs text-silver/75 mb-3">
                       Verifying active connection state...
                     </p>
                   )}
@@ -904,7 +874,7 @@ export default function MatchesPage() {
                   )}
                 </>
               ) : (
-                <div className="py-12 text-center text-sm text-ash">
+                <div className="py-12 text-center text-sm text-silver">
                   Select a match on the left to inspect profile details or manage your connection.
                 </div>
               )}
