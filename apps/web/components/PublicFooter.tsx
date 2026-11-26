@@ -32,22 +32,22 @@ export default function PublicFooter({
   }
 
   return (
-    <footer className="bg-coal/90 border-t border-edge shadow-[inset_0_1px_0_rgba(255,255,255,0.03)] font-ui mt-16">
+    <footer className="bg-coal border-t border-edge font-ui mt-16">
       <div className="container-wide py-12 grid grid-cols-1 md:grid-cols-12 gap-8">
         <div className="md:col-span-5 flex flex-col gap-3">
           <Logo size="sm" symbolConcept="A" />
-          <p className={`${useEditorialFooter ? 'text-[12px]' : 'text-xs'} text-silver leading-relaxed max-w-sm`}>
+          <p className="text-xs text-silver leading-relaxed max-w-sm">
             An independent, dating-first space built strictly for verified adults (18+)
             currently enrolled in approved IIT Madras non-campus BS programmes.
           </p>
-          <p className={`${useEditorialFooter ? 'text-[12px]' : 'text-[11px]'} text-ash leading-relaxed max-w-sm`}>
+          <p className="text-xs text-silver/85 leading-relaxed max-w-sm">
             Independent platform. SayMyName.in is not owned, endorsed, operated by, or
             officially affiliated with IIT Madras.
           </p>
         </div>
 
-        <div className={`md:col-span-2 flex flex-col gap-2.5 ${useEditorialFooter ? 'text-[12px]' : 'text-xs'}`}>
-          <p className={`${useEditorialFooter ? 'text-[12px]' : 'text-[11px]'} font-semibold uppercase tracking-[0.12em] text-ash`}>
+        <div className="md:col-span-2 flex flex-col gap-2.5 text-xs">
+          <p className="text-xs font-semibold uppercase tracking-[0.12em] text-silver/80">
             Platform
           </p>
           {useEditorialFooter ? (
@@ -72,8 +72,8 @@ export default function PublicFooter({
           </Link>
         </div>
 
-        <div className={`md:col-span-2 flex flex-col gap-2.5 ${useEditorialFooter ? 'text-[12px]' : 'text-xs'}`}>
-          <p className={`${useEditorialFooter ? 'text-[12px]' : 'text-[11px]'} font-semibold uppercase tracking-[0.12em] text-ash`}>
+        <div className="md:col-span-2 flex flex-col gap-2.5 text-xs">
+          <p className="text-xs font-semibold uppercase tracking-[0.12em] text-silver/80">
             Access
           </p>
           <Link href="/login" className="text-silver hover:text-chalk transition-colors">
@@ -87,8 +87,8 @@ export default function PublicFooter({
           </Link>
         </div>
 
-        <div className={`md:col-span-3 flex flex-col gap-2.5 ${useEditorialFooter ? 'text-[12px]' : 'text-xs'}`}>
-          <p className={`${useEditorialFooter ? 'text-[12px]' : 'text-[11px]'} font-semibold uppercase tracking-[0.12em] text-ash`}>
+        <div className="md:col-span-3 flex flex-col gap-2.5 text-xs">
+          <p className="text-xs font-semibold uppercase tracking-[0.12em] text-silver/80">
             Governance
           </p>
           <Link href="/privacy" className="text-silver hover:text-chalk transition-colors">
@@ -108,19 +108,15 @@ export default function PublicFooter({
               {supportEmail}
             </a>
           ) : (
-            <span className="text-ash pt-1">
+            <span className="text-silver/80 pt-1">
               Support desk details published on Member Support.
             </span>
           )}
         </div>
       </div>
 
-      <div className="border-t border-edge/70">
-        <div
-          className={`container-wide py-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 ${
-            useEditorialFooter ? 'text-[12px] text-silver' : 'text-[11px] text-ash'
-          }`}
-        >
+      <div className="border-t border-edge/80">
+        <div className="container-wide py-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 text-xs text-silver">
           <span>&copy; {new Date().getFullYear()} SayMyName.in — Phase 1 Non-Campus BS Cohort</span>
           <span>Mutual Match Before Messaging · 18+ Verified Only</span>
         </div>

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useId, useRef } from 'react';
 
 export interface DialogProps {
   isOpen: boolean;
@@ -14,10 +14,11 @@ export interface DialogProps {
 
 /**
  * SayMyName Accessible Dialog / Modal (Document 10 — Solid Surface Architecture)
- * - Backdrop: Void #0B0D10 at 80% opacity (solid dim, no heavy backdrop blur)
+ * - Backdrop: Void #0B0D10 at 85% opacity (solid dim, no heavy backdrop blur)
  * - Surface: Solid Iron #1A2027 with Edge #343D48 boundary
  * - Radii: 12px panel radius (--smn-radius-panel)
- * - Enforces Escape close, keyboard Tab focus containment, and focus return
+ * - Enforces Escape close, keyboard Tab focus containment, and focus return without
+ *   resetting focus on parent re-renders
  */
 export const Dialog: React.FC<DialogProps> = ({
   isOpen,
@@ -28,8 +29,12 @@ export const Dialog: React.FC<DialogProps> = ({
   footer,
   maxWidth = 'md',
 }) => {
+  const titleId = useId();
+  const descriptionId = useId();
   const panelRef = useRef<HTMLDivElement | null>(null);
   const previousFocusRef = useRef<HTMLElement | null>(null);
+  const onCloseRef = useRef(onClose);
+  onCloseRef.current = onClose;
 
   useEffect(() => {
     if (!isOpen) return;
@@ -40,7 +45,7 @@ export const Dialog: React.FC<DialogProps> = ({
       const panel = panelRef.current;
       if (!panel) return;
       const focusable = panel.querySelectorAll<HTMLElement>(
-        'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])',
+        'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])',
       );
       if (focusable.length > 0) {
         focusable[0].focus();
@@ -52,7 +57,7 @@ export const Dialog: React.FC<DialogProps> = ({
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
         e.preventDefault();
-        onClose();
+        onCloseRef.current();
         return;
       }
       if (e.key === 'Tab' && panelRef.current) {
@@ -81,7 +86,7 @@ export const Dialog: React.FC<DialogProps> = ({
       window.removeEventListener('keydown', handleKeyDown);
       previousFocusRef.current?.focus?.();
     };
-  }, [isOpen, onClose]);
+  }, [isOpen]);
 
   if (!isOpen) return null;
 
@@ -96,7 +101,8 @@ export const Dialog: React.FC<DialogProps> = ({
       className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6"
       role="dialog"
       aria-modal="true"
-      aria-labelledby="dialog-title"
+      aria-labelledby={titleId}
+      aria-describedby={description ? descriptionId : undefined}
     >
       {/* Backdrop */}
       <div
@@ -113,11 +119,11 @@ export const Dialog: React.FC<DialogProps> = ({
       >
         <div className="flex items-start justify-between gap-4">
           <div>
-            <h2 id="dialog-title" className="text-xl font-semibold text-chalk tracking-tight">
+            <h2 id={titleId} className="text-xl font-semibold text-chalk tracking-tight">
               {title}
             </h2>
             {description && (
-              <p className="text-sm text-silver mt-1 leading-relaxed">
+              <p id={descriptionId} className="text-sm text-silver mt-1 leading-relaxed">
                 {description}
               </p>
             )}

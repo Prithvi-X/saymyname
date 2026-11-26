@@ -1,80 +1,57 @@
 import React from 'react';
 import Link from 'next/link';
+import { ThresholdMark } from '../components/brand';
+import { Button } from '../components/ui';
 
 export default function NotFound() {
   return (
-    <div
-      style={{
-        minHeight: '70vh',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        padding: '2rem 1rem',
-      }}
+    <section
+      aria-labelledby="not-found-heading"
+      className="container-app py-14 sm:py-24 font-ui"
     >
-      <div
-        style={{
-          maxWidth: '440px',
-          width: '100%',
-          backgroundColor: 'var(--smn-surface, #14171C)',
-          border: '1px solid var(--smn-border, rgba(255, 255, 255, 0.08))',
-          borderRadius: '16px',
-          padding: '2.5rem 2rem',
-          textAlign: 'center',
-          boxShadow: '0 20px 40px rgba(0, 0, 0, 0.4)',
-        }}
-      >
-        <span
-          style={{
-            fontFamily: 'monospace',
-            fontSize: '0.875rem',
-            color: 'var(--smn-accent-iris, #8580C4)',
-            letterSpacing: '0.08em',
-            textTransform: 'uppercase',
-            display: 'block',
-            marginBottom: '0.75rem',
-          }}
-        >
-          404 — Not Found
-        </span>
-        <h2
-          style={{
-            fontSize: '1.25rem',
-            fontWeight: 600,
-            color: 'var(--smn-text-primary, #F0F1EE)',
-            margin: '0 0 0.75rem 0',
-          }}
-        >
-          Page does not exist
-        </h2>
-        <p
-          style={{
-            fontSize: '0.9rem',
-            color: 'var(--smn-text-secondary, #9DA3A0)',
-            lineHeight: 1.5,
-            margin: '0 0 2rem 0',
-          }}
-        >
-          The requested page could not be found or has been moved to another location.
-        </p>
-        <Link
-          href="/"
-          style={{
-            display: 'inline-block',
-            width: '100%',
-            padding: '0.75rem 1.5rem',
-            backgroundColor: 'var(--smn-accent-iris, #8580C4)',
-            color: '#0B0D10',
-            borderRadius: '8px',
-            fontWeight: 600,
-            fontSize: '0.9rem',
-            textDecoration: 'none',
-            boxSizing: 'border-box',
-          }}
-        >
-          Return Home
-        </Link>
+      <div className="max-w-3xl mx-auto rounded-[12px] border border-edge bg-coal p-7 sm:p-10 grid grid-cols-1 sm:grid-cols-12 gap-8 items-center">
+        <div className="sm:col-span-4 flex flex-col items-start gap-4 border-b sm:border-b-0 sm:border-r border-edge pb-6 sm:pb-0 sm:pr-6">
+          <ThresholdMark variant="separated" size="md" />
+          <p className="text-[13px] font-medium text-silver">404 · Route unavailable</p>
+        </div>
+
+        <div className="sm:col-span-8 flex flex-col gap-4">
+          <h1
+            id="not-found-heading"
+            className="text-2xl sm:text-3xl font-semibold tracking-tight text-chalk"
+          >
+            This page is outside the directory.
+          </h1>
+          <p className="text-sm sm:text-base text-silver leading-relaxed">
+            The route you opened may have moved or does not exist. Return to the main site or continue to member sign-in.
+          </p>
+
+          <div className="flex flex-wrap items-center gap-3 pt-2">
+            <Link href="/">
+              <Button variant="primary" size="lg">
+                Return Home
+              </Button>
+            </Link>
+            <Link href="/login">
+              <Button variant="secondary" size="lg">
+                Member Sign In
+              </Button>
+            </Link>
+          </div>
+
+          <div className="flex flex-wrap gap-4 pt-3 border-t border-edge/80 text-[13px] text-silver">
+            <Link href="/eligibility" className="hover:text-chalk transition-colors">
+              Eligibility Guide
+            </Link>
+            <Link href="/safety" className="hover:text-chalk transition-colors">
+              Safety &amp; Consent
+            </Link>
+            <Link href="/support" className="hover:text-chalk transition-colors">
+              Member Support
+            </Link>
+          </div>
+        </div>
       </div>
-    </div>
+    </section>
   );
 }
