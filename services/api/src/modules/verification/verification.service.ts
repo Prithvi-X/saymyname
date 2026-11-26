@@ -104,6 +104,11 @@ export class VerificationService {
       : null;
 
     if (evaluation.status === 'rejected') {
+      let revokedForUnder18: Array<{
+        matchId: string;
+        conversationId: string;
+        participantAccountIds: string[];
+      }> = [];
       await this.prisma.$transaction(async (tx) => {
         await tx.accountEligibility.upsert({
           where: { accountId },
@@ -128,11 +133,12 @@ export class VerificationService {
           where: { id: accountId },
           data: { accountStatus: 'pending_verification' },
         });
-        await this.matchAuth.invalidateActiveMatchesForAccount(tx, accountId, {
+        const inv = await this.matchAuth.invalidateActiveMatchesForAccount(tx, accountId, {
           reasonCode: 'verification_revoked',
           actorId: accountId,
           metadata: { checkType: 'age', decision: 'rejected' },
         });
+        revokedForUnder18 = inv.closedConversations || [];
         await tx.verificationCase.create({
           data: {
             accountId,
@@ -154,6 +160,18 @@ export class VerificationService {
           },
         });
       }).catch(() => null);
+
+      for (const conv of revokedForUnder18) {
+        this.realtimeBus?.publishMatchEnded({
+          matchId: conv.matchId,
+          conversationId: conv.conversationId,
+          participantAccountIds: conv.participantAccountIds,
+          reason: 'connection_unavailable',
+        });
+      }
+      if (revokedForUnder18.length > 0) {
+        this.realtimeBus?.publishAccountRevoked(accountId);
+      }
 
       throw new ForbiddenException(
         `Under-18 access rejected. You are currently ${evaluation.calculatedAge} years old. SayMyName is strictly for verified adults (18+) per Document 01.`,
@@ -188,7 +206,7 @@ export class VerificationService {
         data: { accountStatus: 'pending_verification' },
       });
 
-      await this.matchAuth.invalidateActiveMatchesForAccount(tx, accountId, {
+      const inv = await this.matchAuth.invalidateActiveMatchesForAccount(tx, accountId, {
         reasonCode: 'verification_revoked',
         actorId: accountId,
         metadata: { checkType: 'age', decision: 'pending' },
@@ -213,8 +231,17 @@ export class VerificationService {
         },
       });
 
-      return { eligibility, vCase };
+      return { eligibility, vCase, revokedConversations: inv.closedConversations || [] };
     }).catch((err) => this.throwVerificationPersistenceError('age verification check', err));
+
+    for (const conv of result.revokedConversations || []) {
+      this.realtimeBus?.publishMatchEnded({
+        matchId: conv.matchId,
+        conversationId: conv.conversationId,
+        participantAccountIds: conv.participantAccountIds,
+        reason: 'connection_unavailable',
+      });
+    }
 
     return {
       message:
@@ -312,10 +339,10 @@ export class VerificationService {
         data: { accountStatus: 'pending_verification' },
       });
 
-      await this.matchAuth.invalidateActiveMatchesForAccount(tx, accountId, {
+      const inv = await this.matchAuth.invalidateActiveMatchesForAccount(tx, accountId, {
         reasonCode: 'verification_revoked',
         actorId: accountId,
-        metadata: { checkType: 'age', decision: 'pending' },
+        metadata: { checkType: 'student_enrolment', decision: 'pending' },
       });
 
       const vCase = await tx.verificationCase.create({
@@ -357,8 +384,17 @@ export class VerificationService {
         },
       });
 
-      return { eligibility, vCase };
+      return { eligibility, vCase, revokedConversations: inv.closedConversations || [] };
     }).catch((err) => this.throwVerificationPersistenceError('student enrolment check', err));
+
+    for (const conv of result.revokedConversations || []) {
+      this.realtimeBus?.publishMatchEnded({
+        matchId: conv.matchId,
+        conversationId: conv.conversationId,
+        participantAccountIds: conv.participantAccountIds,
+        reason: 'connection_unavailable',
+      });
+    }
 
     return {
       message:

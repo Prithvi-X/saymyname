@@ -281,4 +281,12 @@ export class RealtimeEventBusService implements OnModuleDestroy {
       accountId,
     });
   }
+
+  notifyCallEvictionQueued(callSessionId?: string) {
+    this.dispatch({
+      kind: 'call_eviction_queued',
+      originInstanceId: this.instanceId,
+      callSessionId,
+    });
+  }
 }

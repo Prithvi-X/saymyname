@@ -861,7 +861,49 @@ export class CallingService {
             updated.evictionStatus = evStatus;
           }
         })
+        .catch(async () => {
+          if (typeof (this.prisma as any).outboxEvent?.create === 'function') {
+            await (this.prisma as any).outboxEvent
+              .create({
+                data: {
+                  aggregateType: 'call_session',
+                  aggregateId: session.id,
+                  eventType: 'call.evict',
+                  status: 'pending',
+                  payload: {
+                    callSessionId: session.id,
+                    conversationId: session.conversationId,
+                    livekitRoomId: session.livekitRoomId,
+                    participantAccountIds: [session.callerId, session.receiverId],
+                    reason: endedReason,
+                    revokeTokenTs: Math.floor(endedAt.getTime() / 1000),
+                  },
+                },
+              })
+              .catch(() => null);
+            this.realtimeEventBus?.notifyCallEvictionQueued(session.id);
+          }
+        });
+    } else if (typeof (this.prisma as any).outboxEvent?.create === 'function') {
+      await (this.prisma as any).outboxEvent
+        .create({
+          data: {
+            aggregateType: 'call_session',
+            aggregateId: session.id,
+            eventType: 'call.evict',
+            status: 'pending',
+            payload: {
+              callSessionId: session.id,
+              conversationId: session.conversationId,
+              livekitRoomId: session.livekitRoomId,
+              participantAccountIds: [session.callerId, session.receiverId],
+              reason: endedReason,
+              revokeTokenTs: Math.floor(endedAt.getTime() / 1000),
+            },
+          },
+        })
         .catch(() => null);
+      this.realtimeEventBus?.notifyCallEvictionQueued(session.id);
     }
 
     this.emitCallSignal('call.ended', updated);

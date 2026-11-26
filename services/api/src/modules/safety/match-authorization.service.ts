@@ -479,22 +479,33 @@ export class MatchAuthorizationService {
         });
       }
 
+      const nonTerminalCallStatuses = [
+        'inviting',
+        'initiated',
+        'ringing',
+        'accepted',
+        'connecting',
+        'active',
+        'reconnecting',
+      ];
+      const activeCalls: any[] =
+        typeof tx.callSession?.findMany === 'function'
+          ? await tx.callSession
+              .findMany({
+                where: {
+                  conversationId,
+                  callStatus: { in: nonTerminalCallStatuses },
+                },
+              })
+              .catch(() => [])
+          : [];
+
       if (typeof tx.callSession?.updateMany === 'function') {
         await tx.callSession
           .updateMany({
             where: {
               conversationId,
-              callStatus: {
-                in: [
-                  'inviting',
-                  'initiated',
-                  'ringing',
-                  'accepted',
-                  'connecting',
-                  'active',
-                  'reconnecting',
-                ],
-              },
+              callStatus: { in: nonTerminalCallStatuses },
             },
             data: {
               callStatus: 'ended',
@@ -505,6 +516,35 @@ export class MatchAuthorizationService {
             },
           })
           .catch(() => null);
+      }
+
+      if (
+        Array.isArray(activeCalls) &&
+        activeCalls.length > 0 &&
+        typeof tx.outboxEvent?.create === 'function'
+      ) {
+        const revokeTokenTs = Math.floor(now.getTime() / 1000);
+        for (const call of activeCalls) {
+          if (!call?.id || !call?.livekitRoomId) continue;
+          await tx.outboxEvent
+            .create({
+              data: {
+                aggregateType: 'call_session',
+                aggregateId: call.id,
+                eventType: 'call.evict',
+                status: 'pending',
+                payload: {
+                  callSessionId: call.id,
+                  conversationId,
+                  livekitRoomId: call.livekitRoomId,
+                  participantAccountIds: [call.callerId, call.receiverId].filter(Boolean),
+                  reason: params.endReason,
+                  revokeTokenTs,
+                },
+              },
+            })
+            .catch(() => null);
+        }
       }
 
       if (typeof tx.gameSession?.updateMany === 'function') {

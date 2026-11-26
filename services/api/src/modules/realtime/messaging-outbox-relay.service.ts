@@ -234,8 +234,12 @@ export class MessagingOutboxRelayService
           WITH candidate AS (
             SELECT id
             FROM platform.outbox_events
-            WHERE (status = 'pending' AND next_attempt_at <= NOW())
-               OR (status = 'processing' AND locked_until IS NOT NULL AND locked_until <= NOW())
+            WHERE aggregate_type = 'conversation'
+              AND event_type = 'message.created'
+              AND (
+                (status = 'pending' AND next_attempt_at <= NOW())
+                OR (status = 'processing' AND locked_until IS NOT NULL AND locked_until <= NOW())
+              )
             ORDER BY created_at ASC
             LIMIT $1
             FOR UPDATE SKIP LOCKED
@@ -269,6 +273,8 @@ export class MessagingOutboxRelayService
       const now = new Date();
       const candidates = await prismaAny.outboxEvent.findMany({
         where: {
+          aggregateType: 'conversation',
+          eventType: 'message.created',
           OR: [
             { status: 'pending', nextAttemptAt: { lte: now } },
             { status: 'processing', lockedUntil: { lte: now } },

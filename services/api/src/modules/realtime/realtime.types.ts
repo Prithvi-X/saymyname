@@ -31,4 +31,9 @@ export type InternalRealtimeBusMessage =
       kind: 'account_revoked';
       originInstanceId: string;
       accountId: string;
+    }
+  | {
+      kind: 'call_eviction_queued';
+      originInstanceId: string;
+      callSessionId?: string;
     };
