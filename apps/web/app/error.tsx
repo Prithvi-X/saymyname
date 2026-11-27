@@ -1,7 +1,8 @@
 'use client';
 
 import React, { useEffect } from 'react';
-import { Button } from '../components/ui/Button';
+import { ThresholdMark } from '../components/brand';
+import { Button } from '../components/ui';
 
 export default function ErrorBoundary({
   error,
@@ -16,7 +17,6 @@ export default function ErrorBoundary({
     error?.message?.includes('ChunkLoadError');
 
   useEffect(() => {
-    // If it's a chunk mismatch, attempt one automatic reload
     if (isChunkError && typeof window !== 'undefined') {
       const storageKey = 'smn_chunk_error_auto_reload';
       if (!sessionStorage.getItem(storageKey)) {
@@ -40,123 +40,57 @@ export default function ErrorBoundary({
   };
 
   return (
-    <div
-      style={{
-        minHeight: '70vh',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        padding: '2rem 1rem',
-      }}
+    <section
+      aria-labelledby="error-boundary-heading"
+      className="container-app py-14 sm:py-24 font-ui"
     >
-      <div
-        style={{
-          maxWidth: '480px',
-          width: '100%',
-          backgroundColor: 'var(--smn-surface, #14171C)',
-          border: '1px solid var(--smn-border, rgba(255, 255, 255, 0.08))',
-          borderRadius: '16px',
-          padding: '2.5rem 2rem',
-          textAlign: 'center',
-          boxShadow: '0 20px 40px rgba(0, 0, 0, 0.4)',
-        }}
-      >
-        <div
-          style={{
-            width: '48px',
-            height: '48px',
-            borderRadius: '12px',
-            backgroundColor: isChunkError
-              ? 'rgba(133, 128, 196, 0.15)'
-              : 'rgba(235, 87, 87, 0.15)',
-            border: `1px solid ${
-              isChunkError ? 'var(--smn-accent-iris, #8580C4)' : 'rgba(235, 87, 87, 0.3)'
-            }`,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            margin: '0 auto 1.5rem auto',
-            color: isChunkError ? 'var(--smn-accent-iris, #8580C4)' : '#EB5757',
-            fontSize: '1.25rem',
-          }}
-        >
-          {isChunkError ? '⟳' : '⚠'}
+      <div className="max-w-2xl mx-auto rounded-[12px] border border-edge bg-coal p-7 sm:p-10 flex flex-col gap-6">
+        <div className="flex flex-wrap items-center justify-between gap-4 border-b border-edge pb-5">
+          <div className="flex items-center gap-4">
+            <ThresholdMark variant={isChunkError ? 'aligned' : 'separated'} size="sm" />
+            <div>
+              <p className="text-[13px] font-medium text-iris">
+                {isChunkError ? 'Deployment update detected' : 'Temporary view interruption'}
+              </p>
+              <h1
+                id="error-boundary-heading"
+                className="text-xl sm:text-2xl font-semibold text-chalk tracking-tight mt-0.5"
+              >
+                {isChunkError ? 'Application Updated' : 'Unable to render this view'}
+              </h1>
+            </div>
+          </div>
         </div>
 
-        <h2
-          style={{
-            fontSize: '1.25rem',
-            fontWeight: 600,
-            color: 'var(--smn-text-primary, #F0F1EE)',
-            marginBottom: '0.75rem',
-            letterSpacing: '-0.01em',
-          }}
-        >
-          {isChunkError ? 'Application Updated' : 'Something unexpected occurred'}
-        </h2>
-
-        <p
-          style={{
-            fontSize: '0.9rem',
-            color: 'var(--smn-text-secondary, #9DA3A0)',
-            lineHeight: 1.5,
-            marginBottom: '2rem',
-          }}
-        >
+        <p className="text-sm sm:text-base text-silver leading-relaxed">
           {isChunkError
-            ? 'A new version of SayMyName was deployed. Your browser has cached an earlier component manifest. Please reload to sync the latest version.'
-            : error.message || 'An unexpected client error occurred while rendering this page.'}
+            ? 'A newer release of SayMyName is live. Reload the page to synchronize the latest application bundle.'
+            : error.message || 'An unexpected client error interrupted rendering on this route.'}
         </p>
 
-        <div
-          style={{
-            display: 'flex',
-            flexDirection: 'column',
-            gap: '0.75rem',
-          }}
-        >
-          <Button
-            variant="primary"
-            onClick={handleReload}
-            style={{ width: '100%', justifyContent: 'center' }}
-          >
+        <div className="flex flex-wrap items-center gap-3">
+          <Button variant="primary" size="lg" onClick={handleReload}>
             Reload Page
           </Button>
 
           {!isChunkError && (
-            <div style={{ display: 'flex', gap: '0.75rem' }}>
-              <Button
-                variant="secondary"
-                onClick={() => reset()}
-                style={{ flex: 1, justifyContent: 'center' }}
-              >
+            <>
+              <Button variant="secondary" size="lg" onClick={() => reset()}>
                 Try Again
               </Button>
-              <Button
-                variant="ghost"
-                onClick={handleReturnHome}
-                style={{ flex: 1, justifyContent: 'center' }}
-              >
+              <Button variant="ghost" size="lg" onClick={handleReturnHome}>
                 Return Home
               </Button>
-            </div>
+            </>
           )}
         </div>
 
         {process.env.NODE_ENV !== 'production' && error.digest && (
-          <div
-            style={{
-              marginTop: '1.5rem',
-              paddingTop: '1rem',
-              borderTop: '1px solid var(--smn-border, rgba(255, 255, 255, 0.08))',
-              fontSize: '0.75rem',
-              color: 'var(--smn-text-muted, #565D59)',
-            }}
-          >
-            Digest: {error.digest}
+          <div className="pt-4 border-t border-edge text-xs text-silver/80">
+            Diagnostic reference: {error.digest}
           </div>
         )}
       </div>
-    </div>
+    </section>
   );
 }
