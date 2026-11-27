@@ -16,6 +16,7 @@ function LoginFormContent() {
   const searchParams = useSearchParams();
   const { hydrateSessionUser } = useAuth();
   const rawReturn = searchParams.get('returnUrl');
+  const accountDeleted = searchParams.get('deleted') === '1';
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -84,6 +85,12 @@ function LoginFormContent() {
             Sign in with your verified IIT Madras BS study email and password.
           </p>
         </div>
+
+        {accountDeleted && (
+          <div className="mb-5 p-3.5 rounded-[6px] bg-sage/10 border border-sage/35 text-xs text-sage leading-relaxed">
+            Your account is closed, active sessions and matches have been revoked, and remaining unheld data is scheduled for purge after the 30-day safety window.
+          </div>
+        )}
 
         {error && (
           <div

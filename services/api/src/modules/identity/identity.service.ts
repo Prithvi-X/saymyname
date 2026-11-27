@@ -17,6 +17,7 @@ import {
   AgeCheckDto,
   VerifyStudentDto,
   RefreshTokenDto,
+  DeleteAccountDto,
 } from './dto/identity.dto';
 import { AccountLifecycleState } from '@saymyname/contracts';
 import {
@@ -897,6 +898,62 @@ export class IdentityService {
         invalidatedMatches: result.invalidatedMatches,
       };
     });
+  }
+
+  /**
+   * 6b. Step-up self-service account deletion (Doc 04 §6 / D-P35-03 / ADR-025).
+   * Immediately revokes sessions, matches, calls, discovery visibility, and schedules 30-day hard purge.
+   */
+  async deleteAccount(accountId: string, dto: DeleteAccountDto) {
+    const account = await this.prisma.account
+      .findUnique({
+        where: { id: accountId },
+        select: {
+          id: true,
+          passwordHash: true,
+          accountStatus: true,
+          deletedAt: true,
+        },
+      })
+      .catch(() => null);
+
+    if (!account || account.deletedAt) {
+      throw new UnauthorizedException('Account is already deleted or unavailable.');
+    }
+
+    if ((dto.confirmPhrase || '').trim().toUpperCase() !== 'DELETE MY ACCOUNT') {
+      throw new BadRequestException('Type "DELETE MY ACCOUNT" to confirm account deletion.');
+    }
+
+    if (account.passwordHash) {
+      if (!dto.password || dto.password.length === 0) {
+        throw new BadRequestException('Current password confirmation is required to delete your account.');
+      }
+      const passwordMatches = await this.crypto.verifyPasswordAsync(
+        dto.password,
+        account.passwordHash,
+      );
+      if (!passwordMatches) {
+        throw new UnauthorizedException('Current password did not match.');
+      }
+    }
+
+    const revoked = await this.suspendOrRestrictAccount(accountId, {
+      status: 'deleted',
+      actorId: accountId,
+    });
+    const now = new Date();
+    const scheduledPurgeAt = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
+
+    return {
+      deleted: true,
+      accountId: revoked.accountId,
+      deletedAt: now.toISOString(),
+      scheduledPurgeAt: scheduledPurgeAt.toISOString(),
+      graceDays: 30,
+      message:
+        'Your account is closed, all active matches and sessions have ended, and personal data is scheduled for permanent purge after the 30-day safety window.',
+    };
   }
 
   /**

@@ -26,7 +26,9 @@ import {
   VerifyStudentDto,
   RefreshTokenDto,
   RevokeOtherSessionsDto,
+  DeleteAccountDto,
 } from './dto/identity.dto';
+import { Delete } from '@nestjs/common';
 import { JwtAuthGuard, AuthenticatedRequest } from './guards/jwt-auth.guard';
 
 @ApiTags('Identity, Eligibility & Auth')
@@ -147,5 +149,15 @@ export class IdentityController {
   @ApiResponse({ status: 200, description: 'Account, lifecycleState, eligibility, and profile data' })
   getMe(@Req() req: AuthenticatedRequest) {
     return this.identityService.getMe(req.user.sub);
+  }
+
+  @Delete('me')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Step-up self-service account deletion (30-day DPDP grace window before hard purge)' })
+  @ApiResponse({ status: 200, description: 'Account deactivated, sessions/matches/calls revoked, purge scheduled' })
+  deleteMe(@Req() req: AuthenticatedRequest, @Body() dto: DeleteAccountDto) {
+    return this.identityService.deleteAccount(req.user.sub, dto);
   }
 }

@@ -4,7 +4,7 @@ import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { isPrivateIdentifierLike } from '@saymyname/validation';
 import { useAuth } from '../../../lib/auth-context';
 import { api, sanitizeDisplayName } from '../../../lib/api';
-import { getCachedQuery, invalidateQueryKey, setCachedQuery } from '../../../lib/query-cache';
+import { clearAllQueryCache, getCachedQuery, invalidateQueryKey, setCachedQuery } from '../../../lib/query-cache';
 import { Button, Input, Badge, Dialog, Tabs, Skeleton } from '../../../components/ui';
 import {
   ShieldIcon,
@@ -173,6 +173,11 @@ export default function ProfilePage() {
   const [saveError, setSaveError] = useState<string | null>(null);
   const [isTogglingDiscovery, setIsTogglingDiscovery] = useState(false);
   const [isRevokingOthers, setIsRevokingOthers] = useState(false);
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [deletePassword, setDeletePassword] = useState('');
+  const [deleteConfirmPhrase, setDeleteConfirmPhrase] = useState('');
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+  const [isDeletingAccount, setIsDeletingAccount] = useState(false);
 
   const hydrateProfile = useCallback(async (opts?: { forceCatalog?: boolean }) => {
     const hasWarmProfile = Boolean(getCachedQuery<any>('profile:me', 120_000));
@@ -543,6 +548,32 @@ export default function ProfilePage() {
       setSaveError(err.message || 'Could not revoke other sessions.');
     } finally {
       setIsRevokingOthers(false);
+    }
+  };
+
+  const handleDeleteAccount = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (isDeletingAccount) return;
+    setDeleteError(null);
+
+    if (deleteConfirmPhrase.trim().toUpperCase() !== 'DELETE MY ACCOUNT') {
+      setDeleteError('Type DELETE MY ACCOUNT exactly to confirm permanent deletion.');
+      return;
+    }
+
+    setIsDeletingAccount(true);
+    try {
+      await api.deleteAccount({
+        confirmPhrase: deleteConfirmPhrase.trim(),
+        ...(deletePassword ? { password: deletePassword } : {}),
+      });
+      clearAllQueryCache();
+      setIsDeleteModalOpen(false);
+      window.location.href = '/login?deleted=1';
+    } catch (err: any) {
+      setDeleteError(err.message || 'Could not complete account deletion.');
+    } finally {
+      setIsDeletingAccount(false);
     }
   };
 
@@ -1572,6 +1603,33 @@ export default function ProfilePage() {
                   </Button>
                 </div>
               </div>
+
+              <div className="p-6 rounded-[12px] bg-coal border border-danger/35 smn-surface-elevated flex flex-col gap-3">
+                <div className="flex items-center justify-between gap-2 border-b border-edge pb-3">
+                  <h2 className="text-lg font-semibold text-chalk">
+                    Delete Account &amp; Data
+                  </h2>
+                  <Badge variant="warning" size="sm">30-Day DPDP Grace</Badge>
+                </div>
+                <p className="text-xs text-silver leading-relaxed">
+                  Deactivates your account immediately, closes all active matches, chats, voice-note streams, and calls, and permanently purges personal profile data and media after the 30-day safety window (except items retained under active trust &amp; safety holds).
+                </p>
+                <div className="pt-1">
+                  <Button
+                    data-testid="open-delete-account-btn"
+                    variant="destructive"
+                    size="sm"
+                    onClick={() => {
+                      setDeleteError(null);
+                      setDeletePassword('');
+                      setDeleteConfirmPhrase('');
+                      setIsDeleteModalOpen(true);
+                    }}
+                  >
+                    Delete Account
+                  </Button>
+                </div>
+              </div>
             </div>
           )}
         </div>
@@ -1767,6 +1825,73 @@ export default function ProfilePage() {
             </p>
           </div>
         )}
+      </Dialog>
+
+      <Dialog
+        isOpen={isDeleteModalOpen}
+        onClose={() => {
+          if (!isDeletingAccount) setIsDeleteModalOpen(false);
+        }}
+        title="Confirm Account Deletion"
+        description="Immediate session and match revocation with permanent purge scheduled after 30 days."
+      >
+        <form
+          onSubmit={handleDeleteAccount}
+          data-testid="delete-account-dialog"
+          className="flex flex-col gap-4"
+        >
+          <div className="p-3 rounded-[8px] bg-danger/10 border border-danger/30 text-xs text-silver leading-relaxed">
+            All active matches, chats, voice-note access, audio calls, and Relationship Mode spaces end immediately. Data under active safety reports remains preserved only under legal hold.
+          </div>
+
+          {deleteError && (
+            <div className="px-3 py-2 rounded-[6px] bg-danger/10 border border-danger/35 text-xs text-danger">
+              {deleteError}
+            </div>
+          )}
+
+          {user?.hasPassword !== false && (
+            <Input
+              data-testid="delete-account-password"
+              type="password"
+              label="Current Password"
+              value={deletePassword}
+              onChange={(e) => setDeletePassword(e.target.value)}
+              placeholder="Enter your account password"
+              required
+            />
+          )}
+
+          <Input
+            data-testid="delete-account-phrase"
+            label='Type "DELETE MY ACCOUNT" to confirm'
+            value={deleteConfirmPhrase}
+            onChange={(e) => setDeleteConfirmPhrase(e.target.value)}
+            placeholder="DELETE MY ACCOUNT"
+            required
+          />
+
+          <div className="flex flex-wrap items-center justify-end gap-2 pt-2 border-t border-edge">
+            <Button
+              type="button"
+              variant="secondary"
+              size="sm"
+              disabled={isDeletingAccount}
+              onClick={() => setIsDeleteModalOpen(false)}
+            >
+              Keep Account
+            </Button>
+            <Button
+              data-testid="confirm-delete-account-btn"
+              type="submit"
+              variant="destructive"
+              size="sm"
+              disabled={isDeletingAccount}
+            >
+              {isDeletingAccount ? 'Deleting Account...' : 'Delete Account Forever'}
+            </Button>
+          </div>
+        </form>
       </Dialog>
     </div>
   );

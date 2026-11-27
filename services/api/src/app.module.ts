@@ -12,6 +12,7 @@ import { SafetyModule } from './modules/safety/safety.module';
 import { CallingModule } from './modules/calling/calling.module';
 import { TogetherModule } from './modules/together/together.module';
 import { RealtimeModule } from './modules/realtime/realtime.module';
+import { RetentionModule } from './modules/retention/retention.module';
 
 @Module({
   imports: [
@@ -31,6 +32,7 @@ import { RealtimeModule } from './modules/realtime/realtime.module';
     SafetyModule,
     CallingModule,
     TogetherModule,
+    RetentionModule,
   ],
 })
 export class AppModule {}

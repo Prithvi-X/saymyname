@@ -158,8 +158,8 @@
 - **Affected Docs & Code:** Doc 04 §6, Doc 06 `OD-07` & §17, `packages/validation/src/messaging.ts`, `apps/web/app/(app)/chats/page.tsx`
 
 ### `D-P35-02` (`Doc 04 D04-12` / `Doc 06 OD-07`) — Voice-Note File Size Cap & Format Limits
-- **Status:** `NEEDS HUMAN DECISION` (Proposed Default Only)
-- **Context & Conflict:** Document 02 §4.3 locks maximum voice-note duration at **60 seconds**, but `D04-12` and `OD-07` leave maximum file size and codec bitrate limits `OPEN`. Runtime enforces a provisional `VOICE_NOTE_DEFAULT_MAX_BYTES = 5 * 1024 * 1024` (`5 MB`, `VOICE_NOTE_MAX_BYTES` env override up to `15 MB` DTO bound) across `audio/webm`, `audio/ogg`, `audio/mp4`, `audio/mpeg`, `audio/wav`, and `audio/aac` verified via `ffprobe`.
+- **Status:** **APPROVED — Option A (60s max duration / 5 MB default cap)** (`ADR-025`, approved 2026-11-27)
+- **Context & Conflict:** Document 02 §4.3 locks maximum voice-note duration at **60 seconds**, and `D04-12` / `OD-07` now formally lock maximum payload cap at **5 MB** (`5 * 1024 * 1024` bytes) across `audio/webm`, `audio/ogg`, `audio/mp4`, `audio/mpeg`, `audio/wav`, and `audio/aac` verified via `ffprobe`.
 - **Options Considered:**
   - *Option A (Proposed Provisional Default):* **5 MB maximum per clip (≤ 60s)** supporting WebM/Opus, Ogg/Opus, MP4/AAC, MP3, and fallback WAV. Accommodates browser `MediaRecorder` variances safely at ~85 KB/sec while bounding storage bandwidth cost.
   - *Option B:* **2 MB compressed-only cap** (disallows uncompressed WAV uploads over ~20s; cuts R2 storage/egress ~60%, at risk of rejecting desktop browser WAV recordings).
@@ -169,8 +169,8 @@
 - **Affected Docs & Code:** Doc 04 `D04-12`, Doc 06 `OD-07`, `packages/validation/src/messaging.ts`, `services/api/src/modules/messaging/audio-security.ts`
 
 ### `D-P35-03` (`Doc 04 §6` / `Doc 06 §15` `D04-11`) — Voice-Note & Message Lifecycle Retention, Unmatch/Block/Deletion & Moderation Hold Matrix
-- **Status:** `NEEDS HUMAN DECISION` (Legal + Privacy + Trust & Safety Approval Required)
-- **Context & Risk:** Document 04 §6 and Document 06 §15 mandate that message/voice-note access stops immediately upon unmatch/block/suspension while **physical storage retention, purge timing, moderation holds (`report_evidence_refs.retention_until`), and account-deletion cascades** must be governed by approved legal/privacy policy before launch (Indian DPDP Act compliance + Trust & Safety auditability). Currently, Phase 3.5.2 revokes playback access immediately (`403`) on unmatch/block/suspension/revocation/deletion, and **retains historical DB rows and private R2 audio objects with zero automated purge job** until retention durations are formally approved.
+- **Status:** **APPROVED — 30d Unmatch / 90d Block / 30d Account Deletion Grace / 180d Legal Hold Immunity** (`ADR-025`, approved 2026-11-27)
+- **Context & Risk:** Document 04 §6 and Document 06 §15 mandate immediate `403` access revocation upon unmatch/block/deletion alongside DPDP physical storage minimization and safety evidence legal-hold immunity. Implemented in Phase 5 via `IdentityService.deleteAccount`, `SafetyService.reportUser` (`legalHoldUntil` + `ReportEvidenceRef`), and `RetentionPurgeService` (`packages/database/prisma/migrations/20261127000000_phase5_retention_legal_hold_and_deletion`).
 - **Decision Matrix & Options (Explicit Human Sign-Off Required for Each Row):**
 
 | Lifecycle Event | Immediate Serving Behavior (Implemented in Phase 3.5.2) | Pending Policy Options for Physical Data & Object Retention | Legal / Safety / Cost Trade-Off |

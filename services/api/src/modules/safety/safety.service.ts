@@ -244,6 +244,7 @@ export class SafetyService {
         }
       }
 
+      const legalHoldUntil = new Date(Date.now() + 180 * 24 * 60 * 60 * 1000);
       const report = await this.prisma.report.create({
         data: {
           reporterId,
@@ -252,9 +253,40 @@ export class SafetyService {
           ...(reportMessageId ? { messageId: reportMessageId } : {}),
           reportCategory: dto.reportCategory,
           description: cleanDescription,
+          legalHoldUntil,
           status: 'pending',
         },
       });
+
+      if (
+        (reportMessageId || reportConversationId) &&
+        typeof prismaAny.messageMedia?.findMany === 'function' &&
+        typeof prismaAny.reportEvidenceRef?.createMany === 'function'
+      ) {
+        const mediaRows: any[] = await prismaAny.messageMedia
+          .findMany({
+            where: reportMessageId
+              ? { messageId: reportMessageId }
+              : { message: { conversationId: reportConversationId } },
+            orderBy: { createdAt: 'desc' },
+            take: 25,
+            select: { s3Key: true, mediaType: true },
+          })
+          .catch(() => []);
+
+        if (mediaRows.length > 0) {
+          await prismaAny.reportEvidenceRef
+            .createMany({
+              data: mediaRows.map((m) => ({
+                reportId: report.id,
+                evidenceType: `chat_${m.mediaType || 'media'}`,
+                s3Key: m.s3Key,
+                retentionUntil: legalHoldUntil,
+              })),
+            })
+            .catch(() => null);
+        }
+      }
 
       const responseBody = {
         success: true,

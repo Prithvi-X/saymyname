@@ -445,6 +445,24 @@ class ApiClient {
     );
   }
 
+  async deleteAccount(payload: {
+    confirmPhrase: string;
+    password?: string;
+    reason?: string;
+  }) {
+    return this.request<{
+      deleted: boolean;
+      accountId: string;
+      deletedAt: string;
+      scheduledPurgeAt: string;
+      graceDays: number;
+      message: string;
+    }>('/api/bff/v1/identity/me', {
+      method: 'DELETE',
+      body: JSON.stringify(payload),
+    });
+  }
+
   // --- Verification & Eligibility (/api/bff/v1/*) ---
 
   async verifyAge(payload: AgeCheckPayload) {

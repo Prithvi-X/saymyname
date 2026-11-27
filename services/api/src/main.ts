@@ -4,6 +4,7 @@ import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import { WsAdapter } from '@nestjs/platform-ws';
 import helmet from 'helmet';
 import { AppModule } from './app.module';
+import { isCorsOriginAllowed, isSwaggerEnabled } from './modules/platform/http-security';
 
 async function bootstrap() {
   const logger = new Logger('Bootstrap');
@@ -13,20 +14,13 @@ async function bootstrap() {
   // Security Headers
   app.use(helmet());
 
-  // CORS - allow local dev, Vercel deployments, custom domains, and mobile clients
+  // Strict CORS in production (fail closed for unknown browser origins), dev-friendly locally
   app.enableCors({
     origin: (origin, callback) => {
-      if (!origin) return callback(null, true);
-      const isAllowed =
-        origin.includes('localhost') ||
-        origin.includes('127.0.0.1') ||
-        origin.includes('saymyname.in') ||
-        origin.endsWith('.vercel.app') ||
-        (process.env.WEB_APP_URL && origin === process.env.WEB_APP_URL);
-      if (isAllowed) {
+      if (isCorsOriginAllowed(origin, process.env)) {
         return callback(null, true);
       }
-      return callback(null, true); // Permissive fallback for preview deployments
+      return callback(null, false);
     },
     credentials: true,
   });
@@ -43,21 +37,27 @@ async function bootstrap() {
     }),
   );
 
-  // OpenAPI / Swagger Documentation
-  const config = new DocumentBuilder()
-    .setTitle('SayMyName API')
-    .setDescription('SayMyName.in REST API specification for verified IIT Madras non-campus BS students')
-    .setVersion('1.0')
-    .addBearerAuth()
-    .build();
+  // OpenAPI / Swagger Documentation (gated off by default in NODE_ENV=production)
+  if (isSwaggerEnabled(process.env)) {
+    const config = new DocumentBuilder()
+      .setTitle('SayMyName API')
+      .setDescription(
+        'SayMyName.in REST API specification for verified IIT Madras non-campus BS students',
+      )
+      .setVersion('1.0')
+      .addBearerAuth()
+      .build();
 
-  const document = SwaggerModule.createDocument(app, config);
-  SwaggerModule.setup('docs', app, document);
+    const document = SwaggerModule.createDocument(app, config);
+    SwaggerModule.setup('docs', app, document);
+  }
 
   const port = process.env.PORT || 4000;
   await app.listen(port, '0.0.0.0');
   logger.log(`SayMyName API Server listening on port ${port} on 0.0.0.0 (Prefix: /api/v1)`);
-  logger.log(`OpenAPI Swagger documentation available at http://localhost:${port}/docs`);
+  if (isSwaggerEnabled(process.env)) {
+    logger.log(`OpenAPI Swagger documentation available at http://localhost:${port}/docs`);
+  }
 }
 
 bootstrap();

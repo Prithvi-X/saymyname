@@ -5,6 +5,7 @@ import { ReviewerGuard } from '../src/modules/verification/reviewer.guard';
 import { assertProductionAutoVerificationDisabled } from '../src/modules/verification/verification.adapters';
 import { IdentityService } from '../src/modules/identity/identity.service';
 import { VerificationService } from '../src/modules/verification/verification.service';
+import { isCorsOriginAllowed, isSwaggerEnabled } from '../src/modules/platform/http-security';
 
 describe('Production Fail-Closed Security Safeguards', () => {
   test('CryptoService rejects weak or default JWT secret in production', () => {
@@ -107,5 +108,21 @@ describe('Production Fail-Closed Security Safeguards', () => {
       if (prevKey === undefined) delete process.env.REVIEWER_API_KEY;
       else process.env.REVIEWER_API_KEY = prevKey;
     }
+  });
+
+  test('Production CORS rejects arbitrary origins & Swagger /docs disables cleanly in production', () => {
+    const prodEnv: any = {
+      NODE_ENV: 'production',
+      WEB_APP_URL: 'https://saymyname.in',
+    };
+    assert.strictEqual(isCorsOriginAllowed('https://saymyname.in', prodEnv), true);
+    assert.strictEqual(isCorsOriginAllowed('https://www.saymyname.in', prodEnv), true);
+    assert.strictEqual(isCorsOriginAllowed('http://saymyname.in', prodEnv), false);
+    assert.strictEqual(isCorsOriginAllowed('https://evil.example.com', prodEnv), false);
+    assert.strictEqual(isCorsOriginAllowed('https://random-preview.vercel.app', prodEnv), false);
+
+    assert.strictEqual(isSwaggerEnabled(prodEnv), false);
+    assert.strictEqual(isSwaggerEnabled({ ...prodEnv, ENABLE_SWAGGER_DOCS: 'true' }), true);
+    assert.strictEqual(isSwaggerEnabled({ NODE_ENV: 'development' }), true);
   });
 });

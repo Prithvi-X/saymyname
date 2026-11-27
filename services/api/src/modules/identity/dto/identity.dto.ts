@@ -179,3 +179,26 @@ export class RevokeOtherSessionsDto {
   @IsString()
   currentRefreshToken?: string;
 }
+
+export class DeleteAccountDto {
+  @ApiProperty({
+    example: 'DELETE MY ACCOUNT',
+    description: 'Explicit step-up confirmation phrase ("DELETE MY ACCOUNT")',
+  })
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(64)
+  confirmPhrase: string;
+
+  @ApiPropertyOptional({ description: 'Account password step-up verification when password auth is configured' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(128)
+  password?: string;
+
+  @ApiPropertyOptional({ description: 'Optional member feedback/reason (never logged publicly)' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(200)
+  reason?: string;
+}

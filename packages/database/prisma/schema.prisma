@@ -34,6 +34,7 @@ model Account {
   otpChallenges       OtpChallenge[]
   passwordResetTokens PasswordResetToken[]
 
+  @@index([accountStatus, deletedAt], map: "accounts_status_deleted_idx")
   @@map("accounts")
   @@schema("identity")
 }
@@ -336,6 +337,7 @@ model Match {
   relationshipSpace RelationshipSpace?
 
   @@unique([userLowId, userHighId])
+  @@index([status, endedAt], map: "matches_status_ended_idx")
   @@map("matches")
   @@schema("dating")
 }
@@ -419,19 +421,22 @@ model Message {
 }
 
 model MessageMedia {
-  id                String   @id @default(uuid()) @db.Uuid
-  messageId         String   @unique @map("message_id") @db.Uuid
-  mediaType         String   @map("media_type") @db.Text
-  durationSeconds   Int?     @map("duration_seconds")
-  s3Key             String   @map("s3_key") @db.Text
-  fileSizeBytes     Int      @map("file_size_bytes")
-  sha256            String?  @db.Text
-  processingStatus  String   @default("ready") @map("processing_status") @db.Text
-  uploaderAccountId String?  @map("uploader_account_id") @db.Uuid
-  createdAt         DateTime @default(now()) @map("created_at") @db.Timestamptz
+  id                String    @id @default(uuid()) @db.Uuid
+  messageId         String    @unique @map("message_id") @db.Uuid
+  mediaType         String    @map("media_type") @db.Text
+  durationSeconds   Int?      @map("duration_seconds")
+  s3Key             String    @map("s3_key") @db.Text
+  fileSizeBytes     Int       @map("file_size_bytes")
+  sha256            String?   @db.Text
+  processingStatus  String    @default("ready") @map("processing_status") @db.Text
+  uploaderAccountId String?   @map("uploader_account_id") @db.Uuid
+  createdAt         DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  deletedAt         DateTime? @map("deleted_at") @db.Timestamptz
+  purgedAt          DateTime? @map("purged_at") @db.Timestamptz
 
   message Message @relation(fields: [messageId], references: [id], onDelete: Cascade)
 
+  @@index([deletedAt, createdAt], map: "message_media_deleted_idx")
   @@map("message_media")
   @@schema("messaging")
 }
@@ -610,6 +615,7 @@ model Report {
   reportCategory String    @map("report_category") @db.Text
   description    String?   @db.Text
   status         String    @default("pending") @db.Text
+  legalHoldUntil DateTime? @map("legal_hold_until") @db.Timestamptz
   createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz
   resolvedAt     DateTime? @map("resolved_at") @db.Timestamptz
   resolvedById   String?   @map("resolved_by_id") @db.Text
@@ -617,16 +623,19 @@ model Report {
   evidence ReportEvidenceRef[]
 
   @@index([conversationId], map: "reports_conversation_idx")
+  @@index([reportedId, status, legalHoldUntil], map: "reports_hold_idx")
   @@map("reports")
   @@schema("safety")
 }
 
 model ReportEvidenceRef {
-  id           String   @id @default(uuid()) @db.Uuid
-  reportId     String   @map("report_id") @db.Uuid
-  evidenceType String   @map("evidence_type") @db.Text
-  s3Key        String   @map("s3_key") @db.Text
-  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz
+  id             String    @id @default(uuid()) @db.Uuid
+  reportId       String    @map("report_id") @db.Uuid
+  evidenceType   String    @map("evidence_type") @db.Text
+  s3Key          String    @map("s3_key") @db.Text
+  retentionUntil DateTime? @map("retention_until") @db.Timestamptz
+  deletedAt      DateTime? @map("deleted_at") @db.Timestamptz
+  createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz
 
   report Report @relation(fields: [reportId], references: [id], onDelete: Cascade)
 
